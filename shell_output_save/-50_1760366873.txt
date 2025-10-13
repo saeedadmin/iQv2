@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:wfw="http://wellformedweb.org/CommentAPI/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:sy="http://purl.org/rss/1.0/modules/syndication/" xmlns:slash="http://purl.org/rss/1.0/modules/slash/">
+  <channel>
+    <title>Cointelegraph.com News</title>
+    <link>https://cointelegraph.com</link>
+    <atom:link href="https://cointelegraph.com/rss" rel="self" type="application/rss+xml"/>
+    <description>Cointelegraph covers fintech, blockchain and Bitcoin bringing you the latest crypto news and analyses on the future of money.</description>
+    <generator>cointelegraph.com</generator>
+    <lastBuildDate>Mon, 13 Oct 2025 15:46:28 +0100</lastBuildDate>
+    <language>en</language>
+    <sy:updatePeriod>hourly</sy:updatePeriod>
+    <sy:updateFrequency>1</sy:updateFrequency>
+    <image>
+      <title>Cointelegraph.com News</title>
+      <link>https://cointelegraph.com</link>
+      <url>https://cointelegraph.com/assets/img/CT_Logo_YG_tag.png</url>
+      <description>Cointelegraph covers fintech, blockchain and Bitcoin bringing you the latest crypto news and analyses on the future of money.</description>
+    </image>
+    <item>
+      <title>Binance Wallet, Trust Wallet display issues linger after crypto crash</title>
+      <pubDate>Mon, 13 Oct 2025 15:40:04 +0100</pubDate>
+      <guid>https://cointelegraph.com/news/binance-wallet-trust-wallet-display-issues-crash</guid>
+      <link><![CDATA[https://cointelegraph.com/news/binance-wallet-trust-wallet-display-issues-crash?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjUtMTAvMDE5OWRkYTgtMjQ0ZC03MzRkLTgzYTUtZTlmZmJmYTc0ZjI4.jpg" alt="Binance Wallet, Trust Wallet display issues linger after crypto crash"></p><p>Binance Wallet’s balance display issues came soon after CZ-owned Trust Wallet reported experiencing the same issue on Sunday.</p>]]></description>
+      <dc:creator>Cointelegraph by Helen Partz</dc:creator>
+      <media:content url="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjUtMTAvMDE5OWRkYTgtMjQ0ZC03MzRkLTgzYTUtZTlmZmJmYTc0ZjI4.jpg" medium="image"/>
+      <enclosure url="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjUtMTAvMDE5OWRkYTgtMjQ0ZC03MzRkLTgzYTUtZTlmZmJmYTc0ZjI4.jpg" length="528" type="image/jpg" caption="Binance Wallet, Trust Wallet display issues linger after crypto crash"/>
+    </item>
+    <item>
+      <title>Hyperliquid now allows anyone to deploy perpetual futures — for a price</title>
+      <pubDate>Mon, 13 Oct 2025 15:25:35 +0100</pubDate>
+      <guid>https://cointelegraph.com/news/hyperliquid-now-allows-builders-to-deploy-perpetual-futures-contracts</guid>
+      <link><![CDATA[https://cointelegraph.com/news/hyperliquid-now-allows-builders-to-deploy-perpetual-futures-contracts?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjUtMTAvMDE5OWRkODAtNDI3Mi03ZmFiLWE0NzAtMWNkZTE5NWU1Njky.jpg" alt="Hyperliquid now allows anyone to deploy perpetual futures — for a price"></p><p>Hyperliquid has rolled out its HIP-3 upgrade, enabling anyone staking 500,000 HYPE tokens to deploy their own perpetual swap markets permissionlessly.</p>]]></description>
+      <dc:creator>Cointelegraph by Adrian Zmudzinski</dc:creator>
+      <media:content url="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjUtMTAvMDE5OWRkODAtNDI3Mi03ZmFiLWE0NzAtMWNkZTE5NWU1Njky.jpg" medium="image"/>
+      <enclosure url="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjUtMTAvMDE5OWRkODAtNDI3Mi03ZmFiLWE0NzAtMWNkZTE5NWU1Njky.jpg" length="528" type="image/jpg" caption="Hyperliquid now allows anyone to deploy perpetual futures — for a price"/>
+    </item>
+    <item>
+      <title>Crypto fundraising sets new record of $3.5B in a single week</title>
+      <pubDate>Mon, 13 Oct 2025 15:10:22 +0100</pubDate>
+      <guid>https://cointelegraph.com/news/crypto-fundraising-record-btc-peak-market-crash</guid>
+      <link><![CDATA[https://cointelegraph.com/news/crypto-fundraising-record-btc-peak-market-crash?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjUtMTAvMDE5OWRkOTItNjczOC03MzNlLTg4OWMtOWY3NjNlNzgxYWE3.jpg" alt="Crypto fundraising sets new record of $3.5B in a single week"></p><p>Crypto companies looking to raise funds set a new record, reaching $3.5 billion in a single week last week, before the market crashed on Friday.</p>]]></description>
+      <dc:creator>Cointelegraph by Ezra Reguerra</dc:creator>
+      <media:content url="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjUtMTAvMDE5OWRkOTItNjczOC03MzNlLTg4OWMtOWY3NjNlNzgxYWE3.jpg" medium="image"/>
+      <enclosure url="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjUtMTAvMDE5OWRkOTItNjczOC03MzNlLTg4OWMtOWY3NjNlNzgxYWE3.jpg" length="528" type="image/jpg" caption="Crypto fundraising sets new record of $3.5B in a single week"/>
+    </item>
+    <item>
+      <title>A state-backed crypto fund just made its first buy — and it wasn’t Bitcoin</title>
