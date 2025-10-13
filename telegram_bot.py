@@ -45,6 +45,10 @@ logger = logging.getLogger(__name__)
 
 # تنظیمات ربات از environment variables
 BOT_TOKEN = os.getenv('BOT_TOKEN')
+if not BOT_TOKEN:
+    logger.error("BOT_TOKEN environment variable is not set!")
+    raise ValueError("BOT_TOKEN is required")
+
 ADMIN_USER_ID = int(os.getenv('ADMIN_USER_ID', 327459477))
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'production')
 
@@ -692,6 +696,9 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 def main() -> None:
     """تابع اصلی برای راه‌اندازی ربات"""
     logger.info("🚀 شروع ربات تلگرام پیشرفته...")
+    logger.info(f"🔑 BOT_TOKEN: {'SET' if BOT_TOKEN else 'NOT SET'}")
+    logger.info(f"👤 ADMIN_USER_ID: {ADMIN_USER_ID}")
+    logger.info(f"🌍 ENVIRONMENT: {ENVIRONMENT}")
     
     # لاگ شروع سیستم
     bot_logger.log_system_event("BOT_STARTED", f"ربات در زمان {datetime.datetime.now()} شروع شد")

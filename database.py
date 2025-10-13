@@ -9,6 +9,8 @@
 import sqlite3
 import datetime
 import logging
+import os
+import tempfile
 from typing import Optional, List, Tuple, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -16,7 +18,19 @@ logger = logging.getLogger(__name__)
 class DatabaseManager:
     def __init__(self, db_path: str = "bot_database.db"):
         """مقداردهی مدیر دیتابیس"""
-        self.db_path = db_path
+        # در محیط production، اگر نتوان فایل ایجاد کرد، از حافظه استفاده کن
+        try:
+            # تست کن که آیا می‌توان فایل ایجاد کرد
+            test_path = f"{db_path}.test"
+            with open(test_path, 'w') as f:
+                f.write('test')
+            os.remove(test_path)
+            self.db_path = db_path
+        except (PermissionError, OSError):
+            # اگر نتوان فایل ایجاد کرد، از دیتابیس حافظه‌ای استفاده کن
+            logger.warning("Cannot create database file, using in-memory database")
+            self.db_path = ":memory:"
+            
         self.init_database()
     
     def get_connection(self):
