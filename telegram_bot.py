@@ -32,7 +32,15 @@ else:
 from admin_panel import AdminPanel
 from public_menu import PublicMenuManager
 from logger_system import bot_logger
-from tradingview_analysis import TradingViewAnalysisFetcher
+
+# Optional imports - TradingView Analysis
+try:
+    from tradingview_analysis import TradingViewAnalysisFetcher
+    TRADINGVIEW_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"TradingView Analysis غیرفعال: {e}")
+    TradingViewAnalysisFetcher = None
+    TRADINGVIEW_AVAILABLE = False
 
 # تنظیمات logging
 logging.basicConfig(
@@ -61,7 +69,12 @@ else:
 db_logger = DatabaseLogger(db_manager)
 admin_panel = AdminPanel(db_manager, ADMIN_USER_ID)
 public_menu = PublicMenuManager(db_manager)
-tradingview_fetcher = TradingViewAnalysisFetcher()
+
+# Initialize TradingView fetcher if available
+if TRADINGVIEW_AVAILABLE:
+    tradingview_fetcher = TradingViewAnalysisFetcher()
+else:
+    tradingview_fetcher = None
 
 # متغیرهای مکالمه
 (BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION) = range(3)
@@ -454,6 +467,11 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     # اگر پیام شامل کلیدواژه ارز باشد، تحلیل TradingView را دریافت کن
     if any(keyword in message_lower for keyword in crypto_keywords) and len(message_text.split()) <= 3:
+        # بررسی در دسترس بودن TradingView
+        if not TRADINGVIEW_AVAILABLE or not tradingview_fetcher:
+            await update.message.reply_text("❌ سرویس تحلیل TradingView در حال حاضر در دسترس نیست.")
+            return
+            
         # نمایش پیام در حال بارگذاری
         loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین تحلیل از TradingView...\n\nلطفاً چند ثانیه صبر کنید.")
         
