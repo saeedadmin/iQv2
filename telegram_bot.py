@@ -99,6 +99,161 @@ async def check_user_access(user_id: int) -> bool:
     
     return True
 
+# Functions for crypto trading signals
+async def fetch_crypto_signals():
+    """دریافت سیگنال‌های معاملاتی از منابع مختلف"""
+    import aiohttp
+    import feedparser
+    from datetime import datetime, timedelta
+    
+    signals = []
+    
+    try:
+        # منابع RSS برای سیگنال‌های معاملاتی
+        rss_sources = [
+            {
+                'url': 'https://cryptonews.com/news/feed/',
+                'name': 'CryptoNews',
+                'type': 'analysis'
+            },
+            {
+                'url': 'https://cointelegraph.com/rss/tag/markets',
+                'name': 'Cointelegraph Markets',
+                'type': 'market_analysis'
+            },
+            {
+                'url': 'https://feeds.feedburner.com/cointelegraph/news',
+                'name': 'Cointelegraph News',
+                'type': 'news'
+            }
+        ]
+        
+        # فیلتر کلمات کلیدی برای شناسایی سیگنال‌ها
+        signal_keywords = [
+            'buy', 'sell', 'signal', 'trading', 'breakout', 'support', 'resistance',
+            'bullish', 'bearish', 'price target', 'entry point', 'stop loss',
+            'خرید', 'فروش', 'سیگنال', 'معامله', 'حمایت', 'مقاومت', 'صعودی', 'نزولی'
+        ]
+        
+        # محدودیت زمانی - 2 روز گذشته
+        time_limit = datetime.now() - timedelta(days=2)
+        
+        for source in rss_sources:
+            try:
+                # دریافت RSS feed
+                feed = feedparser.parse(source['url'])
+                
+                for entry in feed.entries[:5]:  # فقط 5 خبر اول از هر منبع
+                    # بررسی تاریخ
+                    try:
+                        if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                            pub_date = datetime(*entry.published_parsed[:6])
+                        elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+                            pub_date = datetime(*entry.updated_parsed[:6])
+                        else:
+                            pub_date = datetime.now()  # اگر تاریخ موجود نبود، فرض کن امروزه
+                        
+                        # اگر خبر قدیمی‌تر از 2 روز است، رد کن
+                        if pub_date < time_limit:
+                            continue
+                            
+                    except:
+                        # اگر مشکل در پارس تاریخ بود، خبر رو در نظر بگیر
+                        pub_date = datetime.now()
+                    
+                    # بررسی محتوا برای کلمات کلیدی سیگنال
+                    title = entry.title.lower()
+                    description = entry.get('description', '').lower()
+                    content = f"{title} {description}"
+                    
+                    # اگر کلمات کلیدی پیدا شد
+                    signal_found = any(keyword.lower() in content for keyword in signal_keywords)
+                    
+                    if signal_found:
+                        # استخراج نام ارز (اگر موجود باشد)
+                        crypto_mentions = []
+                        common_cryptos = ['bitcoin', 'btc', 'ethereum', 'eth', 'cardano', 'ada', 
+                                        'solana', 'sol', 'binance', 'bnb', 'xrp', 'ripple',
+                                        'dogecoin', 'doge', 'avalanche', 'avax', 'polygon', 'matic']
+                        
+                        for crypto in common_cryptos:
+                            if crypto in content:
+                                crypto_mentions.append(crypto.upper())
+                        
+                        signals.append({
+                            'title': entry.title,
+                            'description': entry.get('description', '')[:300] + '...' if len(entry.get('description', '')) > 300 else entry.get('description', ''),
+                            'link': entry.link,
+                            'source': source['name'],
+                            'date': pub_date.strftime('%Y-%m-%d %H:%M'),
+                            'cryptos': list(set(crypto_mentions))[:3]  # حداکثر 3 ارز ذکر شده
+                        })
+                        
+            except Exception as e:
+                print(f"خطا در دریافت از {source['name']}: {e}")
+                continue
+        
+        # مرتب کردن بر اساس تاریخ (جدیدترین اول)
+        signals.sort(key=lambda x: x['date'], reverse=True)
+        
+        # حداکثر 8 سیگنال برگردان
+        return signals[:8]
+        
+    except Exception as e:
+        print(f"خطا در دریافت سیگنال‌ها: {e}")
+        return []
+
+def format_crypto_signals_message(signals):
+    """فرمت کردن پیام سیگنال‌های معاملاتی"""
+    if not signals:
+        return """
+🚀 *سیگنال‌های خرید و فروش*
+
+❌ *متاسفانه در حال حاضر سیگنال جدیدی یافت نشد.*
+
+🔍 *توضیح:*
+• سیگنال‌ها از منابع معتبر و رایگان جمع‌آوری می‌شوند
+• فقط سیگنال‌های کمتر از 2 روز نمایش داده می‌شوند
+• لطفاً چند دقیقه بعد دوباره تلاش کنید
+
+⚠️ *توجه:* این اطلاعات فقط جهت آگاهی است و توصیه سرمایه‌گذاری نمی‌باشد.
+"""
+
+    message = "🚀 *سیگنال‌های خرید و فروش*\n\n"
+    message += f"📊 *{len(signals)} سیگنال جدید یافت شد:*\n\n"
+    
+    for i, signal in enumerate(signals, 1):
+        # ایموجی برای هر سیگنال
+        signal_emoji = "📈" if any(word in signal['title'].lower() for word in ['buy', 'bullish', 'خرید', 'صعود']) else "📊"
+        
+        # نمایش ارزهای ذکر شده
+        crypto_text = ""
+        if signal['cryptos']:
+            crypto_text = f" ({', '.join(signal['cryptos'])})"
+        
+        message += f"{signal_emoji} **سیگنال {i}**{crypto_text}\n"
+        message += f"📅 *تاریخ:* {signal['date']}\n"
+        message += f"🔗 *منبع:* {signal['source']}\n"
+        message += f"📋 *عنوان:* {signal['title']}\n"
+        
+        if signal['description']:
+            message += f"📝 *توضیحات:*\n{signal['description']}\n"
+        
+        message += f"🌐 [مطالعه کامل]({signal['link']})\n"
+        message += "━━━━━━━━━━━━━━━\n\n"
+    
+    message += """
+⚠️ *هشدار مهم:*
+• این سیگنال‌ها صرفاً جهت اطلاع‌رسانی هستند
+• قبل از هر معامله، تحقیقات شخصی انجام دهید
+• ریسک سرمایه‌گذاری را مدیریت کنید
+• از منابع متعدد استفاده کنید
+
+💡 *نکته:* سیگنال‌ها از منابع معتبر و رایگان جمع‌آوری شده‌اند
+"""
+    
+    return message
+
 # Handler برای دستور /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """پیام خوش‌آمدگویی هنگام اجرای دستور /start"""
@@ -552,6 +707,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 • 💰 قیمت تتر و دلار به تومان
 • 🚀 بیشترین صعود و نزول بازار
 • 📰 آخرین اخبار کریپتو از منابع معتبر
+• 🎯 سیگنال‌های خرید و فروش از منابع معتبر
 
 از دکمه‌های زیر برای دسترسی به خدمات استفاده کنید:
         """
@@ -560,6 +716,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         crypto_keyboard = [
             [KeyboardButton("📊 قیمت‌های لحظه‌ای")],
             [KeyboardButton("📰 اخبار کریپتو")],
+            [KeyboardButton("🚀 سیگنال‌های خرید و فروش")],
             [KeyboardButton("📈 تحلیل TradingView")],
             [KeyboardButton("🔙 بازگشت به منوی اصلی")]
         ]
@@ -614,6 +771,28 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     elif message_text == "📈 تحلیل TradingView":
         return await tradingview_analysis_start(update, context)
+    
+    elif message_text == "🚀 سیگنال‌های خرید و فروش":
+        # نمایش پیام در حال بارگذاری
+        loading_message = await update.message.reply_text("⏳ در حال جستجوی جدیدترین سیگنال‌های معاملاتی...\n\nلطفاً چند ثانیه صبر کنید.")
+        
+        try:
+            # دریافت سیگنال‌های معاملاتی
+            signals_data = await fetch_crypto_signals()
+            message = format_crypto_signals_message(signals_data)
+            
+            # ویرایش پیام با نتایج
+            await loading_message.edit_text(
+                message,
+                parse_mode='Markdown',
+                disable_web_page_preview=True
+            )
+            
+        except Exception as e:
+            error_message = f"❌ خطا در دریافت سیگنال‌ها:\n{str(e)}"
+            await loading_message.edit_text(error_message)
+        
+        return
     
     elif message_text == "🔙 بازگشت به منوی اصلی":
         # بازگشت به منوی اصلی
