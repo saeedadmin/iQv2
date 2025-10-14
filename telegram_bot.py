@@ -392,9 +392,7 @@ async def tradingview_analysis_process(update: Update, context: ContextTypes.DEF
 📄 *توضیحات:*
 {recent['description'][:400]}{'...' if len(recent['description']) > 400 else ''}
 
-👤 *نویسنده:* {recent['author']}
-
-🔗 [👉 مشاهده تحلیل کامل]({recent['analysis_url']})"""
+👤 *نویسنده:* {recent['author']}"""
 
                     # پیام محبوب‌ترین تحلیل  
                     popular = analysis_data['popular_analysis']
@@ -405,9 +403,7 @@ async def tradingview_analysis_process(update: Update, context: ContextTypes.DEF
 📄 *توضیحات:*
 {popular['description'][:400]}{'...' if len(popular['description']) > 400 else ''}
 
-👤 *نویسنده:* {popular['author']}
-
-🔗 [👉 مشاهده تحلیل کامل]({popular['analysis_url']})"""
+👤 *نویسنده:* {popular['author']}"""
 
                     # ارسال جدیدترین تحلیل (با یا بدون عکس)
                     if recent.get('image_url'):

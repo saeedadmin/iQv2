@@ -156,7 +156,7 @@ class TradingViewAnalysisFetcher:
             return None
     
     def find_related_image(self, soup: BeautifulSoup, link_element) -> Optional[str]:
-        """پیدا کردن عکس مرتبط با لینک تحلیل"""
+        """پیدا کردن عکس مرتبط با لینک تحلیل با کیفیت بهبود یافته"""
         try:
             # جستجو در نزدیکی لینک
             parent = link_element.parent
@@ -165,14 +165,18 @@ class TradingViewAnalysisFetcher:
                 for img in imgs:
                     src = img['src']
                     if 'tradingview.com' in src and '_mid.png' in src:
-                        return src
+                        # تبدیل به کیفیت اصلی (حذف _mid و استفاده از .png)
+                        high_quality_src = src.replace('_mid.png', '.png')
+                        return high_quality_src
             
             # جستجو کلی در صفحه
             all_imgs = soup.find_all('img', src=True)
             for img in all_imgs:
                 src = img['src']
                 if 'tradingview.com' in src and '_mid.png' in src:
-                    return src
+                    # تبدیل به کیفیت اصلی (حذف _mid و استفاده از .png)
+                    high_quality_src = src.replace('_mid.png', '.png')
+                    return high_quality_src
             
             return None
         except:
@@ -529,7 +533,7 @@ class TradingViewAnalysisFetcher:
                 'title': 'Bitcoin Technical Analysis - Community Insights',
                 'description': '📊 تحلیل فنی بیت کوین: بررسی سطوح حمایت و مقاومت کلیدی، الگوهای چارت و پیش‌بینی حرکت قیمت در کوتاه و میان مدت. تحلیل حجم معاملات و momentum indicators.',
                 'analysis_url': f'https://www.tradingview.com/symbols/{crypto_pair.upper()}/ideas/',
-                'image_url': 'https://s3.tradingview.com/5/5HqYVVyh_mid.png',
+                'image_url': 'https://s3.tradingview.com/5/5HqYVVyh.png',  # کیفیت بهبود یافته
                 'author': 'TradingView Community',
                 'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
             },
@@ -537,7 +541,7 @@ class TradingViewAnalysisFetcher:
                 'title': 'Ethereum Price Action Analysis',
                 'description': '🔮 تحلیل عملکرد قیمت اتریوم: بررسی روندهای بازار، سطوح فیبوناچی، و احتمال شکست از کانال‌های قیمتی. ارزیابی فاکتورهای تکنیکال و بنیادی.',
                 'analysis_url': f'https://www.tradingview.com/symbols/{crypto_pair.upper()}/ideas/',
-                'image_url': 'https://s3.tradingview.com/k/kVfkJOXh_mid.png',
+                'image_url': 'https://s3.tradingview.com/k/kVfkJOXh.png',  # کیفیت بهبود یافته
                 'author': 'TradingView Community', 
                 'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
             },
@@ -545,7 +549,7 @@ class TradingViewAnalysisFetcher:
                 'title': 'Solana Market Outlook & Strategy',
                 'description': '⚡ نگرش بازار سولانا: بررسی پتانسیل رشد، تحلیل الگوهای نموداری و استراتژی‌های ورود. ارزیابی قدرت خریداران vs فروشندگان.',
                 'analysis_url': f'https://www.tradingview.com/symbols/{crypto_pair.upper()}/ideas/',
-                'image_url': 'https://s3.tradingview.com/3/3jFcSQDp_mid.png',
+                'image_url': 'https://s3.tradingview.com/3/3jFcSQDp.png',  # کیفیت بهبود یافته
                 'author': 'TradingView Community',
                 'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
             }
@@ -721,7 +725,6 @@ class TradingViewAnalysisFetcher:
 {popular['description'][:200]}{'...' if len(popular['description']) > 200 else ''}
 
 👤 *نویسنده:* {popular['author']}
-🔗 [👉 مشاهده تحلیل محبوب]({popular['analysis_url']})
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -732,7 +735,6 @@ class TradingViewAnalysisFetcher:
 {recent['description'][:200]}{'...' if len(recent['description']) > 200 else ''}
 
 👤 *نویسنده:* {recent['author']}
-🔗 [👉 مشاهده تحلیل جدید]({recent['analysis_url']})
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -757,9 +759,6 @@ class TradingViewAnalysisFetcher:
 
 👤 *نویسنده:* {author}
 🕰️ *زمان:* {timestamp}
-
-🔗 *لینک کامل:*
-[👉 مشاهده تحلیل کامل]({analysis_data['analysis_url']})
 
 🌐 *منبع:* {analysis_data.get('source', 'TradingView')}
             """
