@@ -205,22 +205,42 @@ async def fetch_crypto_signals():
 
 def format_crypto_signals_message(signals):
     """فرمت کردن پیام سیگنال‌های معاملاتی"""
+    import html
+    import re
+    
+    def escape_markdown(text):
+        """پاک کردن و escape کردن متن برای markdown"""
+        if not text:
+            return ""
+        
+        # حذف HTML tags
+        text = re.sub(r'<[^>]+>', '', text)
+        
+        # escape کردن کاراکترهای خاص markdown
+        special_chars = ['*', '_', '`', '[', ']', '(', ')', '~', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+        for char in special_chars:
+            text = text.replace(char, f'\\{char}')
+        
+        # حذف خطوط اضافی
+        text = re.sub(r'\n\s*\n', '\n', text)
+        text = text.strip()
+        
+        return text
+    
     if not signals:
-        return """
-🚀 *سیگنال‌های خرید و فروش*
+        return """🚀 سیگنال‌های خرید و فروش
 
-❌ *متاسفانه در حال حاضر سیگنال جدیدی یافت نشد.*
+❌ متاسفانه در حال حاضر سیگنال جدیدی یافت نشد.
 
-🔍 *توضیح:*
+🔍 توضیح:
 • سیگنال‌ها از منابع معتبر و رایگان جمع‌آوری می‌شوند
 • فقط سیگنال‌های کمتر از 2 روز نمایش داده می‌شوند
 • لطفاً چند دقیقه بعد دوباره تلاش کنید
 
-⚠️ *توجه:* این اطلاعات فقط جهت آگاهی است و توصیه سرمایه‌گذاری نمی‌باشد.
-"""
+⚠️ توجه: این اطلاعات فقط جهت آگاهی است و توصیه سرمایه‌گذاری نمی‌باشد."""
 
-    message = "🚀 *سیگنال‌های خرید و فروش*\n\n"
-    message += f"📊 *{len(signals)} سیگنال جدید یافت شد:*\n\n"
+    message = "🚀 سیگنال‌های خرید و فروش\n\n"
+    message += f"📊 {len(signals)} سیگنال جدید یافت شد:\n\n"
     
     for i, signal in enumerate(signals, 1):
         # ایموجی برای هر سیگنال
@@ -229,28 +249,34 @@ def format_crypto_signals_message(signals):
         # نمایش ارزهای ذکر شده
         crypto_text = ""
         if signal['cryptos']:
-            crypto_text = f" ({', '.join(signal['cryptos'])})"
+            safe_cryptos = [escape_markdown(crypto) for crypto in signal['cryptos']]
+            crypto_text = f" ({', '.join(safe_cryptos)})"
         
-        message += f"{signal_emoji} **سیگنال {i}**{crypto_text}\n"
-        message += f"📅 *تاریخ:* {signal['date']}\n"
-        message += f"🔗 *منبع:* {signal['source']}\n"
-        message += f"📋 *عنوان:* {signal['title']}\n"
+        # پاک کردن و محدود کردن متن‌ها
+        safe_title = escape_markdown(signal['title'])[:100] + ('...' if len(signal['title']) > 100 else '')
+        safe_description = escape_markdown(signal['description'])[:200] + ('...' if len(signal['description']) > 200 else '')
+        safe_source = escape_markdown(signal['source'])
+        safe_date = escape_markdown(signal['date'])
         
-        if signal['description']:
-            message += f"📝 *توضیحات:*\n{signal['description']}\n"
+        message += f"{signal_emoji} سیگنال {i}{crypto_text}\n"
+        message += f"📅 تاریخ: {safe_date}\n"
+        message += f"🔗 منبع: {safe_source}\n"
+        message += f"📋 عنوان: {safe_title}\n"
         
-        message += f"🌐 [مطالعه کامل]({signal['link']})\n"
+        if safe_description.strip():
+            message += f"📝 توضیحات:\n{safe_description}\n"
+        
+        # ساده کردن لینک بدون markdown
+        message += f"🌐 لینک کامل: {signal['link']}\n"
         message += "━━━━━━━━━━━━━━━\n\n"
     
-    message += """
-⚠️ *هشدار مهم:*
+    message += """⚠️ هشدار مهم:
 • این سیگنال‌ها صرفاً جهت اطلاع‌رسانی هستند
 • قبل از هر معامله، تحقیقات شخصی انجام دهید
 • ریسک سرمایه‌گذاری را مدیریت کنید
 • از منابع متعدد استفاده کنید
 
-💡 *نکته:* سیگنال‌ها از منابع معتبر و رایگان جمع‌آوری شده‌اند
-"""
+💡 نکته: سیگنال‌ها از منابع معتبر و رایگان جمع‌آوری شده‌اند"""
     
     return message
 
@@ -714,10 +740,8 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         
         # کیبورد منوی ارزهای دیجیتال
         crypto_keyboard = [
-            [KeyboardButton("📊 قیمت‌های لحظه‌ای")],
-            [KeyboardButton("📰 اخبار کریپتو")],
-            [KeyboardButton("🚀 سیگنال‌های خرید و فروش")],
-            [KeyboardButton("📈 تحلیل TradingView")],
+            [KeyboardButton("📊 قیمت‌های لحظه‌ای"), KeyboardButton("📰 اخبار کریپتو")],
+            [KeyboardButton("🚀 سیگنال‌های خرید و فروش"), KeyboardButton("📈 تحلیل TradingView")],
             [KeyboardButton("🔙 بازگشت به منوی اصلی")]
         ]
         reply_markup = ReplyKeyboardMarkup(crypto_keyboard, resize_keyboard=True, one_time_keyboard=False)
@@ -784,7 +808,6 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             # ویرایش پیام با نتایج
             await loading_message.edit_text(
                 message,
-                parse_mode='Markdown',
                 disable_web_page_preview=True
             )
             
