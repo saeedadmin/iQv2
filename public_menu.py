@@ -25,7 +25,8 @@ class PublicMenuManager:
         """کیبورد منوی اصلی عمومی"""
         keyboard = [
             [
-                InlineKeyboardButton("💰 ارزهای دیجیتال", callback_data="public_crypto")
+                InlineKeyboardButton("💰 ارزهای دیجیتال", callback_data="public_crypto"),
+                InlineKeyboardButton("🤖 هوش مصنوعی", callback_data="public_ai")
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
@@ -38,6 +39,18 @@ class PublicMenuManager:
             ],
             [
                 InlineKeyboardButton("📰 اخبار کریپتو", callback_data="crypto_news"),
+            ],
+            [
+                InlineKeyboardButton("🔙 بازگشت", callback_data="public_main")
+            ]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+    
+    def create_ai_menu_keyboard(self) -> InlineKeyboardMarkup:
+        """کیبورد منوی هوش مصنوعی"""
+        keyboard = [
+            [
+                InlineKeyboardButton("📰 اخبار هوش مصنوعی", callback_data="ai_news"),
             ],
             [
                 InlineKeyboardButton("🔙 بازگشت", callback_data="public_main")
@@ -233,6 +246,50 @@ class PublicMenuManager:
         except Exception as e:
             return []
     
+    async def fetch_ai_news(self) -> List[Dict[str, str]]:
+        """دریافت آخرین اخبار هوش مصنوعی از منابع RSS معتبر"""
+        try:
+            news_sources = [
+                {
+                    'name': 'TechCrunch AI',
+                    'url': 'https://techcrunch.com/category/artificial-intelligence/feed/',
+                    'limit': 3
+                },
+                {
+                    'name': 'The Verge AI', 
+                    'url': 'https://www.theverge.com/ai-artificial-intelligence/rss/index.xml',
+                    'limit': 2
+                },
+                {
+                    'name': 'VentureBeat AI',
+                    'url': 'https://venturebeat.com/ai/feed/',
+                    'limit': 3
+                }
+            ]
+            
+            all_news = []
+            
+            async with aiohttp.ClientSession() as session:
+                for source in news_sources:
+                    try:
+                        async with session.get(source['url'], timeout=15) as response:
+                            if response.status == 200:
+                                xml_content = await response.text()
+                                news_items = self.parse_rss_feed(xml_content, source['name'], source['limit'])
+                                all_news.extend(news_items)
+                    except Exception as e:
+                        # در صورت خرابی یک منبع، ادامه دهیم
+                        continue
+            
+            # مرتب‌سازی بر اساس زمان (جدیدترین اول)
+            all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
+            
+            # بازگشت حداکثر 8 خبر
+            return all_news[:8]
+            
+        except Exception as e:
+            return []
+    
     def format_crypto_news_message(self, news_list: List[Dict[str, str]]) -> str:
         """فرمت کردن پیام اخبار کریپتو"""
         if not news_list:
@@ -258,6 +315,41 @@ class PublicMenuManager:
         
         message += "🕐 *آخرین بروزرسانی:* همین الان\n"
         message += "📊 *منابع:* CoinTelegraph, CoinDesk"
+        
+        return message
+    
+    def format_ai_news_message(self, news_list: List[Dict[str, str]]) -> str:
+        """فرمت کردن پیام اخبار هوش مصنوعی"""
+        if not news_list:
+            return "❌ خطا در دریافت اخبار. لطفاً بعداً امتحان کنید."
+        
+        message = "🤖 *آخرین اخبار هوش مصنوعی*\n\n"
+        
+        for i, news in enumerate(news_list, 1):
+            # آیکون‌های مختلف برای منابع مختلف
+            if news['source'] == 'TechCrunch AI':
+                source_icon = "🔥"
+            elif news['source'] == 'The Verge AI':
+                source_icon = "⚡"
+            elif news['source'] == 'VentureBeat AI':
+                source_icon = "🚀"
+            else:
+                source_icon = "🤖"
+            
+            # تیتر با لینک کلیک‌پذیر
+            message += f"{source_icon} [{news['title']}]({news['link']})\n"
+            
+            # منبع
+            message += f"📡 *منبع:* {news['source']}\n"
+            
+            # توضیحات (اگر موجود باشد)
+            if news.get('description'):
+                message += f"📝 {news['description']}\n"
+            
+            message += "\n"
+        
+        message += "🕐 *آخرین بروزرسانی:* همین الان\n"
+        message += "📊 *منابع:* TechCrunch AI, The Verge AI, VentureBeat AI"
         
         return message
     
@@ -380,6 +472,27 @@ class PublicMenuManager:
             parse_mode='Markdown'
         )
     
+    async def show_ai_menu(self, query):
+        """نمایش منوی هوش مصنوعی"""
+        message = """
+🤖 *بخش هوش مصنوعی*
+
+🔍 *خدمات موجود:*
+• 📰 آخرین اخبار هوش مصنوعی از منابع معتبر جهان
+• 🚀 پیشرفت‌های جدید در AI و Machine Learning
+• 💡 کاربردهای نوین هوش مصنوعی در صنایع مختلف
+• 🔬 تحقیقات و پژوهش‌های علمی AI
+• 📊 تحلیل بازار و سرمایه‌گذاری در استارتاپ‌های AI
+
+از دکمه‌های زیر برای دسترسی به خدمات استفاده کنید:
+        """
+        
+        await query.edit_message_text(
+            message,
+            reply_markup=self.create_ai_menu_keyboard(),
+            parse_mode='Markdown'
+        )
+    
     async def show_crypto_prices(self, query):
         """نمایش قیمت‌های ارز"""
         # نمایش پیام در حال بارگذاری
@@ -449,6 +562,40 @@ class PublicMenuManager:
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
     
+    async def show_ai_news(self, query):
+        """نمایش آخرین اخبار هوش مصنوعی"""
+        # نمایش پیام در حال بارگذاری
+        loading_message = "⏳ در حال دریافت آخرین اخبار هوش مصنوعی...\n\nلطفاً چند ثانیه صبر کنید."
+        await query.edit_message_text(loading_message)
+        
+        try:
+            # دریافت اخبار
+            news_list = await self.fetch_ai_news()
+            message = self.format_ai_news_message(news_list)
+            
+            keyboard = [
+                [InlineKeyboardButton("🔄 بروزرسانی", callback_data="ai_news")],
+                [InlineKeyboardButton("🔙 بازگشت", callback_data="public_ai")]
+            ]
+            
+            await query.edit_message_text(
+                message,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='Markdown',
+                disable_web_page_preview=True
+            )
+            
+        except Exception as e:
+            error_message = f"❌ خطا در دریافت اخبار:\n{str(e)}"
+            keyboard = [
+                [InlineKeyboardButton("🔄 تلاش مجدد", callback_data="ai_news")],
+                [InlineKeyboardButton("🔙 بازگشت", callback_data="public_ai")]
+            ]
+            
+            await query.edit_message_text(
+                error_message,
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
 
     
     async def handle_public_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -474,6 +621,12 @@ class PublicMenuManager:
             
             elif data == "crypto_news":
                 await self.show_crypto_news(query)
+            
+            elif data == "public_ai":
+                await self.show_ai_menu(query)
+            
+            elif data == "ai_news":
+                await self.show_ai_news(query)
             
             else:
                 await query.edit_message_text("❌ دستور نامعتبر")
