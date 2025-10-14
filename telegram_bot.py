@@ -14,6 +14,7 @@ import logging
 import asyncio
 import datetime
 import os
+import re
 from dotenv import load_dotenv
 from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, ContextTypes, 
@@ -392,27 +393,31 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     
     elif message_text == "📈 تحلیل TradingView":
-        # درخواست نام ارز برای تحلیل
+        # درخواست جفت ارز برای تحلیل
         help_message = """
-📈 *تحلیل TradingView*
+📈 *تحلیل کامیونیتی TradingView*
 
-آخرین تحلیل‌های حرفه‌ای از کمیونیتی TradingView را دریافت کنید!
+آخرین تحلیل‌های کاربران حرفه‌ای TradingView را دریافت کنید!
 
-✅ *ارزهای پشتیبانی شده:*
-🟠 Bitcoin (بیت کوین، BTC)
-🔵 Ethereum (اتریوم، ETH)
-◎ Solana (سولانا، SOL)
-₳ Cardano (کاردانو، ADA)
-🟡 BNB (بایننس کوین)
-🔷 XRP (ریپل)
-🐕 Dogecoin (دوج کوین)
-🔗 Chainlink (چین لینک)
-Ł Litecoin (لایت کوین)
-● Polkadot (پولکادات)
-🔺 Avalanche (اولانچ)
+✅ *فرمت مورد قبول:*
+• فقط جفت ارز با USDT به صورت حروف کوچک
+• مثال: `btcusdt`, `ethusdt`, `solusdt`
 
-📝 *نحوه استفاده:* فقط نام ارز را تایپ کنید
-💡 *مثال:* Bitcoin یا بیت کوین
+📝 *مثال‌های صحیح:*
+• btcusdt (بیت کوین)
+• ethusdt (اتریوم) 
+• solusdt (سولانا)
+• adausdt (کاردانو)
+• bnbusdt (بایننس کوین)
+• xrpusdt (ریپل)
+• dogeusdt (دوج کوین)
+• linkusdt (چین لینک)
+• ltcusdt (لایت کوین)
+• dotusdt (پولکادات)
+• avaxusdt (اولانچ)
+
+⚠️ *نکته مهم:* فقط حروف کوچک، بدون فاصله یا نشانه
+💡 *راهنما:* جفت ارز مورد نظر خود را تایپ کنید
         """
         
         await update.message.reply_text(
@@ -443,23 +448,19 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
     
-    # بررسی آیا پیام نام یک ارز دیجیتال است برای تحلیل TradingView
-    crypto_keywords = ['bitcoin', 'btc', 'بیت کوین', 'بیتکوین', 'ethereum', 'eth', 'اتریوم', 'اتر',
-                      'solana', 'sol', 'سولانا', 'cardano', 'ada', 'کاردانو', 'bnb', 'binance',
-                      'بایننس', 'xrp', 'ripple', 'ریپل', 'dogecoin', 'doge', 'دوج', 'chainlink',
-                      'link', 'چین لینک', 'litecoin', 'ltc', 'لایت کوین', 'polkadot', 'dot',
-                      'پولکادات', 'avalanche', 'avax', 'اولانچ']
+    # بررسی آیا پیام فرمت جفت ارز است برای تحلیل TradingView
+    # فقط فرمت مانند btcusdt قابل قبول است
+    crypto_pair_pattern = r'^[a-z]+usdt$'
+    message_clean = message_text.lower().strip()
     
-    message_lower = message_text.lower().strip()
-    
-    # اگر پیام شامل کلیدواژه ارز باشد، تحلیل TradingView را دریافت کن
-    if any(keyword in message_lower for keyword in crypto_keywords) and len(message_text.split()) <= 3:
+    # اگر پیام فرمت جفت ارز باشد، تحلیل TradingView را دریافت کن
+    if re.match(crypto_pair_pattern, message_clean) and len(message_clean) >= 6:
         # نمایش پیام در حال بارگذاری
-        loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین تحلیل از TradingView...\n\nلطفاً چند ثانیه صبر کنید.")
+        loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین تحلیل کامیونیتی از TradingView...\n\nلطفاً چند ثانیه صبر کنید.")
         
         try:
             # دریافت تحلیل از TradingView
-            analysis_data = await tradingview_fetcher.fetch_latest_analysis(message_text)
+            analysis_data = await tradingview_fetcher.fetch_latest_analysis(message_clean)
             
             if analysis_data.get('success'):
                 # فرمت کردن پیام
@@ -490,9 +491,8 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                         disable_web_page_preview=True
                     )
             else:
-                # خطا در دریافت تحلیل
-                error_message = f"❌ {analysis_data.get('error', 'خطا در دریافت تحلیل')}\n\nلطفاً نام ارز را صحیح وارد کنید (مثل: Bitcoin, Ethereum, SOL)"
-                await loading_message.edit_text(error_message)
+                # خطا در دریافت تحلیل (پیام خطا از tradingview_fetcher می‌آید)
+                await loading_message.edit_text(analysis_data.get('error', 'خطا در دریافت تحلیل'))
             
         except Exception as e:
             error_message = f"❌ خطا در دریافت تحلیل TradingView:\n{str(e)}"

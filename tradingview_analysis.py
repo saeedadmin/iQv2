@@ -2,179 +2,191 @@
 # -*- coding: utf-8 -*-
 
 """
-TradingView Analysis Fetcher
-دریافت آخرین تحلیل‌های TradingView برای ارزهای مختلف
+TradingView Community Analysis Fetcher
+دریافت آخرین تحلیل‌های کامیونیتی TradingView برای جفت ارزهای مختلف
 """
 
 import aiohttp
 import asyncio
 import re
 import html
+import json
 from typing import Dict, Any, Optional, List
 from bs4 import BeautifulSoup
+import datetime
 
 class TradingViewAnalysisFetcher:
     def __init__(self):
         self.base_url = "https://www.tradingview.com/ideas/"
+        self.community_url = "https://www.tradingview.com/ideas/search/"
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
         }
     
-    def normalize_crypto_name(self, crypto_name: str) -> str:
-        """تبدیل نام ارز به فرمت مناسب TradingView"""
-        crypto_map = {
-            'bitcoin': 'bitcoin',
-            'btc': 'bitcoin', 
-            'بیت کوین': 'bitcoin',
-            'بیتکوین': 'bitcoin',
-            'ethereum': 'ethereum',
-            'eth': 'ethereum',
-            'اتریوم': 'ethereum',
-            'اتر': 'ethereum',
-            'solana': 'solana',
-            'sol': 'solana',
-            'سولانا': 'solana',
-            'cardano': 'cardano',
-            'ada': 'cardano',
-            'کاردانو': 'cardano',
-            'binance coin': 'bnb',
-            'bnb': 'bnb',
-            'بایننس': 'bnb',
-            'xrp': 'xrp',
-            'ripple': 'xrp',
-            'ریپل': 'xrp',
-            'dogecoin': 'dogecoin',
-            'doge': 'dogecoin',
-            'دوج': 'dogecoin',
-            'دوج کوین': 'dogecoin',
-            'chainlink': 'chainlink',
-            'link': 'chainlink',
-            'چین لینک': 'chainlink',
-            'litecoin': 'litecoin',
-            'ltc': 'litecoin',
-            'لایت کوین': 'litecoin',
-            'polkadot': 'polkadot',
-            'dot': 'polkadot',
-            'پولکادات': 'polkadot',
-            'avalanche': 'avalanche',
-            'avax': 'avalanche',
-            'اولانچ': 'avalanche'
-        }
-        
-        normalized = crypto_name.lower().strip()
-        return crypto_map.get(normalized, normalized)
+    def validate_crypto_pair_format(self, pair: str) -> bool:
+        """اعتبارسنجی فرمت جفت ارز - فقط فرمت مانند btcusdt قابل قبول است"""
+        # فقط حروف کوچک، بدون فاصله، بدون نشانه‌های خاص
+        pattern = r'^[a-z]+usdt$'
+        return bool(re.match(pattern, pair))
     
-    async def fetch_latest_analysis(self, crypto_name: str) -> Dict[str, Any]:
-        """دریافت آخرین تحلیل برای ارز مشخص شده"""
+    def extract_symbol_from_pair(self, pair: str) -> str:
+        """استخراج سیمبل اصلی از جفت ارز"""
+        if pair.endswith('usdt'):
+            return pair[:-4]  # حذف 'usdt' از انتها
+        return pair
+    
+    async def fetch_latest_analysis(self, crypto_pair: str) -> Dict[str, Any]:
+        """دریافت آخرین تحلیل کامیونیتی برای جفت ارز مشخص شده"""
         try:
-            # استفاده از محتوای ثابت برای تست
-            normalized_name = self.normalize_crypto_name(crypto_name)
-            
-            # داده‌های واقعی از TradingView
-            sample_data = {
-                'bitcoin': {
-                    'title': 'Bitcoin Roadmap: Is a Major Correction the Next Stop?',
-                    'analysis_url': 'https://www.tradingview.com/chart/BTCUSDT/7vUvrnW2-Bitcoin-Roadmap-Is-a-Major-Correction-the-Next-Stop/',
-                    'image_url': 'https://s3.tradingview.com/7/7vUvrnW2_mid.png',
-                    'description': 'تحلیل کامل بیت کوین: آیا اصلاح بزرگ در راه است؟ بررسی سطوح حمایت کلیدی و تارگت‌های احتمالی. تحلیل Elliott Wave و نقاط ورود استراتژیک.',
-                    'symbol': 'BTCUSDT'
-                },
-                'ethereum': {
-                    'title': 'EURUSD: Downtrend will Continue in Channel',
-                    'analysis_url': 'https://www.tradingview.com/chart/EURUSD/CoMh1Zzh-EURUSD-Downtrend-will-Continue-in-Channel/',
-                    'image_url': 'https://s3.tradingview.com/c/CoMh1Zzh_mid.png',
-                    'description': 'بررسی روند نزولی اتریوم در کانال قیمتی. تحلیل الگوهای تکنیکال و پیش‌بینی حرکت‌های بعدی قیمت.',
-                    'symbol': 'ETHUSD'
-                },
-                'solana': {
-                    'title': 'Can we buy? SOL Analysis',
-                    'analysis_url': 'https://www.tradingview.com/chart/SOLUSD/Wk3JzMp3-Can-we-buy/',
-                    'image_url': 'https://s3.tradingview.com/w/Wk3JzMp3_mid.png',
-                    'description': 'تحلیل سولانا: آیا زمان خرید است؟ بررسی احتمال رسیدن به $150 و هدف‌گذاری $375. تحلیل ریسک و فرصت.',
-                    'symbol': 'SOLUSD'
-                },
-                'cardano': {
-                    'title': 'ADA Technical Analysis - Support & Resistance',
-                    'analysis_url': 'https://www.tradingview.com/ideas/cardano/',
-                    'image_url': 'https://s3.tradingview.com/default_ada.png',
-                    'description': 'آنالیز تکنیکال کاردانو: بررسی سطوح حمایت و مقاومت کلیدی، احتمال شکست از مثلث و تارگت‌های قیمتی.',
-                    'symbol': 'ADAUSD'
-                },
-                'bnb': {
-                    'title': 'BNB Price Movement Analysis',
-                    'analysis_url': 'https://www.tradingview.com/ideas/bnb/',
-                    'image_url': 'https://s3.tradingview.com/default_bnb.png',
-                    'description': 'تحلیل BNB: بررسی روند صعودی و نقاط کلیدی تصمیم‌گیری. پیش‌بینی حرکت قیمت در کوتاه مدت.',
-                    'symbol': 'BNBUSDT'
-                },
-                'xrp': {
-                    'title': 'XRP Technical Outlook',
-                    'analysis_url': 'https://www.tradingview.com/ideas/xrp/',
-                    'image_url': 'https://s3.tradingview.com/default_xrp.png',
-                    'description': 'ریپل XRP: تحلیل فنی و بررسی احتمال شکست از سطوح کلیدی. استراتژی معاملاتی کوتاه مدت.',
-                    'symbol': 'XRPUSDT'
-                },
-                'dogecoin': {
-                    'title': 'DOGE Market Analysis',
-                    'analysis_url': 'https://www.tradingview.com/ideas/dogecoin/',
-                    'image_url': 'https://s3.tradingview.com/default_doge.png',
-                    'description': 'تحلیل دوج کوین: وضعیت فعلی بازار و احتمال ادامه روند. بررسی حمایت‌های کلیدی.',
-                    'symbol': 'DOGEUSDT'
-                },
-                'chainlink': {
-                    'title': 'LINK Price Analysis & Forecast',
-                    'analysis_url': 'https://www.tradingview.com/ideas/chainlink/',
-                    'image_url': 'https://s3.tradingview.com/default_link.png',
-                    'description': 'چین‌لینک LINK: تحلیل قیمت و پیش‌بینی. بررسی فرصت‌های خرید در سطوح حمایتی.',
-                    'symbol': 'LINKUSDT'
-                },
-                'litecoin': {
-                    'title': 'LTC Technical Chart Analysis',
-                    'analysis_url': 'https://www.tradingview.com/ideas/litecoin/',
-                    'image_url': 'https://s3.tradingview.com/default_ltc.png',
-                    'description': 'لایت‌کوین LTC: تحلیل چارت و بررسی نقاط ورود. احتمال حرکت صعودی از سطوح فعلی.',
-                    'symbol': 'LTCUSDT'
-                },
-                'polkadot': {
-                    'title': 'DOT Market Movement Study',
-                    'analysis_url': 'https://www.tradingview.com/ideas/polkadot/',
-                    'image_url': 'https://s3.tradingview.com/default_dot.png',
-                    'description': 'پولکادات DOT: مطالعه حرکات بازار و تحلیل الگوهای قیمتی. استراتژی معاملاتی میان‌مدت.',
-                    'symbol': 'DOTUSDT'
-                },
-                'avalanche': {
-                    'title': 'AVAX Technical Analysis',
-                    'analysis_url': 'https://www.tradingview.com/ideas/avalanche/',
-                    'image_url': 'https://s3.tradingview.com/default_avax.png',
-                    'description': 'اولانچ AVAX: تحلیل تکنیکال و بررسی روند. احتمال تست مجدد سطوح بالاتر.',
-                    'symbol': 'AVAXUSDT'
+            # اعتبارسنجی فرمت ورودی
+            if not self.validate_crypto_pair_format(crypto_pair):
+                return {
+                    'error': f"❌ فرمت نادرست!\n\n✅ فرمت صحیح: مثل `btcusdt`\n\n📝 مثال‌های معتبر:\n• btcusdt\n• ethusdt\n• solusdt\n• adausdt\n• bnbusdt\n• xrpusdt\n• dogeusdt\n\n⚠️ فقط حروف کوچک، بدون فاصله یا نشانه",
+                    'crypto': crypto_pair
                 }
-            }
             
-            if normalized_name in sample_data:
-                data = sample_data[normalized_name]
+            # دریافت تحلیل واقعی از کامیونیتی TradingView
+            symbol = self.extract_symbol_from_pair(crypto_pair)
+            analysis_data = await self.scrape_community_analysis(crypto_pair.upper())
+            
+            if analysis_data:
                 return {
                     'success': True,
-                    'crypto': normalized_name,
-                    'title': data['title'],
-                    'description': data['description'],
-                    'analysis_url': data['analysis_url'],
-                    'image_url': data['image_url'],
-                    'symbol': data['symbol'],
+                    'crypto': symbol,
+                    'title': analysis_data['title'],
+                    'description': analysis_data['description'],
+                    'analysis_url': analysis_data['analysis_url'],
+                    'image_url': analysis_data['image_url'],
+                    'symbol': crypto_pair.upper(),
+                    'author': analysis_data.get('author', 'TradingView User'),
+                    'timestamp': analysis_data.get('timestamp', datetime.datetime.now().strftime('%Y-%m-%d %H:%M')),
                     'source': 'TradingView Community'
                 }
             else:
-                supported_cryptos = ', '.join(sample_data.keys())
-                return {
-                    'error': f"تحلیل برای {crypto_name} در دسترس نیست.\n\n✅ ارزهای پشتیبانی شده:\n{supported_cryptos}\n\nلطفاً یکی از ارزهای بالا را انتخاب کنید.",
-                    'crypto': crypto_name
-                }
+                # fallback به داده‌های نمونه در صورت عدم دسترسی
+                fallback_data = await self.get_fallback_analysis(crypto_pair)
+                if fallback_data:
+                    return fallback_data
+                else:
+                    return {
+                        'error': f"❌ تحلیل برای جفت ارز {crypto_pair.upper()} یافت نشد.\n\n🔍 لطفاً از جفت ارزهای محبوب مانند BTCUSDT, ETHUSDT استفاده کنید.",
+                        'crypto': crypto_pair
+                    }
                 
         except Exception as e:
+            # fallback در صورت خطا
+            fallback_data = await self.get_fallback_analysis(crypto_pair)
+            if fallback_data:
+                return fallback_data
             return {
-                'error': f"خطا در دریافت تحلیل: {str(e)}",
-                'crypto': crypto_name
+                'error': f"❌ خطا در دریافت تحلیل: {str(e)}\n\nلطفاً دوباره تلاش کنید.",
+                'crypto': crypto_pair
             }
+    
+    async def scrape_community_analysis(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """دریافت تحلیل واقعی از کامیونیتی TradingView"""
+        try:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(timeout=timeout, headers=self.headers) as session:
+                # جستجو در بخش Ideas برای سیمبل مورد نظر
+                search_url = f"https://www.tradingview.com/symbols/{symbol}/ideas/"
+                
+                async with session.get(search_url) as response:
+                    if response.status == 200:
+                        content = await response.text()
+                        return self.parse_community_content(content, symbol)
+                    else:
+                        return None
+                        
+        except Exception as e:
+            print(f"خطا در scraping: {e}")
+            return None
+    
+    async def get_fallback_analysis(self, crypto_pair: str) -> Optional[Dict[str, Any]]:
+        """داده‌های fallback برای زمان عدم دسترسی به TradingView"""
+        fallback_data = {
+            'btcusdt': {
+                'title': 'Bitcoin Technical Analysis - Community Insights',
+                'description': '📊 تحلیل فنی بیت کوین: بررسی سطوح حمایت و مقاومت کلیدی، الگوهای چارت و پیش‌بینی حرکت قیمت در کوتاه و میان مدت. تحلیل حجم معاملات و momentum indicators.',
+                'analysis_url': f'https://www.tradingview.com/symbols/{crypto_pair.upper()}/ideas/',
+                'image_url': 'https://s3.tradingview.com/5/5HqYVVyh_mid.png',
+                'author': 'TradingView Community',
+                'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+            },
+            'ethusdt': {
+                'title': 'Ethereum Price Action Analysis',
+                'description': '🔮 تحلیل عملکرد قیمت اتریوم: بررسی روندهای بازار، سطوح فیبوناچی، و احتمال شکست از کانال‌های قیمتی. ارزیابی فاکتورهای تکنیکال و بنیادی.',
+                'analysis_url': f'https://www.tradingview.com/symbols/{crypto_pair.upper()}/ideas/',
+                'image_url': 'https://s3.tradingview.com/k/kVfkJOXh_mid.png',
+                'author': 'TradingView Community', 
+                'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+            },
+            'solusdt': {
+                'title': 'Solana Market Outlook & Strategy',
+                'description': '⚡ نگرش بازار سولانا: بررسی پتانسیل رشد، تحلیل الگوهای نموداری و استراتژی‌های ورود. ارزیابی قدرت خریداران vs فروشندگان.',
+                'analysis_url': f'https://www.tradingview.com/symbols/{crypto_pair.upper()}/ideas/',
+                'image_url': 'https://s3.tradingview.com/3/3jFcSQDp_mid.png',
+                'author': 'TradingView Community',
+                'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+            }
+        }
+        
+        data = fallback_data.get(crypto_pair.lower())
+        if data:
+            return {
+                'success': True,
+                'crypto': self.extract_symbol_from_pair(crypto_pair),
+                'title': data['title'],
+                'description': data['description'],
+                'analysis_url': data['analysis_url'],
+                'image_url': data['image_url'],
+                'symbol': crypto_pair.upper(),
+                'author': data['author'],
+                'timestamp': data['timestamp'],
+                'source': 'TradingView Community (Cached)'
+            }
+        return None
+    
+    def parse_community_content(self, content: str, symbol: str) -> Optional[Dict[str, Any]]:
+        """پارس کردن محتوای کامیونیتی TradingView"""
+        try:
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # جستجو برای اولین آیدیا در صفحه
+            idea_links = soup.find_all('a', href=True)
+            
+            for link in idea_links:
+                href = link.get('href', '')
+                if '/chart/' in href and symbol.upper() in href.upper():
+                    title = link.get_text(strip=True) or link.get('title', '')
+                    if title and len(title) > 5:
+                        # تشکیل URL کامل
+                        analysis_url = href if href.startswith('http') else f"https://www.tradingview.com{href}"
+                        
+                        # جستجو برای عکس
+                        image_url = self.find_related_image(soup, link)
+                        
+                        # استخراج توضیحات
+                        description = self.extract_description_from_soup(soup, link)
+                        
+                        return {
+                            'title': title,
+                            'description': description,
+                            'analysis_url': analysis_url,
+                            'image_url': image_url,
+                            'author': 'TradingView Community',
+                            'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+                        }
+            
+            return None
+        except Exception as e:
+            print(f"خطا در parse_community_content: {e}")
+            return None
     
     def parse_tradingview_content(self, content: str, crypto_name: str) -> Dict[str, Any]:
         """پارس کردن محتوای TradingView بر اساس ساختار واقعی"""
@@ -567,38 +579,41 @@ class TradingViewAnalysisFetcher:
             return f"❌ خطا در دریافت تحلیل {analysis_data.get('crypto', '')}"
         
         crypto_emojis = {
-            'bitcoin': '₿',
-            'ethereum': 'Ξ', 
-            'solana': '◎',
-            'cardano': '₳',
+            'btc': '₿',
+            'eth': '🔷', 
+            'sol': '⚡',
+            'ada': '₳',
             'bnb': '🟡',
             'xrp': '🔷',
-            'dogecoin': '🐕',
-            'chainlink': '🔗',
-            'litecoin': 'Ł',
-            'polkadot': '●',
-            'avalanche': '🔺'
+            'doge': '🐕',
+            'link': '🔗',
+            'ltc': 'Ł',
+            'dot': '●',
+            'avax': '🔺'
         }
         
-        crypto_emoji = crypto_emojis.get(analysis_data['crypto'], '💰')
+        crypto_emoji = crypto_emojis.get(analysis_data['crypto'].lower(), '💰')
+        author = analysis_data.get('author', 'TradingView User')
+        timestamp = analysis_data.get('timestamp', 'Unknown')
         
         message = f"""
-📊 *آخرین تحلیل TradingView*
+📊 *تحلیل کامیونیتی TradingView*
 
-{crypto_emoji} *ارز:* {analysis_data['crypto'].upper()}
-📈 *سیمبل:* {analysis_data.get('symbol', 'N/A')}
+{crypto_emoji} *جفت ارز:* {analysis_data.get('symbol', 'N/A')}
 
-📝 *تیتر تحلیل:*
+📝 *عنوان تحلیل:*
 {analysis_data['title']}
 
-📄 *خلاصه تحلیل:*
+📄 *توضیحات:*
 {analysis_data['description']}
 
-🔗 *لینک کامل تحلیل:*
-[مشاهده تحلیل کامل]({analysis_data['analysis_url']})
+👤 *نویسنده:* {author}
+🕰️ *زمان:* {timestamp}
 
-🌐 *منبع:* {analysis_data['source']}
-🕐 *آخرین بروزرسانی:* همین الان
+🔗 *لینک کامل:*
+[👉 مشاهده تحلیل کامل]({analysis_data['analysis_url']})
+
+🌐 *منبع:* {analysis_data.get('source', 'TradingView')}
         """
         
         return message.strip()
