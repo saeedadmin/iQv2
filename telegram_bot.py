@@ -466,36 +466,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     crypto_pair_pattern = r'^[a-z]+usdt$'
     message_clean = message_text.lower().strip()
     
-    # بررسی اگر کاربر سعی می‌کند تحلیل دریافت کند ولی فرمت اشتباه است
-    wrong_format_patterns = [
-        r'^[a-zA-Z]+/[a-zA-Z]+$',  # مثل BTC/USDT
-        r'^[a-zA-Z]+$',            # مثل BTC یا btc
-        r'^[a-zA-Z]+-[a-zA-Z]+$',  # مثل BTC-USDT
-        r'^[a-zA-Z]+_[a-zA-Z]+$',  # مثل BTC_USDT
-    ]
-    
-    # اگر کاربر فرمت اشتباه وارد کرده
-    for pattern in wrong_format_patterns:
-        if re.match(pattern, message_clean) and len(message_clean) >= 3:
-            error_message = """❌ **فرمت نادرست!**
-
-✅ **فرمت صحیح:** `btcusdt` (حروف کوچک، چسبیده)
-
-📝 **مثال‌های معتبر:**
-• `btcusdt` - بیت کوین
-• `ethusdt` - اتریوم  
-• `solusdt` - سولانا
-• `adausdt` - کاردانو
-• `bnbusdt` - بایننس کوین
-• `xrpusdt` - ریپل
-• `dogeusdt` - دوج کوین
-
-⚠️ **توجه:** فقط حروف کوچک، بدون فاصله یا نشانه خاص"""
-            
-            await update.message.reply_text(error_message, parse_mode='Markdown')
-            return
-    
-    # اگر پیام فرمت جفت ارز باشد، تحلیل TradingView را دریافت کن
+    # اول بررسی کن که آیا فرمت درست است
     if re.match(crypto_pair_pattern, message_clean) and len(message_clean) >= 6:
         # نمایش پیام در حال بارگذاری
         loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین تحلیل کامیونیتی از TradingView...\n\nلطفاً چند ثانیه صبر کنید.")
@@ -541,6 +512,37 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await loading_message.edit_text(error_message)
         
         return
+    else:
+        # بررسی اگر کاربر سعی می‌کند تحلیل دریافت کند ولی فرمت اشتباه است
+        wrong_format_patterns = [
+            r'^[a-zA-Z]+/[a-zA-Z]+$',  # مثل BTC/USDT
+            r'^[A-Z]{2,6}$',           # مثل BTC، ETH (حروف بزرگ کوتاه)
+            r'^[a-z]{2,6}$',           # مثل btc، eth (حروف کوچک کوتاه، بدون usdt)
+            r'^[a-zA-Z]+-[a-zA-Z]+$',  # مثل BTC-USDT
+            r'^[a-zA-Z]+_[a-zA-Z]+$',  # مثل BTC_USDT
+            r'^[a-zA-Z]+\s+[a-zA-Z]+$', # مثل BTC USDT
+        ]
+        
+        # اگر کاربر فرمت اشتباه وارد کرده (ولی شبیه ارز است)
+        for pattern in wrong_format_patterns:
+            if re.match(pattern, message_text.strip()) and len(message_text.strip()) >= 3:
+                error_message = """❌ **فرمت نادرست!**
+
+✅ **فرمت صحیح:** `btcusdt` (حروف کوچک، چسبیده)
+
+📝 **مثال‌های معتبر:**
+• `btcusdt` - بیت کوین
+• `ethusdt` - اتریوم  
+• `solusdt` - سولانا
+• `adausdt` - کاردانو
+• `bnbusdt` - بایننس کوین
+• `xrpusdt` - ریپل
+• `dogeusdt` - دوج کوین
+
+⚠️ **توجه:** فقط حروف کوچک، بدون فاصله یا نشانه خاص"""
+                
+                await update.message.reply_text(error_message, parse_mode='Markdown')
+                return
     
     # پردازش پیام‌های معمولی
     response = f"""
