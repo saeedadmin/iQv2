@@ -72,6 +72,7 @@ class TradingViewAnalysisFetcher:
             # جمع‌آوری همه ایده‌های مرتبط
             candidate_ideas = []
             idea_links = soup.find_all('a', href=True)
+            processed_urls = set()  # برای جلوگیری از تکرار
             
             for link in idea_links:
                 href = link.get('href', '')
@@ -81,7 +82,17 @@ class TradingViewAnalysisFetcher:
                     '/' in href.split('/chart/')[-1] and 
                     any(char.isalnum() for char in href) and 
                     len(href.split('/chart/')[-1]) > 10 and
-                    '-' in href.split('/chart/')[-1]):
+                    '-' in href.split('/chart/')[-1] and
+                    '#chart-view-comment-form' not in href):  # حذف لینک‌های کامنت
+                    
+                    # تشکیل URL کامل برای ایده (بدون fragment)
+                    clean_href = href.split('#')[0]  # حذف قسمت # و بعدش
+                    analysis_url = clean_href if clean_href.startswith('http') else f"https://www.tradingview.com{clean_href}"
+                    
+                    # چک کردن اینکه این URL قبلاً پردازش شده یا نه
+                    if analysis_url in processed_urls:
+                        continue
+                    processed_urls.add(analysis_url)
                     
                     # استخراج title از متن لینک یا از عنصر والد
                     title = link.get_text(strip=True) or link.get('title', '')
@@ -92,9 +103,10 @@ class TradingViewAnalysisFetcher:
                         if parent:
                             title = parent.get_text(strip=True)[:100]
                     
-                    if title and len(title) > 5:
-                        # تشکیل URL کامل برای ایده
-                        analysis_url = href if href.startswith('http') else f"https://www.tradingview.com{href}"
+                    # حذف title های بی‌معنی
+                    if (title and len(title) > 5 and 
+                        not title.lower() in ['comment', 'view', 'chart', 'ideas'] and
+                        not title.isdigit()):
                         
                         # جستجو برای عکس در نزدیکی لینک
                         image_url = self.find_related_image(soup, link)

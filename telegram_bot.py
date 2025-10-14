@@ -376,38 +376,80 @@ async def tradingview_analysis_process(update: Update, context: ContextTypes.DEF
                 
                 # بررسی نوع تحلیل (دو تحلیل یا یکی)
                 if 'popular_analysis' in analysis_data and 'recent_analysis' in analysis_data:
-                    # ارسال دو تحلیل
-                    # ارسال پیام متنی اصلی
-                    await update.message.reply_text(
-                        analysis_message,
-                        parse_mode='Markdown',
-                        disable_web_page_preview=True
-                    )
+                    # فرمت کردن پیام‌های جداگانه برای هر تحلیل
+                    crypto_emojis = {
+                        'btc': '₿', 'eth': '🔷', 'sol': '⚡', 'ada': '₳', 'bnb': '🟡',
+                        'xrp': '🔷', 'doge': '🐕', 'link': '🔗', 'ltc': 'Ł', 'dot': '●', 'avax': '🔺'
+                    }
+                    crypto_emoji = crypto_emojis.get(analysis_data['crypto'].lower(), '💰')
                     
-                    # ارسال عکس محبوب‌ترین تحلیل (اگر موجود باشد)
-                    if analysis_data['popular_analysis'].get('image_url'):
+                    # پیام جدیدترین تحلیل
+                    recent = analysis_data['recent_analysis']
+                    recent_message = f"""🕐 *جدیدترین تحلیل {analysis_data['symbol']}*
+
+{crypto_emoji} *عنوان:* {recent['title']}
+
+📄 *توضیحات:*
+{recent['description'][:400]}{'...' if len(recent['description']) > 400 else ''}
+
+👤 *نویسنده:* {recent['author']}
+
+🔗 [👉 مشاهده تحلیل کامل]({recent['analysis_url']})"""
+
+                    # پیام محبوب‌ترین تحلیل  
+                    popular = analysis_data['popular_analysis']
+                    popular_message = f"""🔥 *محبوب‌ترین تحلیل {analysis_data['symbol']}*
+
+{crypto_emoji} *عنوان:* {popular['title']}
+
+📄 *توضیحات:*
+{popular['description'][:400]}{'...' if len(popular['description']) > 400 else ''}
+
+👤 *نویسنده:* {popular['author']}
+
+🔗 [👉 مشاهده تحلیل کامل]({popular['analysis_url']})"""
+
+                    # ارسال جدیدترین تحلیل (با یا بدون عکس)
+                    if recent.get('image_url'):
                         try:
                             await update.message.reply_photo(
-                                photo=analysis_data['popular_analysis']['image_url'],
-                                caption=f"🔥 *تصویر تحلیل محبوب:* {analysis_data['popular_analysis']['title'][:50]}...",
+                                photo=recent['image_url'],
+                                caption=recent_message,
                                 parse_mode='Markdown'
                             )
                         except:
-                            pass  # اگر عکس کار نکرد چیزی نفرست
+                            await update.message.reply_text(
+                                recent_message,
+                                parse_mode='Markdown',
+                                disable_web_page_preview=True
+                            )
+                    else:
+                        await update.message.reply_text(
+                            recent_message,
+                            parse_mode='Markdown',
+                            disable_web_page_preview=True
+                        )
                     
-                    # ارسال عکس جدیدترین تحلیل (اگر موجود و متفاوت باشد)
-                    recent_img = analysis_data['recent_analysis'].get('image_url')
-                    popular_img = analysis_data['popular_analysis'].get('image_url')
-                    
-                    if recent_img and recent_img != popular_img:
+                    # ارسال محبوب‌ترین تحلیل (با یا بدون عکس)
+                    if popular.get('image_url'):
                         try:
                             await update.message.reply_photo(
-                                photo=recent_img,
-                                caption=f"🕐 *تصویر تحلیل جدید:* {analysis_data['recent_analysis']['title'][:50]}...",
+                                photo=popular['image_url'],
+                                caption=popular_message,
                                 parse_mode='Markdown'
                             )
                         except:
-                            pass  # اگر عکس کار نکرد چیزی نفرست
+                            await update.message.reply_text(
+                                popular_message,
+                                parse_mode='Markdown',
+                                disable_web_page_preview=True
+                            )
+                    else:
+                        await update.message.reply_text(
+                            popular_message,
+                            parse_mode='Markdown',
+                            disable_web_page_preview=True
+                        )
                             
                 else:
                     # یک تحلیل (مثل قبل)
