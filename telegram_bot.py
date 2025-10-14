@@ -14,6 +14,7 @@ import logging
 import asyncio
 import datetime
 import os
+import re
 from dotenv import load_dotenv
 from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, ContextTypes, 
@@ -456,17 +457,36 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
     
-    # بررسی آیا پیام نام یک ارز دیجیتال است برای تحلیل TradingView
-    crypto_keywords = ['bitcoin', 'btc', 'بیت کوین', 'بیتکوین', 'ethereum', 'eth', 'اتریوم', 'اتر',
-                      'solana', 'sol', 'سولانا', 'cardano', 'ada', 'کاردانو', 'bnb', 'binance',
-                      'بایننس', 'xrp', 'ripple', 'ریپل', 'dogecoin', 'doge', 'دوج', 'chainlink',
-                      'link', 'چین لینک', 'litecoin', 'ltc', 'لایت کوین', 'polkadot', 'dot',
-                      'پولکادات', 'avalanche', 'avax', 'اولانچ']
-    
+    # تشخیص درخواست تحلیل ارز - نسخه بهبود یافته
     message_lower = message_text.lower().strip()
     
-    # اگر پیام شامل کلیدواژه ارز باشد، تحلیل TradingView را دریافت کن
-    if any(keyword in message_lower for keyword in crypto_keywords) and len(message_text.split()) <= 3:
+    # الگوهای تشخیص ارز
+    crypto_patterns = [
+        # نام‌های ارزها
+        r'\b(bitcoin|btc|بیت.?کوین)\b',
+        r'\b(ethereum|eth|اتریوم|اتر)\b', 
+        r'\b(solana|sol|سولانا)\b',
+        r'\b(cardano|ada|کاردانو)\b',
+        r'\b(binance|bnb|بایننس)\b',
+        r'\b(xrp|ripple|ریپل)\b',
+        r'\b(dogecoin|doge|دوج)\b',
+        r'\b(chainlink|link|چین.?لینک)\b',
+        r'\b(litecoin|ltc|لایت.?کوین)\b',
+        r'\b(polkadot|dot|پولکادات)\b',
+        r'\b(avalanche|avax|اولانچ)\b',
+        # فرمت‌های USDT
+        r'\b[a-zA-Z]{2,10}usdt\b',
+        r'\b[a-zA-Z]{2,10}/usdt\b',
+        r'\b[a-zA-Z]{2,10}-usdt\b',
+        # فرمت‌های عمومی
+        r'\b[a-zA-Z]{2,10}\b(?=\s*تحلیل|\s*analysis)',
+    ]
+    
+    # بررسی اینکه آیا پیام شامل الگوی ارز است
+    is_crypto_query = any(re.search(pattern, message_lower) for pattern in crypto_patterns)
+    
+    # اگر پیام کوتاه و شامل الگوی ارز است، تحلیل TradingView را دریافت کن
+    if is_crypto_query and len(message_text.split()) <= 5:
         # بررسی در دسترس بودن TradingView
         if not TRADINGVIEW_AVAILABLE or not tradingview_fetcher:
             await update.message.reply_text("❌ سرویس تحلیل TradingView در حال حاضر در دسترس نیست.")
