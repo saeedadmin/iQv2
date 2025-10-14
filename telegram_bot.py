@@ -33,7 +33,15 @@ else:
 from admin_panel import AdminPanel
 from public_menu import PublicMenuManager
 from logger_system import bot_logger
-from tradingview_analysis import TradingViewAnalysisFetcher
+
+# Optional imports - TradingView Analysis
+try:
+    from tradingview_analysis import TradingViewAnalysisFetcher
+    TRADINGVIEW_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"TradingView Analysis غیرفعال: {e}")
+    TradingViewAnalysisFetcher = None
+    TRADINGVIEW_AVAILABLE = False
 
 # تنظیمات logging
 logging.basicConfig(
@@ -62,7 +70,12 @@ else:
 db_logger = DatabaseLogger(db_manager)
 admin_panel = AdminPanel(db_manager, ADMIN_USER_ID)
 public_menu = PublicMenuManager(db_manager)
-tradingview_fetcher = TradingViewAnalysisFetcher()
+
+# Initialize TradingView fetcher if available
+if TRADINGVIEW_AVAILABLE:
+    tradingview_fetcher = TradingViewAnalysisFetcher()
+else:
+    tradingview_fetcher = None
 
 # متغیرهای مکالمه
 (BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION) = range(3)
@@ -393,31 +406,27 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     
     elif message_text == "📈 تحلیل TradingView":
-        # درخواست جفت ارز برای تحلیل
+        # درخواست نام ارز برای تحلیل
         help_message = """
-📈 *تحلیل کامیونیتی TradingView*
+📈 *تحلیل TradingView*
 
-آخرین تحلیل‌های کاربران حرفه‌ای TradingView را دریافت کنید!
+آخرین تحلیل‌های حرفه‌ای از کمیونیتی TradingView را دریافت کنید!
 
-✅ *فرمت مورد قبول:*
-• فقط جفت ارز با USDT به صورت حروف کوچک
-• مثال: `btcusdt`, `ethusdt`, `solusdt`
+✅ *ارزهای پشتیبانی شده:*
+🟠 Bitcoin (بیت کوین، BTC)
+🔵 Ethereum (اتریوم، ETH)
+◎ Solana (سولانا، SOL)
+₳ Cardano (کاردانو، ADA)
+🟡 BNB (بایننس کوین)
+🔷 XRP (ریپل)
+🐕 Dogecoin (دوج کوین)
+🔗 Chainlink (چین لینک)
+Ł Litecoin (لایت کوین)
+● Polkadot (پولکادات)
+🔺 Avalanche (اولانچ)
 
-📝 *مثال‌های صحیح:*
-• btcusdt (بیت کوین)
-• ethusdt (اتریوم) 
-• solusdt (سولانا)
-• adausdt (کاردانو)
-• bnbusdt (بایننس کوین)
-• xrpusdt (ریپل)
-• dogeusdt (دوج کوین)
-• linkusdt (چین لینک)
-• ltcusdt (لایت کوین)
-• dotusdt (پولکادات)
-• avaxusdt (اولانچ)
-
-⚠️ *نکته مهم:* فقط حروف کوچک، بدون فاصله یا نشانه
-💡 *راهنما:* جفت ارز مورد نظر خود را تایپ کنید
+📝 *نحوه استفاده:* فقط نام ارز را تایپ کنید
+💡 *مثال:* Bitcoin یا بیت کوین
         """
         
         await update.message.reply_text(
@@ -448,19 +457,47 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
     
-    # بررسی آیا پیام فرمت جفت ارز است برای تحلیل TradingView
-    # فقط فرمت مانند btcusdt قابل قبول است
-    crypto_pair_pattern = r'^[a-z]+usdt$'
-    message_clean = message_text.lower().strip()
+    # تشخیص درخواست تحلیل ارز - نسخه بهبود یافته
+    message_lower = message_text.lower().strip()
     
-    # اگر پیام فرمت جفت ارز باشد، تحلیل TradingView را دریافت کن
-    if re.match(crypto_pair_pattern, message_clean) and len(message_clean) >= 6:
+    # الگوهای تشخیص ارز
+    crypto_patterns = [
+        # نام‌های ارزها
+        r'\b(bitcoin|btc|بیت.?کوین)\b',
+        r'\b(ethereum|eth|اتریوم|اتر)\b', 
+        r'\b(solana|sol|سولانا)\b',
+        r'\b(cardano|ada|کاردانو)\b',
+        r'\b(binance|bnb|بایننس)\b',
+        r'\b(xrp|ripple|ریپل)\b',
+        r'\b(dogecoin|doge|دوج)\b',
+        r'\b(chainlink|link|چین.?لینک)\b',
+        r'\b(litecoin|ltc|لایت.?کوین)\b',
+        r'\b(polkadot|dot|پولکادات)\b',
+        r'\b(avalanche|avax|اولانچ)\b',
+        # فرمت‌های USDT
+        r'\b[a-zA-Z]{2,10}usdt\b',
+        r'\b[a-zA-Z]{2,10}/usdt\b',
+        r'\b[a-zA-Z]{2,10}-usdt\b',
+        # فرمت‌های عمومی
+        r'\b[a-zA-Z]{2,10}\b(?=\s*تحلیل|\s*analysis)',
+    ]
+    
+    # بررسی اینکه آیا پیام شامل الگوی ارز است
+    is_crypto_query = any(re.search(pattern, message_lower) for pattern in crypto_patterns)
+    
+    # اگر پیام کوتاه و شامل الگوی ارز است، تحلیل TradingView را دریافت کن
+    if is_crypto_query and len(message_text.split()) <= 5:
+        # بررسی در دسترس بودن TradingView
+        if not TRADINGVIEW_AVAILABLE or not tradingview_fetcher:
+            await update.message.reply_text("❌ سرویس تحلیل TradingView در حال حاضر در دسترس نیست.")
+            return
+            
         # نمایش پیام در حال بارگذاری
-        loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین تحلیل کامیونیتی از TradingView...\n\nلطفاً چند ثانیه صبر کنید.")
+        loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین تحلیل از TradingView...\n\nلطفاً چند ثانیه صبر کنید.")
         
         try:
             # دریافت تحلیل از TradingView
-            analysis_data = await tradingview_fetcher.fetch_latest_analysis(message_clean)
+            analysis_data = await tradingview_fetcher.fetch_latest_analysis(message_text)
             
             if analysis_data.get('success'):
                 # فرمت کردن پیام
@@ -491,8 +528,9 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                         disable_web_page_preview=True
                     )
             else:
-                # خطا در دریافت تحلیل (پیام خطا از tradingview_fetcher می‌آید)
-                await loading_message.edit_text(analysis_data.get('error', 'خطا در دریافت تحلیل'))
+                # خطا در دریافت تحلیل
+                error_message = f"❌ {analysis_data.get('error', 'خطا در دریافت تحلیل')}\n\nلطفاً نام ارز را صحیح وارد کنید (مثل: Bitcoin, Ethereum, SOL)"
+                await loading_message.edit_text(error_message)
             
         except Exception as e:
             error_message = f"❌ خطا در دریافت تحلیل TradingView:\n{str(e)}"
