@@ -26,6 +26,8 @@ class TradingViewAnalysisFetcher:
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
         }
+        # سیستم de-duplication گلوبال برای جلوگیری از لینک‌های تکراری
+        self.global_used_urls = set()
     
     def validate_crypto_pair_format(self, pair: str) -> bool:
         """اعتبارسنجی فرمت جفت ارز - فقط فرمت مانند btcusdt قابل قبول است"""
@@ -72,7 +74,7 @@ class TradingViewAnalysisFetcher:
             # جمع‌آوری همه ایده‌های مرتبط
             candidate_ideas = []
             idea_links = soup.find_all('a', href=True)
-            processed_urls = set()  # برای جلوگیری از تکرار
+            processed_urls = set()  # برای جلوگیری از تکرار محلی
             
             for link in idea_links:
                 href = link.get('href', '')
@@ -89,10 +91,11 @@ class TradingViewAnalysisFetcher:
                     clean_href = href.split('#')[0]  # حذف قسمت # و بعدش
                     analysis_url = clean_href if clean_href.startswith('http') else f"https://www.tradingview.com{clean_href}"
                     
-                    # چک کردن اینکه این URL قبلاً پردازش شده یا نه
-                    if analysis_url in processed_urls:
+                    # چک کردن اینکه این URL قبلاً پردازش شده یا نه (محلی و گلوبال)
+                    if analysis_url in processed_urls or analysis_url in self.global_used_urls:
                         continue
                     processed_urls.add(analysis_url)
+                    self.global_used_urls.add(analysis_url)  # اضافه کردن به لیست گلوبال
                     
                     # استخراج title از متن لینک یا از عنصر والد
                     title = link.get_text(strip=True) or link.get('title', '')
@@ -285,6 +288,103 @@ class TradingViewAnalysisFetcher:
         except:
             return None
     
+    async def scrape_community_analysis_alternative(self, symbol: str, sort_type: str = "recent") -> Optional[Dict[str, Any]]:
+        """دریافت تحلیل جایگزین در صورت تکراری بودن لینک اول"""
+        try:
+            timeout = aiohttp.ClientTimeout(total=15)
+            async with aiohttp.ClientSession(timeout=timeout, headers=self.headers) as session:
+                # ساخت URL بر اساس نوع مرتب‌سازی
+                if sort_type == "recent":
+                    search_url = f"https://www.tradingview.com/symbols/{symbol}/ideas/?sort=recent"
+                else:
+                    search_url = f"https://www.tradingview.com/symbols/{symbol}/ideas/"
+                
+                async with session.get(search_url) as response:
+                    if response.status == 200:
+                        content = await response.text()
+                        return self.parse_community_content_alternative(content, symbol, sort_type)
+                    else:
+                        return None
+                        
+        except Exception as e:
+            print(f"خطا در scraping جایگزین: {e}")
+            return None
+    
+    def parse_community_content_alternative(self, content: str, symbol: str, sort_type: str = "recent") -> Optional[Dict[str, Any]]:
+        """پارس کردن محتوای کامیونیتی TradingView برای یافتن تحلیل جایگزین (تحلیل دوم)"""
+        try:
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # جمع‌آوری همه ایده‌های مرتبط
+            candidate_ideas = []
+            idea_links = soup.find_all('a', href=True)
+            processed_urls = set()
+            
+            for link in idea_links:
+                href = link.get('href', '')
+                
+                if ('/chart/' in href and 
+                    '/' in href.split('/chart/')[-1] and 
+                    any(char.isalnum() for char in href) and 
+                    len(href.split('/chart/')[-1]) > 10 and
+                    '-' in href.split('/chart/')[-1] and
+                    '#chart-view-comment-form' not in href):
+                    
+                    clean_href = href.split('#')[0]
+                    analysis_url = clean_href if clean_href.startswith('http') else f"https://www.tradingview.com{clean_href}"
+                    
+                    if analysis_url in processed_urls:
+                        continue
+                    processed_urls.add(analysis_url)
+                    
+                    # استخراج اطلاعات
+                    title = link.get_text(strip=True) or link.get('title', '')
+                    
+                    if not title or len(title) < 5:
+                        parent = link.parent
+                        if parent:
+                            title = parent.get_text(strip=True)[:100]
+                    
+                    if (title and len(title) > 5 and 
+                        not title.lower() in ['comment', 'view', 'chart', 'ideas'] and
+                        not title.isdigit()):
+                        
+                        image_url = self.find_related_image(soup, link)
+                        description = self.extract_description_from_soup(soup, link)
+                        author = self.extract_author_from_soup(soup, link)
+                        publish_time = self.extract_publish_time(soup, link)
+                        
+                        idea_data = {
+                            'title': title,
+                            'description': description,
+                            'analysis_url': analysis_url,
+                            'image_url': image_url,
+                            'author': author,
+                            'publish_time': publish_time,
+                            'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
+                            'sort_type': sort_type
+                        }
+                        
+                        candidate_ideas.append(idea_data)
+            
+            # اگر هیچ ایده‌ای پیدا نشد
+            if len(candidate_ideas) < 2:
+                return None
+            
+            # مرتب‌سازی
+            candidate_ideas.sort(key=lambda x: (
+                x['publish_time'] is not None,
+                x['publish_time'] if x['publish_time'] else datetime.datetime.min,
+                len(x['description'])
+            ), reverse=True)
+            
+            # برگرداندن دومین ایده (نه اولین)
+            return candidate_ideas[1] if len(candidate_ideas) > 1 else candidate_ideas[0]
+            
+        except Exception as e:
+            print(f"خطا در parse_community_content_alternative: {e}")
+            return None
+    
     def normalize_to_usdt_pair_DEPRECATED(self, crypto_input: str) -> Optional[str]:
         """تبدیل ورودی کاربر به فرمت جفت ارز USDT"""
         if not crypto_input:
@@ -470,6 +570,9 @@ class TradingViewAnalysisFetcher:
     async def fetch_latest_analysis(self, crypto_pair: str) -> Dict[str, Any]:
         """دریافت تحلیل‌های کامیونیتی برای جفت ارز مشخص شده (محبوب‌ترین + جدیدترین)"""
         try:
+            # پاک کردن لیست URL های استفاده شده برای شروع جدید
+            self.global_used_urls.clear()
+            
             # اعتبارسنجی فرمت ورودی
             if not self.validate_crypto_pair_format(crypto_pair):
                 return {
@@ -485,6 +588,37 @@ class TradingViewAnalysisFetcher:
             
             # اگر هردو موفق باشند
             if popular_data and recent_data:
+                # بررسی تکراری نبودن لینک‌ها - امنیت اضافی
+                if popular_data['analysis_url'] == recent_data['analysis_url']:
+                    print(f"⚠️ هشدار: لینک تکراری شناسایی شد برای {crypto_pair}")
+                    print(f"   لینک تکراری: {popular_data['analysis_url']}")
+                    
+                    # تلاش برای دریافت تحلیل جایگزین از recent
+                    alternative_recent = await self.scrape_community_analysis_alternative(crypto_pair.upper(), "recent")
+                    if alternative_recent and alternative_recent['analysis_url'] != popular_data['analysis_url']:
+                        recent_data = alternative_recent
+                        print(f"✅ تحلیل جایگزین یافت شد: {alternative_recent['analysis_url']}")
+                    else:
+                        # اگر باز هم تکراری بود، حداقل یکی رو برگردون
+                        print("⚠️ تحلیل جایگزین یافت نشد - ارسال فقط محبوب‌ترین")
+                        return {
+                            'success': True,
+                            'crypto': symbol,
+                            'title': popular_data['title'],
+                            'description': popular_data['description'],
+                            'analysis_url': popular_data['analysis_url'],
+                            'image_url': popular_data['image_url'],
+                            'symbol': crypto_pair.upper(),
+                            'author': popular_data.get('author', 'TradingView User'),
+                            'timestamp': popular_data.get('timestamp', datetime.datetime.now().strftime('%Y-%m-%d %H:%M')),
+                            'source': 'TradingView Community (🔥 محبوب‌ترین)',
+                            'analysis_type': '🔥 محبوب‌ترین'
+                        }
+                
+                print(f"✅ لینک‌های متفاوت تأیید شد برای {crypto_pair}:")
+                print(f"   محبوب‌ترین: {popular_data['analysis_url']}")
+                print(f"   جدیدترین: {recent_data['analysis_url']}")
+                
                 return {
                     'success': True,
                     'crypto': symbol,
