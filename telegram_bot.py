@@ -443,8 +443,8 @@ async def tradingview_analysis_process(update: Update, context: ContextTypes.DEF
             return TRADINGVIEW_ANALYSIS
 
 # Handler برای پیام‌های متنی (echo)
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """پردازش پیام‌های کاربر"""
+async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """راهنمایی برای پیام‌های ناشناخته"""
     user = update.effective_user
     
     # بررسی دسترسی
@@ -562,21 +562,18 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     
     
-    # پردازش پیام‌های معمولی
-    response = f"""
-📝 **پیام پردازش شد**
+    # برای پیام‌های ناشناخته، راهنمایی ساده
+    help_message = """
+ℹ️ از دکمه‌های منو استفاده کنید یا یکی از دستورات زیر را امتحان کنید:
 
-👤 **کاربر:** {user.first_name}
-📄 **پیام:** "{message_text}"
-
-✅ **وضعیت:** با موفقیت دریافت و پردازش شد
-📊 **آمار شما:** {user_data['message_count'] if user_data else 0} پیام
-⏰ **زمان:** {datetime.datetime.now().strftime('%H:%M:%S')}
-
-🔄 ربات آماده دریافت پیام بعدی شما است.
+🔹 /start - شروع مجدد
+🔹 /menu - نمایش منو
+🔹 /help - راهنما
+🔹 /status - وضعیت ربات
     """
+
     
-    await update.message.reply_text(response, parse_mode='Markdown')
+    await update.message.reply_text(help_message)
 
 # Handler برای broadcast (پیام همگانی)
 async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -804,8 +801,8 @@ def main() -> None:
     )
     application.add_handler(tradingview_conv_handler)
     
-    # Handler برای پیام‌های متنی عادی (غیر از دستورات)
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    # Handler برای پیام‌های ناشناخته (راهنمایی ساده)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, fallback_handler))
     
     # Handler برای خطاها
     application.add_error_handler(error_handler)

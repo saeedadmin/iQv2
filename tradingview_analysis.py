@@ -69,9 +69,8 @@ class TradingViewAnalysisFetcher:
             
             for link in idea_links:
                 href = link.get('href', '')
-                # بررسی برای لینک‌های ایده که شامل /chart/ و یک ID هستند (نه فقط chart)
-                if ('/chart/' in href and '/' in href.split('/chart/')[-1] and 
-                    any(char.isdigit() for char in href) and symbol.upper() in href.upper()):
+                # بررسی برای لینک‌های ایده اصلی TradingView (نه chart)
+                if ('/i/' in href and any(char.isdigit() for char in href) and len(href.split('/i/')[-1]) > 5):
                     
                     # استخراج title از متن لینک یا از عنصر والد
                     title = link.get_text(strip=True) or link.get('title', '')
