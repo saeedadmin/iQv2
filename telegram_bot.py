@@ -372,29 +372,67 @@ async def tradingview_analysis_process(update: Update, context: ContextTypes.DEF
                 analysis_message = tradingview_fetcher.format_analysis_message(analysis_data)
                 
                 # ارسال پیام تحلیل
-                if analysis_data.get('image_url'):
-                    # ارسال با عکس
-                    try:
-                        await loading_message.delete()
-                        await update.message.reply_photo(
-                            photo=analysis_data['image_url'],
-                            caption=analysis_message,
-                            parse_mode='Markdown'
-                        )
-                    except Exception:
-                        # اگر عکس کار نکرد، فقط متن بفرست
-                        await loading_message.edit_text(
-                            analysis_message,
-                            parse_mode='Markdown',
-                            disable_web_page_preview=True
-                        )
-                else:
-                    # ارسال بدون عکس
-                    await loading_message.edit_text(
+                await loading_message.delete()
+                
+                # بررسی نوع تحلیل (دو تحلیل یا یکی)
+                if 'popular_analysis' in analysis_data and 'recent_analysis' in analysis_data:
+                    # ارسال دو تحلیل
+                    # ارسال پیام متنی اصلی
+                    await update.message.reply_text(
                         analysis_message,
                         parse_mode='Markdown',
                         disable_web_page_preview=True
                     )
+                    
+                    # ارسال عکس محبوب‌ترین تحلیل (اگر موجود باشد)
+                    if analysis_data['popular_analysis'].get('image_url'):
+                        try:
+                            await update.message.reply_photo(
+                                photo=analysis_data['popular_analysis']['image_url'],
+                                caption=f"🔥 *تصویر تحلیل محبوب:* {analysis_data['popular_analysis']['title'][:50]}...",
+                                parse_mode='Markdown'
+                            )
+                        except:
+                            pass  # اگر عکس کار نکرد چیزی نفرست
+                    
+                    # ارسال عکس جدیدترین تحلیل (اگر موجود و متفاوت باشد)
+                    recent_img = analysis_data['recent_analysis'].get('image_url')
+                    popular_img = analysis_data['popular_analysis'].get('image_url')
+                    
+                    if recent_img and recent_img != popular_img:
+                        try:
+                            await update.message.reply_photo(
+                                photo=recent_img,
+                                caption=f"🕐 *تصویر تحلیل جدید:* {analysis_data['recent_analysis']['title'][:50]}...",
+                                parse_mode='Markdown'
+                            )
+                        except:
+                            pass  # اگر عکس کار نکرد چیزی نفرست
+                            
+                else:
+                    # یک تحلیل (مثل قبل)
+                    if analysis_data.get('image_url'):
+                        # ارسال با عکس
+                        try:
+                            await update.message.reply_photo(
+                                photo=analysis_data['image_url'],
+                                caption=analysis_message,
+                                parse_mode='Markdown'
+                            )
+                        except Exception:
+                            # اگر عکس کار نکرد، فقط متن بفرست
+                            await update.message.reply_text(
+                                analysis_message,
+                                parse_mode='Markdown',
+                                disable_web_page_preview=True
+                            )
+                    else:
+                        # ارسال بدون عکس
+                        await update.message.reply_text(
+                            analysis_message,
+                            parse_mode='Markdown',
+                            disable_web_page_preview=True
+                        )
             else:
                 # خطا در دریافت تحلیل (پیام خطا از tradingview_fetcher می‌آید)
                 await loading_message.edit_text(analysis_data.get('error', 'خطا در دریافت تحلیل'))

@@ -39,18 +39,24 @@ class TradingViewAnalysisFetcher:
             return pair[:-4]  # حذف 'usdt' از انتها
         return pair
     
-    async def scrape_community_analysis(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """دریافت تحلیل واقعی از کامیونیتی TradingView"""
+    async def scrape_community_analysis(self, symbol: str, sort_type: str = "popular") -> Optional[Dict[str, Any]]:
+        """دریافت تحلیل واقعی از کامیونیتی TradingView
+        
+        sort_type: "popular" (محبوب‌ترین) یا "recent" (جدیدترین)
+        """
         try:
             timeout = aiohttp.ClientTimeout(total=15)
             async with aiohttp.ClientSession(timeout=timeout, headers=self.headers) as session:
-                # جستجو در بخش Ideas برای سیمبل مورد نظر
-                search_url = f"https://www.tradingview.com/symbols/{symbol}/ideas/"
+                # ساخت URL بر اساس نوع مرتب‌سازی
+                if sort_type == "recent":
+                    search_url = f"https://www.tradingview.com/symbols/{symbol}/ideas/?sort=recent"
+                else:  # popular (پیش‌فرض)
+                    search_url = f"https://www.tradingview.com/symbols/{symbol}/ideas/"
                 
                 async with session.get(search_url) as response:
                     if response.status == 200:
                         content = await response.text()
-                        return self.parse_community_content(content, symbol)
+                        return self.parse_community_content(content, symbol, sort_type)
                     else:
                         return None
                         
@@ -58,7 +64,7 @@ class TradingViewAnalysisFetcher:
             print(f"خطا در scraping: {e}")
             return None
     
-    def parse_community_content(self, content: str, symbol: str) -> Optional[Dict[str, Any]]:
+    def parse_community_content(self, content: str, symbol: str, sort_type: str = "popular") -> Optional[Dict[str, Any]]:
         """پارس کردن محتوای کامیونیتی TradingView"""
         try:
             soup = BeautifulSoup(content, 'html.parser')
@@ -109,7 +115,8 @@ class TradingViewAnalysisFetcher:
                             'image_url': image_url,
                             'author': author,
                             'publish_time': publish_time,
-                            'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+                            'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
+                            'sort_type': sort_type
                         }
                         
                         candidate_ideas.append(idea_data)
@@ -449,7 +456,7 @@ class TradingViewAnalysisFetcher:
         return None
     
     async def fetch_latest_analysis(self, crypto_pair: str) -> Dict[str, Any]:
-        """دریافت آخرین تحلیل کامیونیتی برای جفت ارز مشخص شده"""
+        """دریافت تحلیل‌های کامیونیتی برای جفت ارز مشخص شده (محبوب‌ترین + جدیدترین)"""
         try:
             # اعتبارسنجی فرمت ورودی
             if not self.validate_crypto_pair_format(crypto_pair):
@@ -458,11 +465,44 @@ class TradingViewAnalysisFetcher:
                     'error': f"❌ فرمت نادرست!\n\n✅ فرمت صحیح: مثل `btcusdt`\n\n📝 مثال‌های معتبر:\n• btcusdt\n• ethusdt\n• solusdt\n• adausdt\n• bnbusdt\n• xrpusdt\n• dogeusdt\n\n⚠️ فقط حروف کوچک، بدون فاصله یا نشانه"
                 }
             
-            # دریافت تحلیل واقعی از کامیونیتی TradingView
             symbol = self.extract_symbol_from_pair(crypto_pair)
-            analysis_data = await self.scrape_community_analysis(crypto_pair.upper())
             
-            if analysis_data:
+            # دریافت همزمان تحلیل محبوب‌ترین و جدیدترین
+            popular_data = await self.scrape_community_analysis(crypto_pair.upper(), "popular")
+            recent_data = await self.scrape_community_analysis(crypto_pair.upper(), "recent")
+            
+            # اگر هردو موفق باشند
+            if popular_data and recent_data:
+                return {
+                    'success': True,
+                    'crypto': symbol,
+                    'symbol': crypto_pair.upper(),
+                    'popular_analysis': {
+                        'title': popular_data['title'],
+                        'description': popular_data['description'],
+                        'analysis_url': popular_data['analysis_url'],
+                        'image_url': popular_data['image_url'],
+                        'author': popular_data.get('author', 'TradingView User'),
+                        'timestamp': popular_data.get('timestamp', datetime.datetime.now().strftime('%Y-%m-%d %H:%M')),
+                        'type': '🔥 محبوب‌ترین'
+                    },
+                    'recent_analysis': {
+                        'title': recent_data['title'],
+                        'description': recent_data['description'],
+                        'analysis_url': recent_data['analysis_url'],
+                        'image_url': recent_data['image_url'],
+                        'author': recent_data.get('author', 'TradingView User'),
+                        'timestamp': recent_data.get('timestamp', datetime.datetime.now().strftime('%Y-%m-%d %H:%M')),
+                        'type': '🕐 جدیدترین'
+                    },
+                    'source': 'TradingView Community'
+                }
+            
+            # اگر فقط یکی موفق باشد، همان را برگردان
+            elif popular_data or recent_data:
+                analysis_data = popular_data or recent_data
+                analysis_type = '🔥 محبوب‌ترین' if popular_data else '🕐 جدیدترین'
+                
                 return {
                     'success': True,
                     'crypto': symbol,
@@ -473,7 +513,8 @@ class TradingViewAnalysisFetcher:
                     'symbol': crypto_pair.upper(),
                     'author': analysis_data.get('author', 'TradingView User'),
                     'timestamp': analysis_data.get('timestamp', datetime.datetime.now().strftime('%Y-%m-%d %H:%M')),
-                    'source': 'TradingView Community'
+                    'source': f'TradingView Community ({analysis_type})',
+                    'analysis_type': analysis_type
                 }
             else:
                 # fallback به داده‌های نمونه در صورت عدم دسترسی
@@ -513,15 +554,56 @@ class TradingViewAnalysisFetcher:
         }
         
         crypto_emoji = crypto_emojis.get(analysis_data['crypto'].lower(), '💰')
-        author = analysis_data.get('author', 'TradingView User')
-        timestamp = analysis_data.get('timestamp', 'Unknown')
         
-        message = f"""
+        # چک کردن اینکه آیا دو تحلیل داریم یا یکی
+        if 'popular_analysis' in analysis_data and 'recent_analysis' in analysis_data:
+            # دو تحلیل
+            popular = analysis_data['popular_analysis']
+            recent = analysis_data['recent_analysis']
+            
+            message = f"""
+📊 *تحلیل‌های کامیونیتی TradingView*
+
+{crypto_emoji} *جفت ارز:* {analysis_data['symbol']}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔥 *محبوب‌ترین تحلیل:*
+📝 *{popular['title']}*
+
+📄 *توضیحات:*
+{popular['description'][:200]}{'...' if len(popular['description']) > 200 else ''}
+
+👤 *نویسنده:* {popular['author']}
+🔗 [👉 مشاهده تحلیل محبوب]({popular['analysis_url']})
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🕐 *جدیدترین تحلیل:*
+📝 *{recent['title']}*
+
+📄 *توضیحات:*
+{recent['description'][:200]}{'...' if len(recent['description']) > 200 else ''}
+
+👤 *نویسنده:* {recent['author']}
+🔗 [👉 مشاهده تحلیل جدید]({recent['analysis_url']})
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 *منبع:* {analysis_data.get('source', 'TradingView')}
+            """
+        else:
+            # یک تحلیل (فرمت قبلی)
+            author = analysis_data.get('author', 'TradingView User')
+            timestamp = analysis_data.get('timestamp', 'Unknown')
+            analysis_type = analysis_data.get('analysis_type', '')
+            
+            message = f"""
 📊 *تحلیل کامیونیتی TradingView*
 
 {crypto_emoji} *جفت ارز:* {analysis_data.get('symbol', 'N/A')}
 
-📝 *عنوان تحلیل:*
+{analysis_type + ' ' if analysis_type else ''}📝 *عنوان تحلیل:*
 {analysis_data['title']}
 
 📄 *توضیحات:*
@@ -534,6 +616,6 @@ class TradingViewAnalysisFetcher:
 [👉 مشاهده تحلیل کامل]({analysis_data['analysis_url']})
 
 🌐 *منبع:* {analysis_data.get('source', 'TradingView')}
-        """
+            """
         
         return message.strip()
