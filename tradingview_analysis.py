@@ -42,7 +42,7 @@ class TradingViewAnalysisFetcher:
     async def scrape_community_analysis(self, symbol: str) -> Optional[Dict[str, Any]]:
         """دریافت تحلیل واقعی از کامیونیتی TradingView"""
         try:
-            timeout = aiohttp.ClientTimeout(total=10)
+            timeout = aiohttp.ClientTimeout(total=15)
             async with aiohttp.ClientSession(timeout=timeout, headers=self.headers) as session:
                 # جستجو در بخش Ideas برای سیمبل مورد نظر
                 search_url = f"https://www.tradingview.com/symbols/{symbol}/ideas/"
@@ -63,29 +63,43 @@ class TradingViewAnalysisFetcher:
         try:
             soup = BeautifulSoup(content, 'html.parser')
             
-            # جستجو برای اولین آیدیا در صفحه
+            # جستجو برای لینک‌های ایده (idea) به جای chart
             idea_links = soup.find_all('a', href=True)
             
             for link in idea_links:
                 href = link.get('href', '')
-                if '/chart/' in href and symbol.upper() in href.upper():
+                # بررسی برای لینک‌های ایده که شامل /chart/ و یک ID هستند (نه فقط chart)
+                if ('/chart/' in href and '/' in href.split('/chart/')[-1] and 
+                    any(char.isdigit() for char in href) and symbol.upper() in href.upper()):
+                    
+                    # استخراج title از متن لینک یا از عنصر والد
                     title = link.get_text(strip=True) or link.get('title', '')
+                    
+                    # اگر title خیلی کوتاه بود، از عنصر والد بگیر
+                    if not title or len(title) < 5:
+                        parent = link.parent
+                        if parent:
+                            title = parent.get_text(strip=True)[:100]
+                    
                     if title and len(title) > 5:
-                        # تشکیل URL کامل
+                        # تشکیل URL کامل برای ایده
                         analysis_url = href if href.startswith('http') else f"https://www.tradingview.com{href}"
                         
-                        # جستجو برای عکس
+                        # جستجو برای عکس در نزدیکی لینک
                         image_url = self.find_related_image(soup, link)
                         
-                        # استخراج توضیحات
+                        # استخراج توضیحات بهبود یافته
                         description = self.extract_description_from_soup(soup, link)
+                        
+                        # استخراج نام نویسنده
+                        author = self.extract_author_from_soup(soup, link)
                         
                         return {
                             'title': title,
                             'description': description,
                             'analysis_url': analysis_url,
                             'image_url': image_url,
-                            'author': 'TradingView Community',
+                            'author': author,
                             'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
                         }
             
@@ -118,21 +132,73 @@ class TradingViewAnalysisFetcher:
             return None
     
     def extract_description_from_soup(self, soup: BeautifulSoup, link_element) -> str:
-        """استخراج توضیحات از soup"""
+        """استخراج توضیحات بهبود یافته از soup"""
         try:
-            # جستجو در نزدیکی لینک
+            # جستجو در عناصر مختلف برای پیدا کردن توضیحات
+            parent = link_element.parent
+            description_candidates = []
+            
+            if parent:
+                # جستجو در عناصر مجاور
+                for sibling in parent.find_next_siblings()[:5]:
+                    text = sibling.get_text(strip=True)
+                    if len(text) > 30 and len(text) < 500:
+                        description_candidates.append(text)
+                
+                # جستجو در عناصر فرزند
+                for child in parent.find_all(['p', 'div', 'span'])[:10]:
+                    text = child.get_text(strip=True)
+                    if len(text) > 30 and len(text) < 500:
+                        description_candidates.append(text)
+            
+            # جستجو کلی در صفحه برای div هایی که ممکن است شامل توضیحات باشند
+            for div in soup.find_all('div', class_=True)[:20]:
+                class_names = ' '.join(div.get('class', []))
+                if any(keyword in class_names.lower() for keyword in ['content', 'description', 'text', 'body']):
+                    text = div.get_text(strip=True)
+                    if len(text) > 50 and len(text) < 800:
+                        description_candidates.append(text)
+            
+            # انتخاب بهترین توضیحات
+            if description_candidates:
+                # مرتب‌سازی بر اساس طول (ترجیح متن با طول متوسط)
+                description_candidates.sort(key=lambda x: abs(len(x) - 200))
+                best_desc = description_candidates[0]
+                return best_desc[:400] + "..." if len(best_desc) > 400 else best_desc
+            
+            return "📊 تحلیل جدید کامیونیتی TradingView - جزئیات بیشتر با کلیک روی لینک"
+        except Exception as e:
+            print(f"خطا در extract_description: {e}")
+            return "📊 تحلیل جدید کامیونیتی TradingView"
+    
+    def extract_author_from_soup(self, soup: BeautifulSoup, link_element) -> str:
+        """استخراج نام نویسنده تحلیل"""
+        try:
+            # جستجو در نزدیکی لینک برای نام کاربری
             parent = link_element.parent
             if parent:
-                # جستجو برای متن در نزدیکی
-                next_elements = parent.find_next_siblings()
-                for element in next_elements[:3]:
+                # جستجو برای عناصری که ممکن است شامل نام کاربری باشند
+                for element in parent.find_all(['span', 'div', 'a'])[:10]:
                     text = element.get_text(strip=True)
-                    if len(text) > 50:
-                        return text[:300]
+                    class_names = ' '.join(element.get('class', []))
+                    
+                    # اگر شامل کلمات کلیدی مرتبط با کاربر باشد
+                    if (any(keyword in class_names.lower() for keyword in ['user', 'author', 'name']) or
+                        (len(text) > 2 and len(text) < 30 and '@' not in text and 
+                         not any(char.isdigit() for char in text) and text.count(' ') <= 2)):
+                        return text
             
-            return "تحلیل جدید از TradingView"
+            # جستجو کلی در صفحه
+            for element in soup.find_all(['span', 'div', 'a'], class_=True)[:30]:
+                class_names = ' '.join(element.get('class', []))
+                if any(keyword in class_names.lower() for keyword in ['user', 'author', 'username']):
+                    text = element.get_text(strip=True)
+                    if len(text) > 2 and len(text) < 30:
+                        return text
+            
+            return 'TradingView Community'
         except:
-            return "تحلیل جدید از TradingView"
+            return 'TradingView Community'
     
     def normalize_to_usdt_pair_DEPRECATED(self, crypto_input: str) -> Optional[str]:
         """تبدیل ورودی کاربر به فرمت جفت ارز USDT"""

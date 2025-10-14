@@ -466,6 +466,35 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     crypto_pair_pattern = r'^[a-z]+usdt$'
     message_clean = message_text.lower().strip()
     
+    # بررسی اگر کاربر سعی می‌کند تحلیل دریافت کند ولی فرمت اشتباه است
+    wrong_format_patterns = [
+        r'^[a-zA-Z]+/[a-zA-Z]+$',  # مثل BTC/USDT
+        r'^[a-zA-Z]+$',            # مثل BTC یا btc
+        r'^[a-zA-Z]+-[a-zA-Z]+$',  # مثل BTC-USDT
+        r'^[a-zA-Z]+_[a-zA-Z]+$',  # مثل BTC_USDT
+    ]
+    
+    # اگر کاربر فرمت اشتباه وارد کرده
+    for pattern in wrong_format_patterns:
+        if re.match(pattern, message_clean) and len(message_clean) >= 3:
+            error_message = """❌ **فرمت نادرست!**
+
+✅ **فرمت صحیح:** `btcusdt` (حروف کوچک، چسبیده)
+
+📝 **مثال‌های معتبر:**
+• `btcusdt` - بیت کوین
+• `ethusdt` - اتریوم  
+• `solusdt` - سولانا
+• `adausdt` - کاردانو
+• `bnbusdt` - بایننس کوین
+• `xrpusdt` - ریپل
+• `dogeusdt` - دوج کوین
+
+⚠️ **توجه:** فقط حروف کوچک، بدون فاصله یا نشانه خاص"""
+            
+            await update.message.reply_text(error_message, parse_mode='Markdown')
+            return
+    
     # اگر پیام فرمت جفت ارز باشد، تحلیل TradingView را دریافت کن
     if re.match(crypto_pair_pattern, message_clean) and len(message_clean) >= 6:
         # نمایش پیام در حال بارگذاری
