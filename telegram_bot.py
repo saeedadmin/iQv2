@@ -33,7 +33,7 @@ else:
 from admin_panel import AdminPanel
 from public_menu import PublicMenuManager
 from logger_system import bot_logger
-from keyboards import get_main_menu_markup, get_ai_menu_markup, get_crypto_menu_markup
+from keyboards import get_main_menu_markup, get_ai_menu_markup
 from ai_news import get_ai_news
 
 # Optional imports - TradingView Analysis
@@ -80,7 +80,7 @@ else:
     tradingview_fetcher = None
 
 # متغیرهای مکالمه
-(BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION, TRADINGVIEW_ANALYSIS, MAIN_MENU, AI_MENU, CRYPTO_MENU) = range(7)
+(BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION, TRADINGVIEW_ANALYSIS) = range(4)
 
 # بررسی دسترسی کاربر
 async def check_user_access(user_id: int) -> bool:
@@ -129,14 +129,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 به ربات خوش آمدید!
 
-از دکمه زیر برای مشاهده قیمت‌های لحظه‌ای ارزهای دیجیتال، تتر و دلار استفاده کنید 💰
+از دکمه‌های زیر برای دسترسی به خدمات استفاده کنید:
+
+💰 ارزهای دیجیتال: قیمت‌های لحظه‌ای و اخبار
+🤖 هوش مصنوعی: آخرین اخبار AI
     """
     
-    # ایجاد کیبورد ساده
-    keyboard = [
-        [KeyboardButton("💰 ارزهای دیجیتال")]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+    # استفاده از کیبورد جدید
+    reply_markup = get_main_menu_markup()
     
     # نمایش پیام خوش آمدگویی
     await update.message.reply_html(
@@ -209,9 +209,7 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 به ربات خوش آمدید! از دکمه‌های زیر برای دسترسی به خدمات استفاده کنید:
 
 💰 *ارزهای دیجیتال:* قیمت‌های لحظه‌ای ارزها، تتر و دلار
-🤖 *هوش مصنوعی:* آخرین اخبار و پیشرفت‌های AI
-📊 *پورتفولیو:* مدیریت سرمایه‌گذاری‌ها
-📈 *تحلیل:* تحلیل تکنیکال ارزها
+🤖 *هوش مصنوعی:* آخرین اخبار AI
     """
     
     # استفاده از کیبورد جدید
@@ -624,19 +622,74 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 به ربات خوش آمدید!
 
-از دکمه زیر برای مشاهده قیمت‌های لحظه‌ای ارزهای دیجیتال، تتر و دلار استفاده کنید 💰
+از دکمه‌های زیر برای دسترسی به خدمات استفاده کنید:
+
+💰 ارزهای دیجیتال: قیمت‌های لحظه‌ای و اخبار
+🤖 هوش مصنوعی: آخرین اخبار AI
         """
         
-        # ایجاد کیبورد ساده
-        keyboard = [
-            [KeyboardButton("💰 ارزهای دیجیتال")]
-        ]
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+        # استفاده از کیبورد جدید
+        reply_markup = get_main_menu_markup()
         
         await update.message.reply_text(
             welcome_message,
             reply_markup=reply_markup
         )
+        return
+    
+    elif message_text == "🤖 هوش مصنوعی":
+        # نمایش منوی هوش مصنوعی
+        bot_logger.log_user_action(user.id, "AI_MENU_ACCESS", "ورود به بخش هوش مصنوعی")
+        
+        message = """
+🤖 *بخش هوش مصنوعی*
+
+به دنیای AI خوش آمدید! 🚀
+
+🔍 *خدمات موجود:*
+• 📰 آخرین اخبار هوش مصنوعی از منابع معتبر
+• 🌐 پیشرفت‌های جدید در دنیای AI
+
+از دکمه زیر برای دسترسی به اخبار استفاده کنید:
+        """
+        
+        # استفاده از کیبورد AI
+        reply_markup = get_ai_menu_markup()
+        
+        await update.message.reply_text(
+            message,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return
+    
+    elif message_text == "📰 اخبار هوش مصنوعی":
+        bot_logger.log_user_action(user.id, "AI_NEWS_REQUEST", "درخواست اخبار هوش مصنوعی")
+        
+        # نمایش پیام "در حال بارگذاری"
+        loading_message = await update.message.reply_text("🔄 در حال دریافت آخرین اخبار هوش مصنوعی...")
+        
+        try:
+            # دریافت اخبار
+            news_text = await get_ai_news()
+            
+            # حذف پیام loading
+            await loading_message.delete()
+            
+            # ارسال اخبار
+            await update.message.reply_text(
+                news_text,
+                parse_mode='Markdown',
+                disable_web_page_preview=False
+            )
+            
+        except Exception as e:
+            await loading_message.delete()
+            logger.error(f"خطا در دریافت اخبار AI: {e}")
+            await update.message.reply_text(
+                "❌ متاسفانه در دریافت اخبار خطایی رخ داد. لطفاً دوباره تلاش کنید."
+            )
+        
         return
     
     
@@ -830,157 +883,6 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         except Exception:
             pass  # اگر نتوانست پیام خطا ارسال کند، نادیده بگیر
 
-# =========================
-# Handler های منوی هوش مصنوعی
-# =========================
-
-async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """مدیریت منوی اصلی"""
-    text = update.message.text
-    user = update.effective_user
-    
-    # بررسی دسترسی
-    if not await check_user_access(user.id):
-        return ConversationHandler.END
-    
-    # به‌روزرسانی فعالیت کاربر
-    db_manager.update_user_activity(user.id)
-    
-    if text == "💰 ارزهای دیجیتال":
-        bot_logger.log_user_action(user.id, "CRYPTO_MENU_ACCESS", "ورود به بخش ارزهای دیجیتال")
-        
-        await update.message.reply_text(
-            "💰 **بخش ارزهای دیجیتال**\n\nلطفاً یکی از گزینه‌ها را انتخاب کنید:",
-            reply_markup=get_crypto_menu_markup(),
-            parse_mode='Markdown'
-        )
-        return CRYPTO_MENU
-    
-    elif text == "🤖 هوش مصنوعی":
-        bot_logger.log_user_action(user.id, "AI_MENU_ACCESS", "ورود به بخش هوش مصنوعی")
-        
-        await update.message.reply_text(
-            "🤖 **بخش هوش مصنوعی**\n\nبه دنیای AI خوش آمدید! از گزینه‌های زیر استفاده کنید:",
-            reply_markup=get_ai_menu_markup(),
-            parse_mode='Markdown'
-        )
-        return AI_MENU
-    
-    # سایر دکمه‌ها - فعلاً پیام موقت
-    elif text in ["📊 پورتفولیو من", "📈 تحلیل تکنیکال", "⚙️ تنظیمات", "📞 پشتیبانی"]:
-        await update.message.reply_text(
-            f"🚧 بخش **{text}** به زودی راه‌اندازی می‌شود.\n\nدر حال حاضر می‌توانید از بخش‌های ارزهای دیجیتال و هوش مصنوعی استفاده کنید.",
-            parse_mode='Markdown'
-        )
-        return MAIN_MENU
-    
-    # در صورت عدم تطبیق، نمایش منوی اصلی
-    await update.message.reply_text(
-        "🏠 **منوی اصلی**\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-        reply_markup=get_main_menu_markup(),
-        parse_mode='Markdown'
-    )
-    return MAIN_MENU
-
-async def ai_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """مدیریت منوی هوش مصنوعی"""
-    text = update.message.text
-    user = update.effective_user
-    
-    # بررسی دسترسی
-    if not await check_user_access(user.id):
-        return ConversationHandler.END
-    
-    # به‌روزرسانی فعالیت کاربر
-    db_manager.update_user_activity(user.id)
-    
-    if text == "📰 اخبار هوش مصنوعی":
-        bot_logger.log_user_action(user.id, "AI_NEWS_REQUEST", "درخواست اخبار هوش مصنوعی")
-        
-        # نمایش پیام "در حال بارگذاری"
-        loading_message = await update.message.reply_text("🔄 در حال دریافت آخرین اخبار هوش مصنوعی...")
-        
-        try:
-            # دریافت اخبار
-            news_text = await get_ai_news()
-            
-            # حذف پیام loading
-            await loading_message.delete()
-            
-            # ارسال اخبار
-            await update.message.reply_text(
-                news_text,
-                parse_mode='Markdown',
-                disable_web_page_preview=False
-            )
-            
-        except Exception as e:
-            await loading_message.delete()
-            logger.error(f"خطا در دریافت اخبار AI: {e}")
-            await update.message.reply_text(
-                "❌ متاسفانه در دریافت اخبار خطایی رخ داد. لطفاً دوباره تلاش کنید."
-            )
-        
-        return AI_MENU
-    
-    elif text == "🔙 بازگشت":
-        bot_logger.log_user_action(user.id, "BACK_TO_MAIN", "بازگشت به منوی اصلی")
-        
-        await update.message.reply_text(
-            "🏠 **منوی اصلی**\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-            reply_markup=get_main_menu_markup(),
-            parse_mode='Markdown'
-        )
-        return MAIN_MENU
-    
-    # در صورت عدم تطبیق، نمایش منوی AI
-    await update.message.reply_text(
-        "🤖 **بخش هوش مصنوعی**\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-        reply_markup=get_ai_menu_markup(),
-        parse_mode='Markdown'
-    )
-    return AI_MENU
-
-async def crypto_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """مدیریت منوی ارزهای دیجیتال"""
-    text = update.message.text
-    user = update.effective_user
-    
-    # بررسی دسترسی
-    if not await check_user_access(user.id):
-        return ConversationHandler.END
-    
-    # به‌روزرسانی فعالیت کاربر
-    db_manager.update_user_activity(user.id)
-    
-    if text == "🔙 بازگشت":
-        bot_logger.log_user_action(user.id, "BACK_TO_MAIN", "بازگشت به منوی اصلی")
-        
-        await update.message.reply_text(
-            "🏠 **منوی اصلی**\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-            reply_markup=get_main_menu_markup(),
-            parse_mode='Markdown'
-        )
-        return MAIN_MENU
-    
-    # سایر دکمه‌های crypto - از عملکرد قبلی استفاده می‌شود
-    elif text in ["📊 قیمت لحظه‌ای", "📰 اخبار ارز", "🔥 ارزهای ترند", "📈 نمودار قیمت"]:
-        # اینجا باید handler های قبلی crypto قرار بگیرد
-        # فعلاً پیام موقت
-        await update.message.reply_text(
-            f"🚧 **{text}** در حال بروزرسانی است.\n\nلطفاً از منوی اصلی استفاده کنید.",
-            parse_mode='Markdown'
-        )
-        return CRYPTO_MENU
-    
-    # در صورت عدم تطبیق، نمایش منوی crypto
-    await update.message.reply_text(
-        "💰 **بخش ارزهای دیجیتال**\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-        reply_markup=get_crypto_menu_markup(),
-        parse_mode='Markdown'
-    )
-    return CRYPTO_MENU
-
 def main() -> None:
     """تابع اصلی برای راه‌اندازی ربات"""
     logger.info("🚀 شروع ربات تلگرام پیشرفته...")
@@ -1029,41 +931,6 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
     )
     application.add_handler(tradingview_conv_handler)
-    
-    # ConversationHandler اصلی برای ناوبری بین منوها
-    main_conv_handler = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex("^💰 ارزهای دیجیتال$"), main_menu_handler),
-            MessageHandler(filters.Regex("^🤖 هوش مصنوعی$"), main_menu_handler),
-            MessageHandler(filters.Regex("^📊 پورتفولیو من$"), main_menu_handler),
-            MessageHandler(filters.Regex("^📈 تحلیل تکنیکال$"), main_menu_handler),
-            MessageHandler(filters.Regex("^⚙️ تنظیمات$"), main_menu_handler),
-            MessageHandler(filters.Regex("^📞 پشتیبانی$"), main_menu_handler),
-        ],
-        states={
-            MAIN_MENU: [
-                MessageHandler(filters.Regex("^💰 ارزهای دیجیتال$"), main_menu_handler),
-                MessageHandler(filters.Regex("^🤖 هوش مصنوعی$"), main_menu_handler),
-                MessageHandler(filters.Regex("^📊 پورتفولیو من$"), main_menu_handler),
-                MessageHandler(filters.Regex("^📈 تحلیل تکنیکال$"), main_menu_handler),
-                MessageHandler(filters.Regex("^⚙️ تنظیمات$"), main_menu_handler),
-                MessageHandler(filters.Regex("^📞 پشتیبانی$"), main_menu_handler),
-            ],
-            AI_MENU: [
-                MessageHandler(filters.Regex("^📰 اخبار هوش مصنوعی$"), ai_menu_handler),
-                MessageHandler(filters.Regex("^🔙 بازگشت$"), ai_menu_handler),
-            ],
-            CRYPTO_MENU: [
-                MessageHandler(filters.Regex("^📊 قیمت لحظه‌ای$"), crypto_menu_handler),
-                MessageHandler(filters.Regex("^📰 اخبار ارز$"), crypto_menu_handler),
-                MessageHandler(filters.Regex("^🔥 ارزهای ترند$"), crypto_menu_handler),
-                MessageHandler(filters.Regex("^📈 نمودار قیمت$"), crypto_menu_handler),
-                MessageHandler(filters.Regex("^🔙 بازگشت$"), crypto_menu_handler),
-            ],
-        },
-        fallbacks=[CommandHandler("menu", menu_command)],
-    )
-    application.add_handler(main_conv_handler)
     
     # Handler برای پیام‌های ناشناخته (راهنمایی ساده)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, fallback_handler))
