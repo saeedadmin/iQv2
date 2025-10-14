@@ -78,7 +78,7 @@ else:
     tradingview_fetcher = None
 
 # متغیرهای مکالمه
-(BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION) = range(3)
+(BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION, TRADINGVIEW_ANALYSIS) = range(4)
 
 # بررسی دسترسی کاربر
 async def check_user_access(user_id: int) -> bool:
@@ -311,6 +311,137 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         parse_mode='Markdown'
     )
 
+# Handler برای شروع فرآیند تحلیل TradingView
+async def tradingview_analysis_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """شروع فرآیند تحلیل TradingView"""
+    help_message = """
+📈 *تحلیل کامیونیتی TradingView*
+
+آخرین تحلیل‌های کاربران حرفه‌ای TradingView را دریافت کنید!
+
+✅ *فرمت مورد قبول:*
+• فقط جفت ارز با USDT به صورت حروف کوچک
+• مثال: `btcusdt`, `ethusdt`, `solusdt`
+
+📝 *مثال‌های صحیح:*
+• btcusdt (بیت کوین)
+• ethusdt (اتریوم) 
+• solusdt (سولانا)
+• adausdt (کاردانو)
+• bnbusdt (بایننس کوین)
+• xrpusdt (ریپل)
+• dogeusdt (دوج کوین)
+• linkusdt (چین لینک)
+• ltcusdt (لایت کوین)
+• dotusdt (پولکادات)
+• avaxusdt (اولانچ)
+
+⚠️ *نکته مهم:* فقط حروف کوچک، بدون فاصله یا نشانه
+💡 *راهنما:* جفت ارز مورد نظر خود را تایپ کنید
+
+برای لغو /cancel بفرستید
+    """
+    
+    await update.message.reply_text(help_message, parse_mode='Markdown')
+    return TRADINGVIEW_ANALYSIS
+
+async def tradingview_analysis_process(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """پردازش درخواست تحلیل TradingView"""
+    user = update.effective_user
+    message_text = update.message.text
+    
+    if message_text.startswith('/cancel'):
+        await update.message.reply_text("❌ تحلیل TradingView لغو شد.")
+        return ConversationHandler.END
+    
+    # اعتبارسنجی فرمت ورودی
+    crypto_pair_pattern = r'^[a-z]+usdt$'
+    message_clean = message_text.lower().strip()
+    
+    # اول بررسی کن که آیا فرمت درست است
+    if re.match(crypto_pair_pattern, message_clean) and len(message_clean) >= 6:
+        # نمایش پیام در حال بارگذاری
+        loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین تحلیل کامیونیتی از TradingView...\n\nلطفاً چند ثانیه صبر کنید.")
+        
+        try:
+            # دریافت تحلیل از TradingView
+            analysis_data = await tradingview_fetcher.fetch_latest_analysis(message_clean)
+            
+            if analysis_data.get('success'):
+                # فرمت کردن پیام
+                analysis_message = tradingview_fetcher.format_analysis_message(analysis_data)
+                
+                # ارسال پیام تحلیل
+                if analysis_data.get('image_url'):
+                    # ارسال با عکس
+                    try:
+                        await loading_message.delete()
+                        await update.message.reply_photo(
+                            photo=analysis_data['image_url'],
+                            caption=analysis_message,
+                            parse_mode='Markdown'
+                        )
+                    except Exception:
+                        # اگر عکس کار نکرد، فقط متن بفرست
+                        await loading_message.edit_text(
+                            analysis_message,
+                            parse_mode='Markdown',
+                            disable_web_page_preview=True
+                        )
+                else:
+                    # ارسال بدون عکس
+                    await loading_message.edit_text(
+                        analysis_message,
+                        parse_mode='Markdown',
+                        disable_web_page_preview=True
+                    )
+            else:
+                # خطا در دریافت تحلیل (پیام خطا از tradingview_fetcher می‌آید)
+                await loading_message.edit_text(analysis_data.get('error', 'خطا در دریافت تحلیل'))
+            
+        except Exception as e:
+            error_message = f"❌ خطا در دریافت تحلیل TradingView:\n{str(e)}"
+            await loading_message.edit_text(error_message)
+        
+        return ConversationHandler.END
+    else:
+        # فرمت اشتباه - نمایش پیام خطا
+        wrong_format_patterns = [
+            r'^[a-zA-Z]+/[a-zA-Z]+$',  # مثل BTC/USDT
+            r'^[A-Z]{2,6}$',           # مثل BTC، ETH (حروف بزرگ کوتاه)
+            r'^[a-z]{2,6}$',           # مثل btc، eth (حروف کوچک کوتاه، بدون usdt)
+            r'^[a-zA-Z]+-[a-zA-Z]+$',  # مثل BTC-USDT
+            r'^[a-zA-Z]+_[a-zA-Z]+$',  # مثل BTC_USDT
+            r'^[a-zA-Z]+\s+[a-zA-Z]+$', # مثل BTC USDT
+        ]
+        
+        # اگر کاربر فرمت اشتباه وارد کرده (ولی شبیه ارز است)
+        format_looks_like_crypto = any(re.match(pattern, message_text.strip()) for pattern in wrong_format_patterns)
+        
+        if format_looks_like_crypto or len(message_text.strip()) >= 3:
+            error_message = """❌ **فرمت نادرست!**
+
+✅ **فرمت صحیح:** `btcusdt` (حروف کوچک، چسبیده)
+
+📝 **مثال‌های معتبر:**
+• `btcusdt` - بیت کوین
+• `ethusdt` - اتریوم  
+• `solusdt` - سولانا
+• `adausdt` - کاردانو
+• `bnbusdt` - بایننس کوین
+• `xrpusdt` - ریپل
+• `dogeusdt` - دوج کوین
+
+⚠️ **توجه:** فقط حروف کوچک، بدون فاصله یا نشانه خاص
+
+لطفاً دوباره تلاش کنید یا /cancel برای لغو بفرستید."""
+            
+            await update.message.reply_text(error_message, parse_mode='Markdown')
+            return TRADINGVIEW_ANALYSIS
+        else:
+            await update.message.reply_text("❌ ورودی نامعتبر. لطفاً نام ارز را به فرمت صحیح وارد کنید یا /cancel برای لغو بفرستید.")
+            return TRADINGVIEW_ANALYSIS
+
 # Handler برای پیام‌های متنی (echo)
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """پردازش پیام‌های کاربر"""
@@ -406,38 +537,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     
     elif message_text == "📈 تحلیل TradingView":
-        # درخواست جفت ارز برای تحلیل
-        help_message = """
-📈 *تحلیل کامیونیتی TradingView*
-
-آخرین تحلیل‌های کاربران حرفه‌ای TradingView را دریافت کنید!
-
-✅ *فرمت مورد قبول:*
-• فقط جفت ارز با USDT به صورت حروف کوچک
-• مثال: `btcusdt`, `ethusdt`, `solusdt`
-
-📝 *مثال‌های صحیح:*
-• btcusdt (بیت کوین)
-• ethusdt (اتریوم) 
-• solusdt (سولانا)
-• adausdt (کاردانو)
-• bnbusdt (بایننس کوین)
-• xrpusdt (ریپل)
-• dogeusdt (دوج کوین)
-• linkusdt (چین لینک)
-• ltcusdt (لایت کوین)
-• dotusdt (پولکادات)
-• avaxusdt (اولانچ)
-
-⚠️ *نکته مهم:* فقط حروف کوچک، بدون فاصله یا نشانه
-💡 *راهنما:* جفت ارز مورد نظر خود را تایپ کنید
-        """
-        
-        await update.message.reply_text(
-            help_message,
-            parse_mode='Markdown'
-        )
-        return
+        return await tradingview_analysis_start(update, context)
     
     elif message_text == "🔙 بازگشت به منوی اصلی":
         # بازگشت به منوی اصلی
@@ -461,88 +561,6 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
     
-    # بررسی آیا پیام فرمت جفت ارز است برای تحلیل TradingView
-    # فقط فرمت مانند btcusdt قابل قبول است
-    crypto_pair_pattern = r'^[a-z]+usdt$'
-    message_clean = message_text.lower().strip()
-    
-    # اول بررسی کن که آیا فرمت درست است
-    if re.match(crypto_pair_pattern, message_clean) and len(message_clean) >= 6:
-        # نمایش پیام در حال بارگذاری
-        loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین تحلیل کامیونیتی از TradingView...\n\nلطفاً چند ثانیه صبر کنید.")
-        
-        try:
-            # دریافت تحلیل از TradingView
-            analysis_data = await tradingview_fetcher.fetch_latest_analysis(message_clean)
-            
-            if analysis_data.get('success'):
-                # فرمت کردن پیام
-                analysis_message = tradingview_fetcher.format_analysis_message(analysis_data)
-                
-                # ارسال پیام تحلیل
-                if analysis_data.get('image_url'):
-                    # ارسال با عکس
-                    try:
-                        await loading_message.delete()
-                        await update.message.reply_photo(
-                            photo=analysis_data['image_url'],
-                            caption=analysis_message,
-                            parse_mode='Markdown'
-                        )
-                    except Exception:
-                        # اگر عکس کار نکرد، فقط متن بفرست
-                        await loading_message.edit_text(
-                            analysis_message,
-                            parse_mode='Markdown',
-                            disable_web_page_preview=True
-                        )
-                else:
-                    # ارسال بدون عکس
-                    await loading_message.edit_text(
-                        analysis_message,
-                        parse_mode='Markdown',
-                        disable_web_page_preview=True
-                    )
-            else:
-                # خطا در دریافت تحلیل (پیام خطا از tradingview_fetcher می‌آید)
-                await loading_message.edit_text(analysis_data.get('error', 'خطا در دریافت تحلیل'))
-            
-        except Exception as e:
-            error_message = f"❌ خطا در دریافت تحلیل TradingView:\n{str(e)}"
-            await loading_message.edit_text(error_message)
-        
-        return
-    else:
-        # بررسی اگر کاربر سعی می‌کند تحلیل دریافت کند ولی فرمت اشتباه است
-        wrong_format_patterns = [
-            r'^[a-zA-Z]+/[a-zA-Z]+$',  # مثل BTC/USDT
-            r'^[A-Z]{2,6}$',           # مثل BTC، ETH (حروف بزرگ کوتاه)
-            r'^[a-z]{2,6}$',           # مثل btc، eth (حروف کوچک کوتاه، بدون usdt)
-            r'^[a-zA-Z]+-[a-zA-Z]+$',  # مثل BTC-USDT
-            r'^[a-zA-Z]+_[a-zA-Z]+$',  # مثل BTC_USDT
-            r'^[a-zA-Z]+\s+[a-zA-Z]+$', # مثل BTC USDT
-        ]
-        
-        # اگر کاربر فرمت اشتباه وارد کرده (ولی شبیه ارز است)
-        for pattern in wrong_format_patterns:
-            if re.match(pattern, message_text.strip()) and len(message_text.strip()) >= 3:
-                error_message = """❌ **فرمت نادرست!**
-
-✅ **فرمت صحیح:** `btcusdt` (حروف کوچک، چسبیده)
-
-📝 **مثال‌های معتبر:**
-• `btcusdt` - بیت کوین
-• `ethusdt` - اتریوم  
-• `solusdt` - سولانا
-• `adausdt` - کاردانو
-• `bnbusdt` - بایننس کوین
-• `xrpusdt` - ریپل
-• `dogeusdt` - دوج کوین
-
-⚠️ **توجه:** فقط حروف کوچک، بدون فاصله یا نشانه خاص"""
-                
-                await update.message.reply_text(error_message, parse_mode='Markdown')
-                return
     
     # پردازش پیام‌های معمولی
     response = f"""
@@ -775,6 +793,16 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
     )
     application.add_handler(broadcast_conv_handler)
+    
+    # ConversationHandler برای تحلیل TradingView
+    tradingview_conv_handler = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex("^📈 تحلیل TradingView$"), tradingview_analysis_start)],
+        states={
+            TRADINGVIEW_ANALYSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND, tradingview_analysis_process)],
+        },
+        fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
+    )
+    application.add_handler(tradingview_conv_handler)
     
     # Handler برای پیام‌های متنی عادی (غیر از دستورات)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))

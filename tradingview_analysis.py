@@ -63,7 +63,8 @@ class TradingViewAnalysisFetcher:
         try:
             soup = BeautifulSoup(content, 'html.parser')
             
-            # جستجو برای لینک‌های ایده (idea) به جای chart
+            # جمع‌آوری همه ایده‌های مرتبط
+            candidate_ideas = []
             idea_links = soup.find_all('a', href=True)
             
             for link in idea_links:
@@ -94,16 +95,36 @@ class TradingViewAnalysisFetcher:
                         # استخراج نام نویسنده
                         author = self.extract_author_from_soup(soup, link)
                         
-                        return {
+                        # استخراج زمان انتشار (اگر موجود باشد)
+                        publish_time = self.extract_publish_time(soup, link)
+                        
+                        idea_data = {
                             'title': title,
                             'description': description,
                             'analysis_url': analysis_url,
                             'image_url': image_url,
                             'author': author,
+                            'publish_time': publish_time,
                             'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
                         }
+                        
+                        candidate_ideas.append(idea_data)
             
-            return None
+            # اگر هیچ ایده‌ای پیدا نشد
+            if not candidate_ideas:
+                return None
+            
+            # مرتب‌سازی بر اساس زمان انتشار (جدیدترین اول)
+            # ایده‌هایی که زمان انتشار دارند اولویت بالاتری دارند
+            candidate_ideas.sort(key=lambda x: (
+                x['publish_time'] is not None,  # ایده‌های با زمان اول
+                x['publish_time'] if x['publish_time'] else datetime.datetime.min,
+                len(x['description'])  # توضیحات بلندتر اولویت بیشتر
+            ), reverse=True)
+            
+            # برگرداندن جدیدترین و بهترین ایده
+            return candidate_ideas[0]
+            
         except Exception as e:
             print(f"خطا در parse_community_content: {e}")
             return None
@@ -199,6 +220,47 @@ class TradingViewAnalysisFetcher:
             return 'TradingView Community'
         except:
             return 'TradingView Community'
+    
+    def extract_publish_time(self, soup: BeautifulSoup, link_element) -> Optional[datetime.datetime]:
+        """استخراج زمان انتشار تحلیل"""
+        try:
+            parent = link_element.parent
+            if parent:
+                # جستجو برای عناصری که ممکن است شامل زمان باشند
+                time_elements = parent.find_all(['time', 'span'])
+                for element in time_elements:
+                    # بررسی datetime attribute
+                    if element.get('datetime'):
+                        try:
+                            return datetime.datetime.fromisoformat(element['datetime'].replace('Z', '+00:00'))
+                        except:
+                            pass
+                    
+                    # بررسی متن برای الگوهای زمانی
+                    text = element.get_text(strip=True)
+                    time_patterns = [
+                        r'(\d+)\s*hour[s]?\s*ago',
+                        r'(\d+)\s*day[s]?\s*ago',
+                        r'(\d+)\s*week[s]?\s*ago',
+                        r'(\d+)\s*month[s]?\s*ago'
+                    ]
+                    
+                    for pattern in time_patterns:
+                        match = re.search(pattern, text, re.IGNORECASE)
+                        if match:
+                            number = int(match.group(1))
+                            if 'hour' in text.lower():
+                                return datetime.datetime.now() - datetime.timedelta(hours=number)
+                            elif 'day' in text.lower():
+                                return datetime.datetime.now() - datetime.timedelta(days=number)
+                            elif 'week' in text.lower():
+                                return datetime.datetime.now() - datetime.timedelta(weeks=number)
+                            elif 'month' in text.lower():
+                                return datetime.datetime.now() - datetime.timedelta(days=number*30)
+            
+            return None
+        except:
+            return None
     
     def normalize_to_usdt_pair_DEPRECATED(self, crypto_input: str) -> Optional[str]:
         """تبدیل ورودی کاربر به فرمت جفت ارز USDT"""
