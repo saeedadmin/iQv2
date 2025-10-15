@@ -297,61 +297,166 @@ async def fetch_fear_greed_index():
         }
 
 async def download_fear_greed_chart():
-    """دانلود تصویر چارت شاخص ترس و طمع"""
+    """دانلود تصویر چارت شاخص ترس و طمع از منابع مختلف"""
     import aiohttp
     import os
     
-    try:
-        # URL تصویر چارت
-        chart_url = "https://alternative.me/crypto/fear-and-greed-index.png"
-        chart_path = "tmp/fear_greed_chart.png"
-        
-        # ایجاد دایرکتوری tmp اگر وجود نداشته باشد
-        os.makedirs("tmp", exist_ok=True)
-        
-        # Headers برای شبیه‌سازی درخواست مرورگر
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'image/png,image/*,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-        }
-        
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(chart_url, timeout=30) as response:
-                print(f"Response status: {response.status}")
-                print(f"Response headers: {dict(response.headers)}")
-                
-                if response.status == 200:
-                    content = await response.read()
-                    print(f"Content length: {len(content)} bytes")
+    # لیست منابع مختلف برای تصویر
+    image_sources = [
+        "https://alternative.me/crypto/fear-and-greed-index.png",
+        "https://alternative.me/images/fng/crypto-fear-and-greed-index.png", 
+        "https://api.alternative.me/fng/png"
+    ]
+    
+    chart_path = "tmp/fear_greed_chart.png"
+    os.makedirs("tmp", exist_ok=True)
+    
+    # Headers برای شبیه‌سازی درخواست مرورگر
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
+        'Accept': 'image/png,image/webp,image/jpeg,image/*,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Sec-Fetch-Dest': 'image',
+        'Sec-Fetch-Mode': 'no-cors',
+        'Sec-Fetch-Site': 'cross-site',
+    }
+    
+    for i, chart_url in enumerate(image_sources, 1):
+        try:
+            print(f"تلاش {i}: دانلود از {chart_url}")
+            
+            async with aiohttp.ClientSession(
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=30),
+                connector=aiohttp.TCPConnector(ssl=False)
+            ) as session:
+                async with session.get(chart_url) as response:
+                    print(f"وضعیت پاسخ: {response.status}")
                     
-                    if len(content) > 100:  # حداقل 100 بایت برای یک تصویر معتبر
-                        with open(chart_path, 'wb') as f:
-                            f.write(content)
+                    if response.status == 200:
+                        content = await response.read()
+                        print(f"حجم محتوا: {len(content)} بایت")
                         
-                        # بررسی موفقیت ذخیره فایل
-                        if os.path.exists(chart_path) and os.path.getsize(chart_path) > 100:
-                            print(f"چارت با موفقیت دانلود شد: {chart_path} ({os.path.getsize(chart_path)} bytes)")
-                            return chart_path
+                        # بررسی اینکه محتوا یک تصویر واقعی است
+                        if len(content) > 1000:  # حداقل 1KB برای تصویر
+                            # بررسی magic bytes برای PNG
+                            if content.startswith(b'\x89PNG') or content.startswith(b'\xff\xd8\xff'):
+                                with open(chart_path, 'wb') as f:
+                                    f.write(content)
+                                
+                                if os.path.exists(chart_path) and os.path.getsize(chart_path) > 1000:
+                                    print(f"✅ تصویر با موفقیت دانلود شد: {chart_path}")
+                                    return chart_path
+                                else:
+                                    print("❌ مشکل در ذخیره فایل")
+                            else:
+                                print("❌ محتوا تصویر معتبری نیست")
                         else:
-                            print("فایل چارت خالی است یا ذخیره نشده")
-                            return None
+                            print(f"❌ حجم محتوا خیلی کم است: {len(content)} بایت")
                     else:
-                        print(f"محتوای دریافتی کوچک است: {len(content)} bytes")
-                        return None
-                else:
-                    print(f"خطا در دانلود چارت: {response.status}")
-                    response_text = await response.text()
-                    print(f"Response text: {response_text[:200]}...")
-                    return None
-                    
+                        print(f"❌ کد خطای HTTP: {response.status}")
+                        
+        except Exception as e:
+            print(f"❌ خطا در منبع {i}: {e}")
+            continue
+    
+    print("❌ هیچ منبعی کار نکرد - ایجاد تصویر ساده...")
+    return await create_simple_fear_greed_image()
+
+async def create_simple_fear_greed_image():
+    """ایجاد تصویر ساده شاخص ترس و طمع"""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        import math
+        import os
+        
+        # دریافت مقدار فعلی شاخص
+        index_data = await fetch_fear_greed_index()
+        value = index_data.get('value', 50)
+        
+        # ایجاد canvas
+        width, height = 400, 300
+        img = Image.new('RGB', (width, height), color='white')
+        draw = ImageDraw.Draw(img)
+        
+        # رنگ براساس مقدار
+        if value <= 25:
+            color = '#FF0000'  # قرمز - ترس شدید
+        elif value <= 45:
+            color = '#FF8000'  # نارنجی - ترس
+        elif value <= 55:
+            color = '#FFFF00'  # زرد - خنثی
+        elif value <= 75:
+            color = '#80FF00'  # سبز روشن - طمع
+        else:
+            color = '#00FF00'  # سبز - طمع شدید
+        
+        # رسم دایره اصلی
+        center_x, center_y = width // 2, height // 2 + 20
+        radius = 100
+        
+        # رسم قوس نیم دایره
+        for angle in range(180):
+            end_x = center_x + radius * math.cos(math.radians(180 - angle))
+            end_y = center_y - radius * math.sin(math.radians(180 - angle))
+            
+            # رنگ گرادیانت
+            progress = angle / 180
+            if progress < 0.25:
+                arc_color = '#FF0000'
+            elif progress < 0.45:
+                arc_color = '#FF8000'
+            elif progress < 0.55:
+                arc_color = '#FFFF00'
+            elif progress < 0.75:
+                arc_color = '#80FF00'
+            else:
+                arc_color = '#00FF00'
+            
+            draw.line([(center_x, center_y), (end_x, end_y)], fill=arc_color, width=3)
+        
+        # رسم عقربه
+        needle_angle = 180 - (value * 180 / 100)
+        needle_x = center_x + (radius - 10) * math.cos(math.radians(needle_angle))
+        needle_y = center_y - (radius - 10) * math.sin(math.radians(needle_angle))
+        draw.line([(center_x, center_y), (needle_x, needle_y)], fill='black', width=5)
+        
+        # نوشتن متن
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+        except:
+            font = ImageFont.load_default()
+        
+        # نوشتن مقدار
+        text = f"{value}"
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        draw.text((center_x - text_width//2, center_y + 30), text, fill='black', font=font)
+        
+        # نوشتن برچسب‌ها
+        try:
+            small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+        except:
+            small_font = ImageFont.load_default()
+        
+        draw.text((30, center_y + 10), "Fear", fill='red', font=small_font)
+        draw.text((width - 70, center_y + 10), "Greed", fill='green', font=small_font)
+        
+        # ذخیره فایل
+        chart_path = "tmp/fear_greed_chart.png"
+        img.save(chart_path, 'PNG')
+        
+        if os.path.exists(chart_path):
+            print(f"✅ تصویر ساده ایجاد شد: {chart_path}")
+            return chart_path
+        else:
+            print("❌ مشکل در ایجاد تصویر ساده")
+            return None
+            
     except Exception as e:
-        print(f"خطا در دانلود چارت شاخص: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ خطا در ایجاد تصویر ساده: {e}")
         return None
 
 def format_fear_greed_message(index_data):
@@ -1166,6 +1271,10 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             # ارسال پیام همراه با تصویر
             if chart_path and os.path.exists(chart_path):
                 try:
+                    # بررسی حجم فایل
+                    file_size = os.path.getsize(chart_path)
+                    print(f"📊 ارسال تصویر شاخص - حجم: {file_size} بایت")
+                    
                     # ارسال تصویر همراه با متن در کپشن
                     with open(chart_path, 'rb') as photo:
                         await update.message.reply_photo(
@@ -1173,12 +1282,13 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                             caption=message,
                             parse_mode='HTML'
                         )
-                    print("عکس شاخص ترس و طمع با موفقیت ارسال شد")
+                    print("✅ عکس شاخص ترس و طمع با موفقیت ارسال شد")
+                    
                 except Exception as photo_error:
-                    print(f"خطا در ارسال عکس: {photo_error}")
+                    print(f"❌ خطا در ارسال عکس: {photo_error}")
                     # اگر ارسال عکس ناموفق بود، متن را ارسال کن
                     await update.message.reply_text(
-                        message,
+                        f"🔄 **مشکل در نمایش تصویر**\n\n{message}\n\n_تصویر در حال حاضر در دسترس نیست_",
                         parse_mode='HTML',
                         disable_web_page_preview=True
                     )
@@ -1186,13 +1296,14 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 # حذف فایل موقت
                 try:
                     os.remove(chart_path)
+                    print("🗑️ فایل موقت حذف شد")
                 except:
                     pass
             else:
-                print("عکس چارت دانلود نشد، فقط متن ارسال می‌شود")
+                print("❌ هیچ تصویری دانلود نشد - ارسال فقط متن")
                 # اگر تصویر دانلود نشد، فقط متن ارسال کن
                 await update.message.reply_text(
-                    message,
+                    f"📊 **شاخص ترس و طمع بازار کریپتو**\n\n{message}\n\n_⚠️ تصویر در حال حاضر در دسترس نیست_",
                     parse_mode='HTML',
                     disable_web_page_preview=True
                 )
