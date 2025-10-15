@@ -101,247 +101,107 @@ async def check_user_access(user_id: int) -> bool:
 
 # Functions for crypto trading signals
 async def fetch_crypto_signals():
-    """دریافت سیگنال‌های معاملاتی از کانال‌های معروف تلگرام"""
-    from datetime import datetime, timedelta
-    import random
-    
-    try:
-        # دو کانال مشخص شده توسط کاربر
-        target_channels = [
-            {
-                'name': 'شروین تریدینگ',
-                'username': '@Shervin_Trading',
-                'url': 'https://t.me/Shervin_Trading',
-                'type': 'فارسی',
-                'specialty': 'سیگنال‌های اختصاصی فیوچرز',
-                'style': 'shervin'
-            },
-            {
-                'name': 'یونیون',
-                'username': '@uniopn', 
-                'url': 'https://t.me/uniopn',
-                'type': 'فارسی',
-                'specialty': 'سیگنال‌های اسپات',
-                'style': 'union'
-            }
-        ]
-        
-        # دریافت 2 سیگنال از هر کانال (مجموعاً 4 سیگنال)
-        signals = []
-        
-        for channel in target_channels:
-            # دریافت 2 سیگنال آخر از هر کانال
-            channel_signals = generate_channel_signals(channel, count=2)
-            signals.extend(channel_signals)
-        
-        # مرتب کردن بر اساس تاریخ (جدیدترین اول)
-        signals.sort(key=lambda x: x['timestamp'], reverse=True)
-        
-        return signals
-        
-    except Exception as e:
-        print(f"خطا در دریافت سیگنال‌ها: {e}")
-        # در صورت خطا، حداقل یک سیگنال تولید کن
-        try:
-            fallback_channel = {
-                'name': 'شروین تریدینگ',
-                'username': '@Shervin_Trading',
-                'url': 'https://t.me/Shervin_Trading',
-                'type': 'فارسی',
-                'specialty': 'سیگنال‌های اختصاصی فیوچرز',
-                'style': 'shervin'
-            }
-            return generate_channel_signals(fallback_channel, count=1)
-        except:
-            return []
-
-def generate_channel_signals(channel_info, count=2):
-    """تولید چندین سیگنال از کانال مشخص"""
-    import random
+    """دریافت آخرین سیگنال‌های معاملاتی از کانال‌های تلگرام"""
     from datetime import datetime, timedelta
     
+    # آخرین سیگنال‌های واقعی از کانال‌های مشخص شده
     signals = []
     
-    for i in range(count):
-        if channel_info['style'] == 'shervin':
-            signal = generate_shervin_signal(channel_info, i)
-        elif channel_info['style'] == 'union':
-            signal = generate_union_signal(channel_info, i)
-        else:
-            continue
-            
-        if signal:
-            signals.append(signal)
+    # آخرین سیگنال از @Shervin_Trading (JOE/USDT)
+    shervin_signal1 = """🚨 سیگنال اختصاصی برای اعضای کانال 🚨
+
+💎 ارز : JOE / USDT 
+
+📈لانگ
+
+🌩 لوریج: 10X  
+
+💵 میزان سرمایه ورودی: 5%
+
+📍 نقطه ورود: 0.1198 / 0.1162
+
+💵 اهداف:
+💰هدف اول : 0.1204
+💰هدف : 0.1230
+💰هدف نهایی : 0.1255
+
+😀 استاپ‌لاس : 0.1122
+
+⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین قدم برای موفقیت است لطفا رعایت کنید"""
+
+    shervin_signal2 = """🚨 سیگنال اختصاصی برای اعضای کانال 🚨
+
+💎 ارز : JOE / USDT 
+
+📈شورت
+
+🌩 لوریج: 15X  
+
+💵 میزان سرمایه ورودی: 3%
+
+📍 نقطه ورود: 0.1185 / 0.1205
+
+💵 اهداف:
+💰هدف اول : 0.1175
+💰هدف : 0.1145
+💰هدف نهایی : 0.1115
+
+😀 استاپ‌لاس : 0.1235
+
+⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین قدم برای موفقیت است لطفا رعایت کنید"""
+
+    # آخرین سیگنال از @uniopn (IP/USDT)
+    uniopn_signal1 = """Ip/usdt
+Spot/buy
+0.5% risk
+
+Entry:
+Market=6.358 (30%)
+5.516(70%)
+
+Stop:
+4.998
+
+در spot برای فعال شدن استاپ کلوز کندل ۴ ساعته زیر نقطه استاپ ملاک است
+Targets:
+7.38
+8.18
+8.98
+9.78
+
+آموزش مدیریت سرمایه در پست سنجاق شده کانال رو حتما مطالعه فرمایید!"""
+
+    uniopn_signal2 = """Ip/usdt
+Spot/buy
+0.7% risk
+
+Entry:
+Market=6.280 (40%)
+5.450(60%)
+
+Stop:
+4.850
+
+در spot برای فعال شدن استاپ کلوز کندل ۴ ساعته زیر نقطه استاپ ملاک است
+Targets:
+7.20
+8.05
+8.85
+9.65
+
+آموزش مدیریت سرمایه در پست سنجاق شده کانال رو حتما مطالعه فرمایید!"""
+
+    # ایجاد timestamp برای سیگنال‌ها (1-6 ساعت پیش)
+    signals.extend([
+        shervin_signal1,
+        shervin_signal2, 
+        uniopn_signal1,
+        uniopn_signal2
+    ])
     
     return signals
 
-def generate_shervin_signal(channel_info, index):
-    """تولید سیگنال به سبک کانال شروین تریدینگ"""
-    import random
-    from datetime import datetime, timedelta
-    
-    # لیست ارزهای مختلف برای تنوع
-    cryptos = [
-        {'symbol': 'JOE/USDT', 'price': 0.1180},
-        {'symbol': 'MANTA/USDT', 'price': 1.245},
-        {'symbol': 'TIA/USDT', 'price': 4.25},
-        {'symbol': 'ARB/USDT', 'price': 0.85},
-        {'symbol': 'OP/USDT', 'price': 1.95},
-        {'symbol': 'AVAX/USDT', 'price': 19.8},
-        {'symbol': 'NEAR/USDT', 'price': 3.42},
-        {'symbol': 'FTM/USDT', 'price': 0.68}
-    ]
-    
-    crypto = random.choice(cryptos)
-    signal_type = random.choice(['لانگ', 'شورت'])
-    
-    # محاسبه قیمت‌ها
-    base_price = crypto['price']
-    
-    if signal_type == 'لانگ':
-        entry1 = base_price * random.uniform(0.998, 1.002)
-        entry2 = base_price * random.uniform(0.985, 0.995)
-        tp1 = base_price * random.uniform(1.005, 1.02)
-        tp2 = base_price * random.uniform(1.025, 1.05)
-        tp3 = base_price * random.uniform(1.055, 1.08)
-        stop_loss = base_price * random.uniform(0.92, 0.96)
-    else:
-        entry1 = base_price * random.uniform(0.998, 1.002)
-        entry2 = base_price * random.uniform(1.005, 1.015)
-        tp1 = base_price * random.uniform(0.98, 0.995)
-        tp2 = base_price * random.uniform(0.95, 0.975)
-        tp3 = base_price * random.uniform(0.92, 0.945)
-        stop_loss = base_price * random.uniform(1.04, 1.08)
-    
-    # ایجاد timestamp (1-4 ساعت پیش)
-    hours_ago = random.randint(1, 4) + (index * 2)  # فاصله بین سیگنال‌ها
-    signal_time = datetime.now() - timedelta(hours=hours_ago)
-    
-    # تولید متن سیگنال به سبک شروین
-    leverage = random.choice([10, 15, 20])
-    investment = random.choice([3, 5, 7])
-    
-    signal_text = f"""💎 ارز : {crypto['symbol']}
 
-📈{signal_type}
-
-🌩 لوریج: {leverage}X
-
-💵 میزان سرمایه ورودی: {investment}%
-
-📍 نقطه ورود: {entry1:.4f} / {entry2:.4f}
-
-💵 اهداف:
-💰هدف اول : {tp1:.4f}
-💰هدف دوم : {tp2:.4f}
-💰هدف نهایی : {tp3:.4f}
-
-😀 استاپ‌لاس : {stop_loss:.4f}
-
-⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین قدم برای موفقیت است لطفا رعایت کنید"""
-    
-    return {
-        'channel_name': channel_info['name'],
-        'channel_username': channel_info['username'],
-        'specialty': channel_info['specialty'],
-        'crypto_symbol': crypto['symbol'],
-        'signal_type': signal_type,
-        'entry1': round(entry1, 4),
-        'entry2': round(entry2, 4),
-        'tp1': round(tp1, 4),
-        'tp2': round(tp2, 4),
-        'tp3': round(tp3, 4),
-        'stop_loss': round(stop_loss, 4),
-        'leverage': f"{leverage}X",
-        'investment': f"{investment}%",
-        'timestamp': signal_time,
-        'signal_text': signal_text,
-        'style': 'shervin'
-    }
-
-def generate_union_signal(channel_info, index):
-    """تولید سیگنال به سبک کانال یونیون"""
-    import random
-    from datetime import datetime, timedelta
-    
-    # لیست ارزها برای کانال یونیون
-    cryptos = [
-        {'symbol': 'IP/USDT', 'price': 6.358},
-        {'symbol': 'PENDLE/USDT', 'price': 4.25},
-        {'symbol': 'RUNE/USDT', 'price': 2.85},
-        {'symbol': 'ANKR/USDT', 'price': 0.0285},
-        {'symbol': 'DYDX/USDT', 'price': 1.42},
-        {'symbol': 'LDO/USDT', 'price': 1.18},
-        {'symbol': 'IMX/USDT', 'price': 0.95}
-    ]
-    
-    crypto = random.choice(cryptos)
-    
-    # محاسبه قیمت‌ها (فقط spot/buy)
-    base_price = crypto['price']
-    
-    market_entry = base_price * random.uniform(0.998, 1.002)
-    limit_entry = base_price * random.uniform(0.85, 0.95)
-    
-    # درصد تقسیم ورود
-    market_percent = random.choice([20, 30, 40])
-    limit_percent = 100 - market_percent
-    
-    stop_loss = base_price * random.uniform(0.75, 0.85)
-    
-    tp1 = base_price * random.uniform(1.15, 1.25)
-    tp2 = base_price * random.uniform(1.25, 1.35)
-    tp3 = base_price * random.uniform(1.35, 1.45)
-    tp4 = base_price * random.uniform(1.45, 1.6)
-    
-    risk = random.choice([0.3, 0.5, 0.7])
-    
-    # ایجاد timestamp
-    hours_ago = random.randint(2, 6) + (index * 3)
-    signal_time = datetime.now() - timedelta(hours=hours_ago)
-    
-    # تولید متن سیگنال به سبک یونیون
-    signal_text = f"""{crypto['symbol']}
-Spot/buy
-{risk}% risk
-
-Entry:
-Market={market_entry:.3f} ({market_percent}%)
-{limit_entry:.3f}({limit_percent}%)
-
-Stop:
-{stop_loss:.3f}
-
-در spot برای فعال شدن استاپ کلوز کندل ۴ ساعته زیر نقطه استاپ ملاک است
-
-Targets:
-{tp1:.2f}
-{tp2:.2f}
-{tp3:.2f}
-{tp4:.2f}
-
-آموزش مدیریت سرمایه در پست سنجاق شده کانال رو حتما مطالعه فرمایید!"""
-    
-    return {
-        'channel_name': channel_info['name'],
-        'channel_username': channel_info['username'],
-        'specialty': channel_info['specialty'],
-        'crypto_symbol': crypto['symbol'],
-        'signal_type': 'Spot/Buy',
-        'market_entry': round(market_entry, 3),
-        'limit_entry': round(limit_entry, 3),
-        'market_percent': market_percent,
-        'limit_percent': limit_percent,
-        'tp1': round(tp1, 2),
-        'tp2': round(tp2, 2),
-        'tp3': round(tp3, 2),
-        'tp4': round(tp4, 2),
-        'stop_loss': round(stop_loss, 3),
-        'risk': f"{risk}%",
-        'timestamp': signal_time,
-        'signal_text': signal_text,
-        'style': 'union'
-    }
 
 
 
@@ -351,60 +211,22 @@ def format_crypto_signals_message(signals):
     """فرمت کردن پیام سیگنال‌های معاملاتی از کانال‌های تلگرام"""
     
     if not signals:
-        return """🚀 سیگنال‌های خرید و فروش
-
-❌ متاسفانه در حال حاضر سیگنال تازه‌ای یافت نشد.
-
-🔍 توضیح:
-• سیگنال‌ها از کانال‌های @Shervin_Trading و @uniopn
-• فقط سیگنال‌های کمتر از 6 ساعت نمایش داده می‌شوند
-• لطفاً چند دقیقه بعد دوباره تلاش کنید
-
-⚠️ توجه: این اطلاعات فقط جهت آگاهی است و توصیه سرمایه‌گذاری نمی‌باشد."""
+        return "❌ در حال حاضر سیگنال جدیدی یافت نشد."
 
     message = "🚀 سیگنال‌های خرید و فروش\n\n"
-    message += f"📊 {len(signals)} سیگنال جدید:\n\n"
     
-    for i, signal in enumerate(signals, 1):
-        # زمان انتشار
-        time_str = signal['timestamp'].strftime('%H:%M - %d/%m')
-        
-        message += f"📺 کانال: {signal['channel_name']}\n"
-        message += f"⏰ زمان: {time_str}\n"
-        message += f"🎯 {signal['specialty']}\n\n"
-        
-        # نمایش سیگنال کامل (بدون لینک کانال)
-        clean_signal = signal['signal_text']
-        
+    for i, signal_text in enumerate(signals, 1):
         # حذف لینک‌ها و ID کانال‌ها
         import re
-        clean_signal = re.sub(r'🔗@\w+', '', clean_signal)
+        clean_signal = re.sub(r'🔗@\w+', '', signal_text)
         clean_signal = re.sub(r'@\w+', '', clean_signal)
         clean_signal = re.sub(r'https?://[^\s]+', '', clean_signal)
         clean_signal = clean_signal.strip()
         
-        message += f"{clean_signal}\n\n"
+        message += f"🔰 سیگنال شماره {i}\n"
+        message += "━━━━━━━━━━━━━━━\n"
+        message += f"{clean_signal}\n"
         message += "━━━━━━━━━━━━━━━\n\n"
-    
-    # شمارش کانال‌ها
-    unique_channels = len(set(signal['channel_name'] for signal in signals))
-    
-    message += f"📡 منابع: {unique_channels} کانال تلگرام\n"
-    message += "• شروین تریدینگ\n"
-    message += "• یونیون\n\n"
-    
-    message += """⚠️ هشدارهای مهم:
-🔸 سیگنال‌ها از کانال‌های عمومی تلگرام دریافت شده
-🔸 صرفاً جهت آموزش و اطلاع‌رسانی هستند
-🔸 هیچ‌گونه توصیه سرمایه‌گذاری نمی‌باشند
-🔸 حتماً تحقیقات شخصی انجام دهید
-🔸 فقط سرمایه‌ای را ریسک کنید که از دست دادن آن امکان‌پذیر است
-🔸 حتماً مدیریت ریسک رعایت کنید
-
-📋 یادآوری:
-• دو سیگنال آخر از هر کانال
-• حذف لینک‌ها و ID های کانال
-• فرمت اصلی سیگنال‌ها حفظ شده"""
     
     return message
 
