@@ -61,30 +61,24 @@ async def bot_status_endpoint(request):
     return web.json_response(status_info)
 
 def run_telegram_bot():
-    """اجرای ربات تلگرام در process جداگانه"""
-    global bot_process, bot_status
+    """اجرای ربات تلگرام مستقیماً (بدون subprocess)"""
+    global bot_status
     
     try:
         logger.info("🤖 شروع ربات تلگرام...")
         bot_status = "starting"
         
-        # اجرای ربات تلگرام
-        bot_process = subprocess.Popen([
-            sys.executable, 'telegram_bot.py'
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # import و اجرای ربات تلگرام
+        from telegram_bot import main as telegram_main
         
         bot_status = "running"
-        logger.info(f"✅ ربات تلگرام شروع شد (PID: {bot_process.pid})")
+        logger.info("✅ ربات تلگرام شروع شد")
         
-        # انتظار برای اتمام process
-        stdout, stderr = bot_process.communicate()
+        # اجرای ربات
+        telegram_main()
         
-        if bot_process.returncode == 0:
-            bot_status = "stopped"
-            logger.info("ربات تلگرام با موفقیت متوقف شد")
-        else:
-            bot_status = "error"
-            logger.error(f"ربات تلگرام با خطا متوقف شد: {stderr}")
+        bot_status = "stopped"
+        logger.info("ربات تلگرام متوقف شد")
             
     except Exception as e:
         bot_status = "error"

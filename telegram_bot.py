@@ -1747,15 +1747,65 @@ def main() -> None:
     logger.info(f"👨‍💼 ادمین: {ADMIN_USER_ID}")
     logger.info(f"🔗 آماده دریافت پیام...")
     
-    # اجرای ربات تا زمان فشردن Ctrl-C
-    try:
-        application.run_polling(allowed_updates=Update.ALL_TYPES)
-    except KeyboardInterrupt:
-        logger.info("🛑 ربات متوقف شد")
-        bot_logger.log_system_event("BOT_STOPPED", "ربات توسط کاربر متوقف شد")
-    except Exception as e:
-        logger.error(f"❌ خطا در اجرای ربات: {e}")
-        bot_logger.log_error("خطا در اجرای ربات", e)
+    # بررسی محیط اجرا
+    environment = os.getenv('ENVIRONMENT', 'development')
+    port = int(os.getenv('PORT', 8000))
+    
+    if environment == 'production':
+        # استفاده از webhook در محیط production
+        try:
+            logger.info(f"🌐 شروع webhook در پورت {port}")
+            
+            # تنظیم webhook URL - کایب به صورت خودکار HTTPS فراهم میکنه
+            app_url = os.getenv('KOYEB_PUBLIC_DOMAIN')
+            if app_url:
+                webhook_url = f"https://{app_url}/{BOT_TOKEN}"
+            else:
+                # fallback URL - شما باید این رو با نام app خودتون تغییر بدید
+                webhook_url = f"https://your-app-name.koyeb.app/{BOT_TOKEN}"
+            
+            logger.info(f"📡 Webhook URL: {webhook_url}")
+            
+            # تعریف health check endpoint
+            from aiohttp import web
+            
+            async def health_check(request):
+                return web.json_response({
+                    "status": "healthy",
+                    "service": "telegram-bot",
+                    "timestamp": datetime.now().isoformat()
+                })
+            
+            # شروع webhook با health check
+            application.run_webhook(
+                listen="0.0.0.0",
+                port=port,
+                url_path=f"/{BOT_TOKEN}",
+                webhook_url=webhook_url,
+                allowed_updates=Update.ALL_TYPES,
+                # اضافه کردن route برای health check
+                webhook_server_kwargs={
+                    "routes": [
+                        web.get("/health", health_check),
+                        web.get("/", health_check)
+                    ]
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در webhook: {e}")
+            bot_logger.log_error("خطا در webhook", e)
+    else:
+        # استفاده از polling در محیط development
+        try:
+            logger.info("📡 شروع polling (development mode)")
+            application.run_polling(allowed_updates=Update.ALL_TYPES)
+        except KeyboardInterrupt:
+            logger.info("🛑 ربات متوقف شد")
+            bot_logger.log_system_event("BOT_STOPPED", "ربات توسط کاربر متوقف شد")
+        except Exception as e:
+            logger.error(f"❌ خطا در اجرای ربات: {e}")
+            bot_logger.log_error("خطا در اجرای ربات", e)
 
 if __name__ == "__main__":
     main()
