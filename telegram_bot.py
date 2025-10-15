@@ -33,7 +33,7 @@ else:
 from admin_panel import AdminPanel
 from public_menu import PublicMenuManager
 from logger_system import bot_logger
-from keyboards import get_main_menu_markup, get_news_menu_markup, get_ai_menu_markup
+from keyboards import get_main_menu_markup, get_public_section_markup, get_ai_menu_markup
 from ai_news import get_ai_news
 
 # Optional imports - TradingView Analysis
@@ -309,30 +309,49 @@ async def download_fear_greed_chart():
         # ایجاد دایرکتوری tmp اگر وجود نداشته باشد
         os.makedirs("tmp", exist_ok=True)
         
-        async with aiohttp.ClientSession() as session:
+        # Headers برای شبیه‌سازی درخواست مرورگر
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'image/png,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+        
+        async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(chart_url, timeout=30) as response:
+                print(f"Response status: {response.status}")
+                print(f"Response headers: {dict(response.headers)}")
+                
                 if response.status == 200:
                     content = await response.read()
-                    if len(content) > 0:  # بررسی اینکه محتوا خالی نباشد
+                    print(f"Content length: {len(content)} bytes")
+                    
+                    if len(content) > 100:  # حداقل 100 بایت برای یک تصویر معتبر
                         with open(chart_path, 'wb') as f:
                             f.write(content)
                         
                         # بررسی موفقیت ذخیره فایل
-                        if os.path.exists(chart_path) and os.path.getsize(chart_path) > 0:
-                            print(f"چارت با موفقیت دانلود شد: {chart_path}")
+                        if os.path.exists(chart_path) and os.path.getsize(chart_path) > 100:
+                            print(f"چارت با موفقیت دانلود شد: {chart_path} ({os.path.getsize(chart_path)} bytes)")
                             return chart_path
                         else:
                             print("فایل چارت خالی است یا ذخیره نشده")
                             return None
                     else:
-                        print("محتوای دریافتی خالی است")
+                        print(f"محتوای دریافتی کوچک است: {len(content)} bytes")
                         return None
                 else:
                     print(f"خطا در دانلود چارت: {response.status}")
+                    response_text = await response.text()
+                    print(f"Response text: {response_text[:200]}...")
                     return None
                     
     except Exception as e:
         print(f"خطا در دانلود چارت شاخص: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def format_fear_greed_message(index_data):
@@ -382,9 +401,9 @@ def format_fear_greed_message(index_data):
     # فرمت پیام نهایی
     message = f"""😨 شاخص ترس و طمع بازار کریپتو
 
-{index_data['color']} **مقدار فعلی: {index_data['value']}/100**
+{index_data['color']} <b>مقدار فعلی: {index_data['value']}/100</b>
 
-{index_data['emoji']} **وضعیت: {index_data['mood_fa']}**
+{index_data['emoji']} <b>وضعیت: {index_data['mood_fa']}</b>
 
 {description}
 
@@ -622,8 +641,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 از دکمه‌های زیر برای دسترسی به خدمات استفاده کنید:
 
-💰 ارزهای دیجیتال: قیمت‌های لحظه‌ای و اخبار
-📰 اخبار: اخبار کریپتو و عمومی از منابع معتبر
+💰 ارزهای دیجیتال: قیمت‌های لحظه‌ای و اخبار کریپتو
+🔗 بخش عمومی: اخبار عمومی از منابع معتبر
 🤖 هوش مصنوعی: آخرین اخبار AI
     """
     
@@ -1152,7 +1171,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                         await update.message.reply_photo(
                             photo=photo,
                             caption=message,
-                            parse_mode='Markdown'
+                            parse_mode='HTML'
                         )
                     print("عکس شاخص ترس و طمع با موفقیت ارسال شد")
                 except Exception as photo_error:
@@ -1160,7 +1179,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     # اگر ارسال عکس ناموفق بود، متن را ارسال کن
                     await update.message.reply_text(
                         message,
-                        parse_mode='Markdown',
+                        parse_mode='HTML',
                         disable_web_page_preview=True
                     )
                 
@@ -1174,7 +1193,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 # اگر تصویر دانلود نشد، فقط متن ارسال کن
                 await update.message.reply_text(
                     message,
-                    parse_mode='Markdown',
+                    parse_mode='HTML',
                     disable_web_page_preview=True
                 )
             
@@ -1197,7 +1216,8 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 از دکمه‌های زیر برای دسترسی به خدمات استفاده کنید:
 
-💰 ارزهای دیجیتال: قیمت‌های لحظه‌ای و اخبار
+💰 ارزهای دیجیتال: قیمت‌های لحظه‌ای و اخبار کریپتو
+🔗 بخش عمومی: اخبار عمومی از منابع معتبر  
 🤖 هوش مصنوعی: آخرین اخبار AI
         """
         
@@ -1210,23 +1230,22 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
     
-    elif message_text == "📰 اخبار":
-        # نمایش منوی اخبار
-        bot_logger.log_user_action(user.id, "NEWS_MENU_ACCESS", "ورود به بخش اخبار")
+    elif message_text == "🔗 بخش عمومی":
+        # نمایش منوی بخش عمومی
+        bot_logger.log_user_action(user.id, "PUBLIC_SECTION_ACCESS", "ورود به بخش عمومی")
         
         message = """
-📰 *بخش اخبار*
+🔗 *بخش عمومی*
 
-اخبار و اطلاعات به‌روز از منابع معتبر! 📺
+اطلاعات و اخبار عمومی! 📺
 
 🔍 *خدمات موجود:*
-• 📈 اخبار کریپتو از CoinDesk
-• 📺 اخبار عمومی از تسنیم
+• 📺 اخبار عمومی از منابع معتبر فارسی
 
 لطفاً یکی از گزینه‌های زیر را انتخاب کنید:
         """
         
-        reply_markup = get_news_menu_markup()
+        reply_markup = get_public_section_markup()
         
         await update.message.reply_text(
             message,
