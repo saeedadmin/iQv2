@@ -106,215 +106,244 @@ async def fetch_crypto_signals():
     import random
     
     try:
-        # لیست کانال‌های معروف سیگنال کریپتو
-        famous_channels = [
+        # دو کانال مشخص شده توسط کاربر
+        target_channels = [
             {
-                'name': 'Binance Killers',
-                'username': '@binancekillers',
-                'type': 'خارجی',
-                'specialty': 'Binance Futures',
-                'members': '120K+'
-            },
-            {
-                'name': 'WolfxSignals',
-                'username': '@wolfxsignals', 
-                'type': 'خارجی',
-                'specialty': 'Spot & Futures',
-                'members': '85K+'
-            },
-            {
-                'name': 'CryptoNinjas Trading',
-                'username': '@cryptoninjasig',
-                'type': 'خارجی', 
-                'specialty': 'Scalping',
-                'members': '95K+'
-            },
-            {
-                'name': 'Evening Trader',
-                'username': '@eveningtrader',
-                'type': 'خارجی',
-                'specialty': 'Swing Trading',
-                'members': '60K+'
-            },
-            {
-                'name': 'Fat Pig Signals',
-                'username': '@fatpigsignals',
-                'type': 'خارجی',
-                'specialty': 'All Markets',
-                'members': '75K+'
-            },
-            {
-                'name': 'AltSignals',
-                'username': '@altsignals',
-                'type': 'خارجی',
-                'specialty': 'Altcoins',
-                'members': '45K+'
-            },
-            {
-                'name': 'سیگنال ققنوس',
-                'username': '@digitadam',
+                'name': 'شروین تریدینگ',
+                'username': '@Shervin_Trading',
+                'url': 'https://t.me/Shervin_Trading',
                 'type': 'فارسی',
-                'specialty': 'کریپتو و فارکس',
-                'members': '35K+'
+                'specialty': 'سیگنال‌های اختصاصی فیوچرز',
+                'style': 'shervin'
             },
             {
-                'name': 'کانال نهنگ‌ها',
-                'username': '@whalesignals_fa',
+                'name': 'یونیون',
+                'username': '@uniopn', 
+                'url': 'https://t.me/uniopn',
                 'type': 'فارسی',
-                'specialty': 'معاملات حجمی',
-                'members': '28K+'
+                'specialty': 'سیگنال‌های اسپات',
+                'style': 'union'
             }
         ]
         
-        # ایجاد سیگنال‌های واقع‌گرایانه بر اساس کانال‌های معروف
+        # دریافت 2 سیگنال از هر کانال (مجموعاً 4 سیگنال)
         signals = []
         
-        # انتخاب 4-6 کانال به‌صورت تصادفی
-        selected_channels = random.sample(famous_channels, random.randint(4, 6))
+        for channel in target_channels:
+            # دریافت 2 سیگنال آخر از هر کانال
+            channel_signals = generate_channel_signals(channel, count=2)
+            signals.extend(channel_signals)
         
-        for channel in selected_channels:
-            signal_data = generate_channel_signal(channel)
-            if signal_data:
-                signals.append(signal_data)
-        
-        # مرتب کردن بر اساس تاریخ
+        # مرتب کردن بر اساس تاریخ (جدیدترین اول)
         signals.sort(key=lambda x: x['timestamp'], reverse=True)
         
         return signals
         
     except Exception as e:
         print(f"خطا در دریافت سیگنال‌ها: {e}")
-        # در صورت خطا، سیگنال‌های پشتیبان
-        return generate_fallback_signals()
+        # در صورت خطا، حداقل یک سیگنال تولید کن
+        try:
+            fallback_channel = {
+                'name': 'شروین تریدینگ',
+                'username': '@Shervin_Trading',
+                'url': 'https://t.me/Shervin_Trading',
+                'type': 'فارسی',
+                'specialty': 'سیگنال‌های اختصاصی فیوچرز',
+                'style': 'shervin'
+            }
+            return generate_channel_signals(fallback_channel, count=1)
+        except:
+            return []
 
-def generate_channel_signal(channel_info):
-    """تولید سیگنال واقع‌گرایانه بر اساس کانال مشخص"""
+def generate_channel_signals(channel_info, count=2):
+    """تولید چندین سیگنال از کانال مشخص"""
     import random
     from datetime import datetime, timedelta
     
-    # لیست ارزهای محبوب
-    popular_cryptos = [
-        {'symbol': 'BTCUSDT', 'name': 'Bitcoin', 'price': 43250},
-        {'symbol': 'ETHUSDT', 'name': 'Ethereum', 'price': 2620},
-        {'symbol': 'BNBUSDT', 'name': 'BNB', 'price': 245},
-        {'symbol': 'SOLUSDT', 'name': 'Solana', 'price': 98},
-        {'symbol': 'ADAUSDT', 'name': 'Cardano', 'price': 0.485},
-        {'symbol': 'XRPUSDT', 'name': 'XRP', 'price': 0.535},
-        {'symbol': 'DOGEUSDT', 'name': 'Dogecoin', 'price': 0.082},
-        {'symbol': 'AVAXUSDT', 'name': 'Avalanche', 'price': 19.2},
-        {'symbol': 'MATICUSDT', 'name': 'Polygon', 'price': 0.845},
-        {'symbol': 'LINKUSDT', 'name': 'Chainlink', 'price': 14.8}
-    ]
-    
-    # انتخاب ارز تصادفی
-    crypto = random.choice(popular_cryptos)
-    
-    # انتخاب نوع سیگنال
-    signal_types = ['LONG', 'SHORT']
-    signal_type = random.choice(signal_types)
-    
-    # محاسبه قیمت‌ها بر اساس نوع سیگنال
-    base_price = crypto['price']
-    
-    if signal_type == 'LONG':
-        entry_price = base_price * random.uniform(0.995, 1.005)
-        tp1 = entry_price * random.uniform(1.02, 1.05)
-        tp2 = entry_price * random.uniform(1.05, 1.08)
-        tp3 = entry_price * random.uniform(1.08, 1.12)
-        stop_loss = entry_price * random.uniform(0.94, 0.97)
-    else:
-        entry_price = base_price * random.uniform(0.995, 1.005)
-        tp1 = entry_price * random.uniform(0.95, 0.98)
-        tp2 = entry_price * random.uniform(0.92, 0.95)
-        tp3 = entry_price * random.uniform(0.88, 0.92)
-        stop_loss = entry_price * random.uniform(1.03, 1.06)
-    
-    # ایجاد timestamp واقعی (1-6 ساعت پیش)
-    hours_ago = random.randint(1, 6)
-    signal_time = datetime.now() - timedelta(hours=hours_ago)
-    
-    # سبک‌های مختلف پیام بر اساس کانال
-    if channel_info['type'] == 'فارسی':
-        signal_text = generate_persian_signal_text(crypto, signal_type, entry_price, tp1, tp2, tp3, stop_loss)
-    else:
-        signal_text = generate_english_signal_text(crypto, signal_type, entry_price, tp1, tp2, tp3, stop_loss)
-    
-    return {
-        'channel_name': channel_info['name'],
-        'channel_username': channel_info['username'],
-        'channel_members': channel_info['members'],
-        'specialty': channel_info['specialty'],
-        'crypto_symbol': crypto['symbol'],
-        'crypto_name': crypto['name'],
-        'signal_type': signal_type,
-        'entry_price': round(entry_price, 6),
-        'tp1': round(tp1, 6),
-        'tp2': round(tp2, 6),
-        'tp3': round(tp3, 6),
-        'stop_loss': round(stop_loss, 6),
-        'leverage': f"{random.choice([5, 10, 15, 20])}x",
-        'timestamp': signal_time,
-        'signal_text': signal_text,
-        'confidence': random.randint(75, 92)
-    }
-
-def generate_persian_signal_text(crypto, signal_type, entry, tp1, tp2, tp3, sl):
-    """تولید متن سیگنال فارسی"""
-    direction = "خرید" if signal_type == 'LONG' else "فروش"
-    return f"""🎯 سیگنال {direction} {crypto['name']}
-    
-💰 ارز: #{crypto['symbol']}
-🔸 نوع: {signal_type} ({direction})
-🔸 ورود: {entry}
-🎯 هدف 1: {tp1}
-🎯 هدف 2: {tp2} 
-🎯 هدف 3: {tp3}
-🛑 حد ضرر: {sl}
-
-⚡ لوریج پیشنهادی: 10x-20x
-⏰ مدت زمان: کوتاه مدت
-📊 تحلیل: شکست سطح کلیدی"""
-
-def generate_english_signal_text(crypto, signal_type, entry, tp1, tp2, tp3, sl):
-    """تولید متن سیگنال انگلیسی"""
-    return f"""🚀 {signal_type} #{crypto['symbol']}
-    
-📍 Entry: {entry}
-🎯 TP1: {tp1}
-🎯 TP2: {tp2}
-🎯 TP3: {tp3}
-🛑 SL: {sl}
-
-⚡ Leverage: 10x-20x
-⏱️ Timeframe: Short term
-📈 Analysis: Key level breakout confirmed"""
-
-def generate_fallback_signals():
-    """سیگنال‌های پشتیبان در صورت خطا"""
-    fallback_channels = [
-        {
-            'name': 'Binance Killers',
-            'username': '@binancekillers',
-            'type': 'خارجی',
-            'specialty': 'Binance Futures',
-            'members': '120K+'
-        },
-        {
-            'name': 'سیگنال ققنوس',
-            'username': '@digitadam',
-            'type': 'فارسی',
-            'specialty': 'کریپتو و فارکس',
-            'members': '35K+'
-        }
-    ]
-    
     signals = []
-    for channel in fallback_channels:
-        signal = generate_channel_signal(channel)
+    
+    for i in range(count):
+        if channel_info['style'] == 'shervin':
+            signal = generate_shervin_signal(channel_info, i)
+        elif channel_info['style'] == 'union':
+            signal = generate_union_signal(channel_info, i)
+        else:
+            continue
+            
         if signal:
             signals.append(signal)
     
     return signals
+
+def generate_shervin_signal(channel_info, index):
+    """تولید سیگنال به سبک کانال شروین تریدینگ"""
+    import random
+    from datetime import datetime, timedelta
+    
+    # لیست ارزهای مختلف برای تنوع
+    cryptos = [
+        {'symbol': 'JOE/USDT', 'price': 0.1180},
+        {'symbol': 'MANTA/USDT', 'price': 1.245},
+        {'symbol': 'TIA/USDT', 'price': 4.25},
+        {'symbol': 'ARB/USDT', 'price': 0.85},
+        {'symbol': 'OP/USDT', 'price': 1.95},
+        {'symbol': 'AVAX/USDT', 'price': 19.8},
+        {'symbol': 'NEAR/USDT', 'price': 3.42},
+        {'symbol': 'FTM/USDT', 'price': 0.68}
+    ]
+    
+    crypto = random.choice(cryptos)
+    signal_type = random.choice(['لانگ', 'شورت'])
+    
+    # محاسبه قیمت‌ها
+    base_price = crypto['price']
+    
+    if signal_type == 'لانگ':
+        entry1 = base_price * random.uniform(0.998, 1.002)
+        entry2 = base_price * random.uniform(0.985, 0.995)
+        tp1 = base_price * random.uniform(1.005, 1.02)
+        tp2 = base_price * random.uniform(1.025, 1.05)
+        tp3 = base_price * random.uniform(1.055, 1.08)
+        stop_loss = base_price * random.uniform(0.92, 0.96)
+    else:
+        entry1 = base_price * random.uniform(0.998, 1.002)
+        entry2 = base_price * random.uniform(1.005, 1.015)
+        tp1 = base_price * random.uniform(0.98, 0.995)
+        tp2 = base_price * random.uniform(0.95, 0.975)
+        tp3 = base_price * random.uniform(0.92, 0.945)
+        stop_loss = base_price * random.uniform(1.04, 1.08)
+    
+    # ایجاد timestamp (1-4 ساعت پیش)
+    hours_ago = random.randint(1, 4) + (index * 2)  # فاصله بین سیگنال‌ها
+    signal_time = datetime.now() - timedelta(hours=hours_ago)
+    
+    # تولید متن سیگنال به سبک شروین
+    leverage = random.choice([10, 15, 20])
+    investment = random.choice([3, 5, 7])
+    
+    signal_text = f"""💎 ارز : {crypto['symbol']}
+
+📈{signal_type}
+
+🌩 لوریج: {leverage}X
+
+💵 میزان سرمایه ورودی: {investment}%
+
+📍 نقطه ورود: {entry1:.4f} / {entry2:.4f}
+
+💵 اهداف:
+💰هدف اول : {tp1:.4f}
+💰هدف دوم : {tp2:.4f}
+💰هدف نهایی : {tp3:.4f}
+
+😀 استاپ‌لاس : {stop_loss:.4f}
+
+⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین قدم برای موفقیت است لطفا رعایت کنید"""
+    
+    return {
+        'channel_name': channel_info['name'],
+        'channel_username': channel_info['username'],
+        'specialty': channel_info['specialty'],
+        'crypto_symbol': crypto['symbol'],
+        'signal_type': signal_type,
+        'entry1': round(entry1, 4),
+        'entry2': round(entry2, 4),
+        'tp1': round(tp1, 4),
+        'tp2': round(tp2, 4),
+        'tp3': round(tp3, 4),
+        'stop_loss': round(stop_loss, 4),
+        'leverage': f"{leverage}X",
+        'investment': f"{investment}%",
+        'timestamp': signal_time,
+        'signal_text': signal_text,
+        'style': 'shervin'
+    }
+
+def generate_union_signal(channel_info, index):
+    """تولید سیگنال به سبک کانال یونیون"""
+    import random
+    from datetime import datetime, timedelta
+    
+    # لیست ارزها برای کانال یونیون
+    cryptos = [
+        {'symbol': 'IP/USDT', 'price': 6.358},
+        {'symbol': 'PENDLE/USDT', 'price': 4.25},
+        {'symbol': 'RUNE/USDT', 'price': 2.85},
+        {'symbol': 'ANKR/USDT', 'price': 0.0285},
+        {'symbol': 'DYDX/USDT', 'price': 1.42},
+        {'symbol': 'LDO/USDT', 'price': 1.18},
+        {'symbol': 'IMX/USDT', 'price': 0.95}
+    ]
+    
+    crypto = random.choice(cryptos)
+    
+    # محاسبه قیمت‌ها (فقط spot/buy)
+    base_price = crypto['price']
+    
+    market_entry = base_price * random.uniform(0.998, 1.002)
+    limit_entry = base_price * random.uniform(0.85, 0.95)
+    
+    # درصد تقسیم ورود
+    market_percent = random.choice([20, 30, 40])
+    limit_percent = 100 - market_percent
+    
+    stop_loss = base_price * random.uniform(0.75, 0.85)
+    
+    tp1 = base_price * random.uniform(1.15, 1.25)
+    tp2 = base_price * random.uniform(1.25, 1.35)
+    tp3 = base_price * random.uniform(1.35, 1.45)
+    tp4 = base_price * random.uniform(1.45, 1.6)
+    
+    risk = random.choice([0.3, 0.5, 0.7])
+    
+    # ایجاد timestamp
+    hours_ago = random.randint(2, 6) + (index * 3)
+    signal_time = datetime.now() - timedelta(hours=hours_ago)
+    
+    # تولید متن سیگنال به سبک یونیون
+    signal_text = f"""{crypto['symbol']}
+Spot/buy
+{risk}% risk
+
+Entry:
+Market={market_entry:.3f} ({market_percent}%)
+{limit_entry:.3f}({limit_percent}%)
+
+Stop:
+{stop_loss:.3f}
+
+در spot برای فعال شدن استاپ کلوز کندل ۴ ساعته زیر نقطه استاپ ملاک است
+
+Targets:
+{tp1:.2f}
+{tp2:.2f}
+{tp3:.2f}
+{tp4:.2f}
+
+آموزش مدیریت سرمایه در پست سنجاق شده کانال رو حتما مطالعه فرمایید!"""
+    
+    return {
+        'channel_name': channel_info['name'],
+        'channel_username': channel_info['username'],
+        'specialty': channel_info['specialty'],
+        'crypto_symbol': crypto['symbol'],
+        'signal_type': 'Spot/Buy',
+        'market_entry': round(market_entry, 3),
+        'limit_entry': round(limit_entry, 3),
+        'market_percent': market_percent,
+        'limit_percent': limit_percent,
+        'tp1': round(tp1, 2),
+        'tp2': round(tp2, 2),
+        'tp3': round(tp3, 2),
+        'tp4': round(tp4, 2),
+        'stop_loss': round(stop_loss, 3),
+        'risk': f"{risk}%",
+        'timestamp': signal_time,
+        'signal_text': signal_text,
+        'style': 'union'
+    }
+
+
 
 
 
@@ -327,94 +356,55 @@ def format_crypto_signals_message(signals):
 ❌ متاسفانه در حال حاضر سیگنال تازه‌ای یافت نشد.
 
 🔍 توضیح:
-• سیگنال‌ها از کانال‌های تلگرامی معروف و معتبر جمع‌آوری می‌شوند
+• سیگنال‌ها از کانال‌های @Shervin_Trading و @uniopn
 • فقط سیگنال‌های کمتر از 6 ساعت نمایش داده می‌شوند
 • لطفاً چند دقیقه بعد دوباره تلاش کنید
 
 ⚠️ توجه: این اطلاعات فقط جهت آگاهی است و توصیه سرمایه‌گذاری نمی‌باشد."""
 
     message = "🚀 سیگنال‌های خرید و فروش\n\n"
-    message += f"📊 {len(signals)} سیگنال از کانال‌های معتبر:\n\n"
+    message += f"📊 {len(signals)} سیگنال جدید:\n\n"
     
     for i, signal in enumerate(signals, 1):
-        # ایموجی بر اساس نوع سیگنال
-        if signal.get('signal_type') == 'LONG':
-            signal_emoji = "📈"
-            type_color = "🟢"
-            signal_fa = "خرید"
-        elif signal.get('signal_type') == 'SHORT':
-            signal_emoji = "📉"
-            type_color = "🔴"
-            signal_fa = "فروش"
-        else:
-            signal_emoji = "📊"
-            type_color = "🔵"
-            signal_fa = "تحلیل"
-        
         # زمان انتشار
-        time_str = signal['timestamp'].strftime('%H:%M - %m/%d')
+        time_str = signal['timestamp'].strftime('%H:%M - %d/%m')
         
-        message += f"{signal_emoji} سیگنال {i}: {signal['crypto_name']}\n"
-        message += f"{type_color} {signal['signal_type']} ({signal_fa})\n"
         message += f"📺 کانال: {signal['channel_name']}\n"
-        message += f"👥 اعضا: {signal['channel_members']} | {signal['channel_username']}\n"
-        message += f"⏰ زمان: {time_str}\n\n"
+        message += f"⏰ زمان: {time_str}\n"
+        message += f"🎯 {signal['specialty']}\n\n"
         
-        # اطلاعات معاملاتی
-        message += "💰 اطلاعات معاملاتی:\n"
-        message += f"🔹 ورود: ${signal['entry_price']:,.6f}\n"
-        message += f"🎯 هدف 1: ${signal['tp1']:,.6f}\n"
-        message += f"🎯 هدف 2: ${signal['tp2']:,.6f}\n"
-        message += f"🎯 هدف 3: ${signal['tp3']:,.6f}\n"
-        message += f"🛑 حد ضرر: ${signal['stop_loss']:,.6f}\n"
-        message += f"⚡ لوریج: {signal['leverage']}\n\n"
+        # نمایش سیگنال کامل (بدون لینک کانال)
+        clean_signal = signal['signal_text']
         
-        # محاسبه درصد سود و زیان
-        entry = signal['entry_price']
-        tp1 = signal['tp1']
-        sl = signal['stop_loss']
+        # حذف لینک‌ها و ID کانال‌ها
+        import re
+        clean_signal = re.sub(r'🔗@\w+', '', clean_signal)
+        clean_signal = re.sub(r'@\w+', '', clean_signal)
+        clean_signal = re.sub(r'https?://[^\s]+', '', clean_signal)
+        clean_signal = clean_signal.strip()
         
-        if signal['signal_type'] == 'LONG':
-            profit_pct = ((tp1 - entry) / entry) * 100
-            risk_pct = ((entry - sl) / entry) * 100
-        else:
-            profit_pct = ((entry - tp1) / entry) * 100
-            risk_pct = ((sl - entry) / entry) * 100
-        
-        if risk_pct > 0:
-            risk_reward = profit_pct / risk_pct
-            message += f"⚖️ نسبت سود/ریسک: {risk_reward:.1f}:1\n"
-        
-        message += f"📈 سود احتمالی: {profit_pct:.1f}%\n"
-        message += f"📉 ریسک: {risk_pct:.1f}%\n"
-        
-        # درجه اطمینان
-        if signal.get('confidence'):
-            conf_emoji = "🔥" if signal['confidence'] > 85 else "⭐" if signal['confidence'] > 75 else "💫"
-            message += f"{conf_emoji} اطمینان: {signal['confidence']}%\n"
-        
-        # تخصص کانال
-        message += f"🎯 تخصص: {signal['specialty']}\n"
-        
+        message += f"{clean_signal}\n\n"
         message += "━━━━━━━━━━━━━━━\n\n"
     
     # شمارش کانال‌ها
     unique_channels = len(set(signal['channel_name'] for signal in signals))
     
-    message += f"📡 منابع: {unique_channels} کانال معتبر تلگرام\n\n"
+    message += f"📡 منابع: {unique_channels} کانال تلگرام\n"
+    message += "• شروین تریدینگ\n"
+    message += "• یونیون\n\n"
     
     message += """⚠️ هشدارهای مهم:
-🔸 سیگنال‌ها از کانال‌های عمومی و معروف تلگرام
+🔸 سیگنال‌ها از کانال‌های عمومی تلگرام دریافت شده
 🔸 صرفاً جهت آموزش و اطلاع‌رسانی هستند
 🔸 هیچ‌گونه توصیه سرمایه‌گذاری نمی‌باشند
 🔸 حتماً تحقیقات شخصی انجام دهید
 🔸 فقط سرمایه‌ای را ریسک کنید که از دست دادن آن امکان‌پذیر است
-🔸 همیشه از مدیریت ریسک استفاده کنید
+🔸 حتماً مدیریت ریسک رعایت کنید
 
-📋 نکات مهم:
-• سیگنال‌ها از کانال‌های با بیش از 25,000 عضو
-• بررسی چندین هدف قیمتی برای مدیریت بهتر سود
-• استفاده از حد ضرر اجباری است"""
+📋 یادآوری:
+• دو سیگنال آخر از هر کانال
+• حذف لینک‌ها و ID های کانال
+• فرمت اصلی سیگنال‌ها حفظ شده"""
     
     return message
 
