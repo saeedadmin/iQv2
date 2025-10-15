@@ -103,8 +103,16 @@ async def check_user_access(user_id: int) -> bool:
 async def fetch_crypto_signals():
     """دریافت آخرین سیگنال‌های معاملاتی از کانال‌های تلگرام"""
     try:
-        # برای دریافت واقعی از telegram نیاز به telethon داریم
-        return await fetch_real_telegram_signals()
+        # بررسی اگر API credentials موجود هست
+        api_id = os.getenv('TELEGRAM_API_ID')
+        api_hash = os.getenv('TELEGRAM_API_HASH')
+        
+        if api_id and api_hash:
+            # برای دریافت واقعی از telegram نیاز به telethon داریم
+            return await fetch_real_telegram_signals()
+        else:
+            print("📍 TELEGRAM_API_ID یا TELEGRAM_API_HASH تنظیم نشده - استفاده از سیگنال‌های نمونه")
+            return await fetch_fallback_signals()
     except Exception as e:
         print(f"خطا در دریافت سیگنال‌ها: {e}")
         # اگر خطا داشت، از آخرین سیگنال‌های شناخته شده استفاده کن
@@ -128,8 +136,11 @@ async def fetch_real_telegram_signals():
         channels = ['@Shervin_Trading', '@uniopn']
         all_signals = []
         
-        # اتصال به Telegram
-        async with TelegramClient('signal_bot', int(api_id), api_hash) as client:
+        # اتصال به Telegram با session file در temp directory
+        import tempfile
+        session_file = os.path.join(tempfile.gettempdir(), f'signal_bot_{os.getpid()}')
+        
+        async with TelegramClient(session_file, int(api_id), api_hash) as client:
             for channel in channels:
                 try:
                     # دریافت آخرین 20 پیام از کانال
@@ -1747,8 +1758,43 @@ def main() -> None:
     logger.info(f"👨‍💼 ادمین: {ADMIN_USER_ID}")
     logger.info(f"🔗 آماده دریافت پیام...")
     
+    # شروع HTTP server برای health check در پس‌زمینه 
+    import threading
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    import json
+    
+    class HealthHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path in ['/health', '/']:
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                health_data = {
+                    "status": "healthy",
+                    "service": "telegram-bot", 
+                    "timestamp": datetime.now().isoformat()
+                }
+                self.wfile.write(json.dumps(health_data).encode())
+            else:
+                self.send_response(404)
+                self.end_headers()
+        
+        def log_message(self, format, *args):
+            pass  # سایلنت کردن لاگ‌های HTTP
+    
+    def start_health_server():
+        port = int(os.getenv('PORT', 8000))
+        httpd = HTTPServer(('0.0.0.0', port), HealthHandler)
+        logger.info(f"🏥 Health check server در پورت {port}")
+        httpd.serve_forever()
+    
+    # شروع health server در thread جداگانه
+    health_thread = threading.Thread(target=start_health_server, daemon=True)
+    health_thread.start()
+    
     # اجرای ربات تا زمان فشردن Ctrl-C
     try:
+        logger.info("📡 شروع polling...")
         application.run_polling(allowed_updates=Update.ALL_TYPES)
     except KeyboardInterrupt:
         logger.info("🛑 ربات متوقف شد")
