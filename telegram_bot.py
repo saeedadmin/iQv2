@@ -220,6 +220,170 @@ Targets:
 آموزش مدیریت سرمایه در پست سنجاق شده کانال رو حتما مطالعه فرمایید!"""
     ]
 
+# Functions for Fear & Greed Index
+async def fetch_fear_greed_index():
+    """دریافت شاخص ترس و طمع بازار کریپتو از alternative.me"""
+    import aiohttp
+    import json
+    from datetime import datetime
+    
+    try:
+        # API alternative.me برای شاخص ترس و طمع
+        api_url = "https://api.alternative.me/fng/"
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    
+                    if data and 'data' in data and len(data['data']) > 0:
+                        index_data = data['data'][0]
+                        
+                        # استخراج اطلاعات
+                        value = int(index_data['value'])
+                        classification = index_data['value_classification']
+                        timestamp = int(index_data['timestamp'])
+                        
+                        # تبدیل timestamp به تاریخ
+                        update_time = datetime.fromtimestamp(timestamp)
+                        
+                        # تعیین ایموجی و رنگ براساس مقدار
+                        if value <= 20:
+                            emoji = "😱"
+                            mood = "ترس شدید"
+                            color = "🔴"
+                        elif value <= 40:
+                            emoji = "😰"
+                            mood = "ترس"
+                            color = "🟠"
+                        elif value <= 60:
+                            emoji = "😐"
+                            mood = "خنثی"
+                            color = "🟡"
+                        elif value <= 80:
+                            emoji = "😊"
+                            mood = "طمع"
+                            color = "🟢"
+                        else:
+                            emoji = "🤑"
+                            mood = "طمع شدید"
+                            color = "💚"
+                        
+                        return {
+                            'value': value,
+                            'classification': classification,
+                            'mood_fa': mood,
+                            'emoji': emoji,
+                            'color': color,
+                            'update_time': update_time,
+                            'success': True
+                        }
+                    else:
+                        raise Exception("Invalid API response format")
+                else:
+                    raise Exception(f"API request failed with status {response.status}")
+                    
+    except Exception as e:
+        print(f"خطا در دریافت شاخص ترس و طمع: {e}")
+        return {
+            'value': 50,
+            'classification': 'Neutral',
+            'mood_fa': 'خنثی',
+            'emoji': '😐',
+            'color': '🟡',
+            'update_time': datetime.now(),
+            'success': False,
+            'error': str(e)
+        }
+
+async def download_fear_greed_chart():
+    """دانلود تصویر چارت شاخص ترس و طمع"""
+    import aiohttp
+    import os
+    
+    try:
+        # URL تصویر چارت
+        chart_url = "https://alternative.me/crypto/fear-and-greed-index.png"
+        chart_path = "tmp/fear_greed_chart.png"
+        
+        # ایجاد دایرکتوری tmp اگر وجود نداشته باشد
+        os.makedirs("tmp", exist_ok=True)
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(chart_url) as response:
+                if response.status == 200:
+                    with open(chart_path, 'wb') as f:
+                        f.write(await response.read())
+                    return chart_path
+                else:
+                    print(f"خطا در دانلود چارت: {response.status}")
+                    return None
+                    
+    except Exception as e:
+        print(f"خطا در دانلود چارت شاخص: {e}")
+        return None
+
+def format_fear_greed_message(index_data):
+    """فرمت کردن پیام شاخص ترس و طمع"""
+    
+    if not index_data['success']:
+        return f"""😨 شاخص ترس و طمع بازار کریپتو
+
+❌ متاسفانه در حال حاضر امکان دریافت اطلاعات وجود ندارد.
+
+🔄 لطفاً چند دقیقه بعد دوباره تلاش کنید.
+
+📊 منبع: Alternative.me"""
+
+    # توضیحات براساس مقدار شاخص
+    if index_data['value'] <= 20:
+        description = """🔍 وضعیت بازار:
+• سطح ترس بسیار بالا در بازار
+• احتمال فرصت خرید مناسب
+• سرمایه‌گذاران بسیار محتاط هستند
+• قیمت‌ها ممکن است به کف رسیده باشند"""
+    elif index_data['value'] <= 40:
+        description = """🔍 وضعیت بازار:
+• سطح ترس نسبتاً بالا
+• بازار در حالت فروش
+• سرمایه‌گذاران نگران هستند  
+• ممکن است فرصت خرید باشد"""
+    elif index_data['value'] <= 60:
+        description = """🔍 وضعیت بازار:
+• بازار در حالت خنثی و متعادل
+• عدم وجود احساسات شدید
+• تصمیم‌گیری براساس تحلیل تکنیکال
+• وضعیت نرمال بازار"""
+    elif index_data['value'] <= 80:
+        description = """🔍 وضعیت بازار:
+• سطح طمع نسبتاً بالا
+• بازار در حالت خرید
+• سرمایه‌گذاران خوش‌بین هستند
+• احتمال اصلاح قیمت وجود دارد"""
+    else:
+        description = """🔍 وضعیت بازار:
+• سطح طمع بسیار بالا
+• احتمال حباب قیمتی
+• سرمایه‌گذاران بسیار خوش‌بین
+• زمان مناسب برای فروش ممکن است"""
+
+    # فرمت پیام نهایی
+    message = f"""😨 شاخص ترس و طمع بازار کریپتو
+
+{index_data['color']} **مقدار فعلی: {index_data['value']}/100**
+
+{index_data['emoji']} **وضعیت: {index_data['mood_fa']}**
+
+{description}
+
+📅 آخرین به‌روزرسانی: {index_data['update_time'].strftime('%Y/%m/%d - %H:%M')}
+
+📊 منبع: Alternative.me Fear & Greed Index
+
+⚠️ توجه: این شاخص صرفاً جهت اطلاع‌رسانی است و توصیه سرمایه‌گذاری نمی‌باشد."""
+
+    return message
+
 
 
 
@@ -711,7 +875,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         crypto_keyboard = [
             [KeyboardButton("📊 قیمت‌های لحظه‌ای"), KeyboardButton("📰 اخبار کریپتو")],
             [KeyboardButton("🚀 سیگنال‌های خرید و فروش"), KeyboardButton("📈 تحلیل TradingView")],
-            [KeyboardButton("🔙 بازگشت به منوی اصلی")]
+            [KeyboardButton("😨 شاخص ترس و طمع"), KeyboardButton("🔙 بازگشت به منوی اصلی")]
         ]
         reply_markup = ReplyKeyboardMarkup(crypto_keyboard, resize_keyboard=True, one_time_keyboard=False)
         
@@ -783,6 +947,53 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         except Exception as e:
             error_message = f"❌ خطا در دریافت سیگنال‌ها:\n{str(e)}"
             await loading_message.edit_text(error_message)
+        
+        return
+    
+    elif message_text == "😨 شاخص ترس و طمع":
+        # نمایش پیام در حال بارگذاری
+        loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین شاخص ترس و طمع بازار...\n\nلطفاً چند ثانیه صبر کنید.")
+        
+        try:
+            # دریافت شاخص ترس و طمع
+            index_data = await fetch_fear_greed_index()
+            message = format_fear_greed_message(index_data)
+            
+            # دانلود تصویر چارت
+            chart_path = await download_fear_greed_chart()
+            
+            # حذف پیام loading
+            await loading_message.delete()
+            
+            # ارسال پیام همراه با تصویر
+            if chart_path and os.path.exists(chart_path):
+                # ارسال تصویر همراه با متن
+                with open(chart_path, 'rb') as photo:
+                    await update.message.reply_photo(
+                        photo=photo,
+                        caption=message,
+                        parse_mode='Markdown'
+                    )
+                
+                # حذف فایل موقت
+                try:
+                    os.remove(chart_path)
+                except:
+                    pass
+            else:
+                # اگر تصویر دانلود نشد، فقط متن ارسال کن
+                await update.message.reply_text(
+                    message,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+            
+        except Exception as e:
+            error_message = f"❌ خطا در دریافت شاخص ترس و طمع:\n{str(e)}"
+            try:
+                await loading_message.edit_text(error_message)
+            except:
+                await update.message.reply_text(error_message)
         
         return
     
