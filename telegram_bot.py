@@ -101,90 +101,16 @@ async def check_user_access(user_id: int) -> bool:
 
 # Functions for crypto trading signals
 async def fetch_crypto_signals():
-    """دریافت آخرین سیگنال‌های معاملاتی از کانال‌های تلگرام"""
+    """دریافت سیگنال‌های معاملاتی نمونه (Telethon حذف شده)"""
     try:
-        # بررسی اگر API credentials موجود هست
-        api_id = os.getenv('TELEGRAM_API_ID')
-        api_hash = os.getenv('TELEGRAM_API_HASH')
-        
-        if api_id and api_hash:
-            # برای دریافت واقعی از telegram نیاز به telethon داریم
-            return await fetch_real_telegram_signals()
-        else:
-            print("📍 TELEGRAM_API_ID یا TELEGRAM_API_HASH تنظیم نشده - استفاده از سیگنال‌های نمونه")
-            return await fetch_fallback_signals()
+        print("📍 استفاده از سیگنال‌های نمونه (Telethon حذف شده)")
+        return await fetch_fallback_signals()
     except Exception as e:
         print(f"خطا در دریافت سیگنال‌ها: {e}")
         # اگر خطا داشت، از آخرین سیگنال‌های شناخته شده استفاده کن
         return await fetch_fallback_signals()
 
-async def fetch_real_telegram_signals():
-    """دریافت آخرین سیگنال‌ها از کانال‌های telegram با telethon"""
-    try:
-        from telethon import TelegramClient
-        import os
-        
-        # تنظیمات API (باید از کاربر دریافت شود)
-        api_id = os.getenv('TELEGRAM_API_ID')
-        api_hash = os.getenv('TELEGRAM_API_HASH')
-        
-        if not api_id or not api_hash:
-            print("❌ Telegram API credentials not found")
-            raise Exception("API credentials missing")
-        
-        # کانال‌های هدف
-        channels = ['@Shervin_Trading', '@uniopn']
-        all_signals = []
-        
-        # اتصال به Telegram با session file در temp directory
-        import tempfile
-        session_file = os.path.join(tempfile.gettempdir(), f'signal_bot_{os.getpid()}')
-        
-        async with TelegramClient(session_file, int(api_id), api_hash) as client:
-            for channel in channels:
-                try:
-                    # دریافت آخرین 20 پیام از کانال
-                    messages = await client.get_messages(channel, limit=20)
-                    
-                    channel_signals = []
-                    for message in messages:
-                        if message.text and is_trading_signal(message.text):
-                            channel_signals.append(message.text.strip())
-                            if len(channel_signals) >= 2:  # فقط 2 تا آخرین
-                                break
-                    
-                    all_signals.extend(channel_signals)
-                    print(f"✅ دریافت {len(channel_signals)} سیگنال از {channel}")
-                    
-                except Exception as e:
-                    print(f"❌ خطا در دریافت از {channel}: {e}")
-        
-        return all_signals
-        
-    except ImportError:
-        print("❌ telethon library not installed")
-        raise Exception("telethon not available")
-    except Exception as e:
-        print(f"❌ خطا در اتصال به Telegram: {e}")
-        raise e
-
-def is_trading_signal(text):
-    """تشخیص اینکه آیا متن یک سیگنال معاملاتی است یا نه"""
-    if not text:
-        return False
-    
-    text_lower = text.lower()
-    
-    # کلمات کلیدی سیگنال‌های معاملاتی
-    signal_keywords = [
-        'usdt', 'spot', 'entry', 'target', 'stop', 'لانگ', 'شورت', 
-        'ورود', 'هدف', 'استاپ', 'لوریج', 'ارز', 'buy', 'sell'
-    ]
-    
-    # باید حداقل 2 کلمه کلیدی داشته باشد
-    keyword_count = sum(1 for keyword in signal_keywords if keyword in text_lower)
-    
-    return keyword_count >= 2
+# is_trading_signal function removed (Telethon dependency eliminated)
 
 async def fetch_fallback_signals():
     """سیگنال‌های پیش‌فرض در صورت خطا در دریافت real-time"""
@@ -1679,6 +1605,13 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     error_msg = str(context.error)
     logger.warning('Update "%s" caused error "%s"', update, error_msg)
     
+    # بررسی اگر خطا مربوط به conflict است
+    if "Conflict" in error_msg and "terminated by other getUpdates request" in error_msg:
+        logger.error("🚨 خطای Conflict شناسایی شد - احتمال وجود instance دیگر!")
+        logger.error("💡 برای حل: در Koyeb همه deployments قدیمی رو حذف کن")
+        # در صورت conflict، پیام خطا به کاربر ارسال نمیکنیم چون ممکنه اوضاع بدتر شه
+        return
+    
     # لاگ خطا پیشرفته
     user_id = None
     if update and update.effective_user:
@@ -1705,6 +1638,11 @@ def main() -> None:
     
     # لاگ شروع سیستم
     bot_logger.log_system_event("BOT_STARTED", f"ربات در زمان {datetime.datetime.now()} شروع شد")
+    
+    # تاخیر کوتاه برای جلوگیری از مشکل race condition
+    import time
+    time.sleep(2)
+    logger.info("⏳ آماده‌سازی اتصال...")
     
     # ایجاد Application با token ربات
     application = Application.builder().token(BOT_TOKEN).build()
@@ -1795,12 +1733,25 @@ def main() -> None:
     # اجرای ربات تا زمان فشردن Ctrl-C
     try:
         logger.info("📡 شروع polling...")
-        application.run_polling(allowed_updates=Update.ALL_TYPES)
+        logger.info("🔍 بررسی اتصال Telegram...")
+        
+        application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,  # حذف پیام‌های انتظار در صورت restart
+            poll_interval=1.0,          # کاهش فاصله polling
+            timeout=10                  # کاهش timeout
+        )
     except KeyboardInterrupt:
         logger.info("🛑 ربات متوقف شد")
         bot_logger.log_system_event("BOT_STOPPED", "ربات توسط کاربر متوقف شد")
     except Exception as e:
-        logger.error(f"❌ خطا در اجرای ربات: {e}")
+        error_msg = str(e)
+        if "Conflict" in error_msg and "terminated by other getUpdates request" in error_msg:
+            logger.error("🚨 خطای Conflict در polling!")
+            logger.error("💡 راه حل: در Koyeb تمام deployments قدیمی رو حذف کن و فقط یکی بذار")
+            logger.error("📍 یا اگر ربات روی سیستم محلی اجرا میکنی، اونو متوقف کن")
+        else:
+            logger.error(f"❌ خطا در اجرای ربات: {e}")
         bot_logger.log_error("خطا در اجرای ربات", e)
 
 if __name__ == "__main__":
