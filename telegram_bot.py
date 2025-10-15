@@ -300,6 +300,7 @@ async def download_fear_greed_chart():
     """دانلود تصویر چارت شاخص ترس و طمع از منابع مختلف"""
     import aiohttp
     import os
+    import tempfile
     
     # لیست منابع مختلف برای تصویر
     image_sources = [
@@ -308,8 +309,9 @@ async def download_fear_greed_chart():
         "https://api.alternative.me/fng/png"
     ]
     
-    chart_path = "tmp/fear_greed_chart.png"
-    os.makedirs("tmp", exist_ok=True)
+    # استفاده از پوشه موقت سیستم برای جلوگیری از مشکلات مجوز
+    temp_dir = tempfile.gettempdir()
+    chart_path = os.path.join(temp_dir, "fear_greed_chart.png")
     
     # Headers برای شبیه‌سازی درخواست مرورگر
     headers = {
@@ -444,8 +446,10 @@ async def create_simple_fear_greed_image():
         draw.text((30, center_y + 10), "Fear", fill='red', font=small_font)
         draw.text((width - 70, center_y + 10), "Greed", fill='green', font=small_font)
         
-        # ذخیره فایل
-        chart_path = "tmp/fear_greed_chart.png"
+        # ذخیره فایل در پوشه موقت سیستم
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        chart_path = os.path.join(temp_dir, "fear_greed_chart.png")
         img.save(chart_path, 'PNG')
         
         if os.path.exists(chart_path):
