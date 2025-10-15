@@ -102,13 +102,83 @@ async def check_user_access(user_id: int) -> bool:
 # Functions for crypto trading signals
 async def fetch_crypto_signals():
     """دریافت آخرین سیگنال‌های معاملاتی از کانال‌های تلگرام"""
-    from datetime import datetime, timedelta
+    try:
+        # برای دریافت واقعی از telegram نیاز به telethon داریم
+        return await fetch_real_telegram_signals()
+    except Exception as e:
+        print(f"خطا در دریافت سیگنال‌ها: {e}")
+        # اگر خطا داشت، از آخرین سیگنال‌های شناخته شده استفاده کن
+        return await fetch_fallback_signals()
+
+async def fetch_real_telegram_signals():
+    """دریافت آخرین سیگنال‌ها از کانال‌های telegram با telethon"""
+    try:
+        from telethon import TelegramClient
+        import os
+        
+        # تنظیمات API (باید از کاربر دریافت شود)
+        api_id = os.getenv('TELEGRAM_API_ID')
+        api_hash = os.getenv('TELEGRAM_API_HASH')
+        
+        if not api_id or not api_hash:
+            print("❌ Telegram API credentials not found")
+            raise Exception("API credentials missing")
+        
+        # کانال‌های هدف
+        channels = ['@Shervin_Trading', '@uniopn']
+        all_signals = []
+        
+        # اتصال به Telegram
+        async with TelegramClient('signal_bot', int(api_id), api_hash) as client:
+            for channel in channels:
+                try:
+                    # دریافت آخرین 20 پیام از کانال
+                    messages = await client.get_messages(channel, limit=20)
+                    
+                    channel_signals = []
+                    for message in messages:
+                        if message.text and is_trading_signal(message.text):
+                            channel_signals.append(message.text.strip())
+                            if len(channel_signals) >= 2:  # فقط 2 تا آخرین
+                                break
+                    
+                    all_signals.extend(channel_signals)
+                    print(f"✅ دریافت {len(channel_signals)} سیگنال از {channel}")
+                    
+                except Exception as e:
+                    print(f"❌ خطا در دریافت از {channel}: {e}")
+        
+        return all_signals
+        
+    except ImportError:
+        print("❌ telethon library not installed")
+        raise Exception("telethon not available")
+    except Exception as e:
+        print(f"❌ خطا در اتصال به Telegram: {e}")
+        raise e
+
+def is_trading_signal(text):
+    """تشخیص اینکه آیا متن یک سیگنال معاملاتی است یا نه"""
+    if not text:
+        return False
     
-    # آخرین سیگنال‌های واقعی از کانال‌های مشخص شده
-    signals = []
+    text_lower = text.lower()
     
-    # آخرین سیگنال از @Shervin_Trading (JOE/USDT)
-    shervin_signal1 = """🚨 سیگنال اختصاصی برای اعضای کانال 🚨
+    # کلمات کلیدی سیگنال‌های معاملاتی
+    signal_keywords = [
+        'usdt', 'spot', 'entry', 'target', 'stop', 'لانگ', 'شورت', 
+        'ورود', 'هدف', 'استاپ', 'لوریج', 'ارز', 'buy', 'sell'
+    ]
+    
+    # باید حداقل 2 کلمه کلیدی داشته باشد
+    keyword_count = sum(1 for keyword in signal_keywords if keyword in text_lower)
+    
+    return keyword_count >= 2
+
+async def fetch_fallback_signals():
+    """سیگنال‌های پیش‌فرض در صورت خطا در دریافت real-time"""
+    return [
+        """🚨 سیگنال اختصاصی برای اعضای کانال 🚨
 
 💎 ارز : JOE / USDT 
 
@@ -127,31 +197,9 @@ async def fetch_crypto_signals():
 
 😀 استاپ‌لاس : 0.1122
 
-⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین قدم برای موفقیت است لطفا رعایت کنید"""
+⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین قدم برای موفقیت است لطفا رعایت کنید""",
 
-    shervin_signal2 = """🚨 سیگنال اختصاصی برای اعضای کانال 🚨
-
-💎 ارز : JOE / USDT 
-
-📈شورت
-
-🌩 لوریج: 15X  
-
-💵 میزان سرمایه ورودی: 3%
-
-📍 نقطه ورود: 0.1185 / 0.1205
-
-💵 اهداف:
-💰هدف اول : 0.1175
-💰هدف : 0.1145
-💰هدف نهایی : 0.1115
-
-😀 استاپ‌لاس : 0.1235
-
-⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین قدم برای موفقیت است لطفا رعایت کنید"""
-
-    # آخرین سیگنال از @uniopn (IP/USDT)
-    uniopn_signal1 = """Ip/usdt
+        """Ip/usdt
 Spot/buy
 0.5% risk
 
@@ -170,36 +218,7 @@ Targets:
 9.78
 
 آموزش مدیریت سرمایه در پست سنجاق شده کانال رو حتما مطالعه فرمایید!"""
-
-    uniopn_signal2 = """Ip/usdt
-Spot/buy
-0.7% risk
-
-Entry:
-Market=6.280 (40%)
-5.450(60%)
-
-Stop:
-4.850
-
-در spot برای فعال شدن استاپ کلوز کندل ۴ ساعته زیر نقطه استاپ ملاک است
-Targets:
-7.20
-8.05
-8.85
-9.65
-
-آموزش مدیریت سرمایه در پست سنجاق شده کانال رو حتما مطالعه فرمایید!"""
-
-    # ایجاد timestamp برای سیگنال‌ها (1-6 ساعت پیش)
-    signals.extend([
-        shervin_signal1,
-        shervin_signal2, 
-        uniopn_signal1,
-        uniopn_signal2
-    ])
-    
-    return signals
+    ]
 
 
 
