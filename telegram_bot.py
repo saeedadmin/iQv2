@@ -35,6 +35,7 @@ from public_menu import PublicMenuManager
 from logger_system import bot_logger
 from keyboards import get_main_menu_markup, get_public_section_markup, get_ai_menu_markup
 from ai_news import get_ai_news
+from telegram_signal_scraper import get_latest_crypto_signals
 
 # Optional imports - TradingView Analysis
 try:
@@ -101,12 +102,20 @@ async def check_user_access(user_id: int) -> bool:
 
 # Functions for crypto trading signals
 async def fetch_crypto_signals():
-    """دریافت سیگنال‌های معاملاتی نمونه (Telethon حذف شده)"""
+    """دریافت سیگنال‌های معاملاتی از کانال‌های تلگرام"""
     try:
-        print("📍 استفاده از سیگنال‌های نمونه (Telethon حذف شده)")
-        return await fetch_fallback_signals()
+        print("📍 دریافت سیگنال‌های جدید از کانال‌های تلگرام...")
+        signals = await get_latest_crypto_signals(days=3, max_signals=5)
+        
+        if signals and signals[0].startswith("❌"):
+            # اگر خطا داشت، از سیگنال‌های fallback استفاده کن
+            print("⚠️ خطا در دریافت سیگنال‌های جدید، استفاده از سیگنال‌های نمونه")
+            return await fetch_fallback_signals()
+        
+        return signals
+        
     except Exception as e:
-        print(f"خطا در دریافت سیگنال‌ها: {e}")
+        print(f"❌ خطا در دریافت سیگنال‌ها: {e}")
         # اگر خطا داشت، از آخرین سیگنال‌های شناخته شده استفاده کن
         return await fetch_fallback_signals()
 
@@ -720,12 +729,14 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 /start - شروع مجدد ربات
 /help - نمایش این راهنما
 /status - وضعیت ربات و اطلاعات شما
+/signals - دریافت آخرین سیگنال‌های ترید 🔥
 
 **🔹 دستورات مدیریت:**
 /admin - پنل مدیریت کامل (فقط ادمین)
 
 **🔹 قابلیت‌های ربات:**
 ✅ پردازش پیام‌های متنی
+✅ سیگنال‌های ترید از کانال‌های تلگرام
 ✅ سیستم مدیریت کاربران
 ✅ آمارگیری و گزارش‌گیری
 ✅ پنل ادمین با امکانات کامل
@@ -733,6 +744,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 ✅ قابلیت پیام همگانی
 
 **🔹 نحوه استفاده:**
+• /signals برای دریافت آخرین سیگنال‌های ترید
 • هر پیام متنی بفرستید تا پردازش شود
 • از دستورات بالا برای عملکردهای خاص استفاده کنید
 • ادمین از طریق /admin به تمام امکانات دسترسی دارد
@@ -833,6 +845,85 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 • وضعیت اتصال: ✅ متصل
     """
     await update.message.reply_text(status_text, parse_mode='Markdown')
+
+# Handler برای دستور /signals - دریافت آخرین سیگنال‌های ترید
+async def signals_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """دریافت آخرین سیگنال‌های ترید از کانال‌های تلگرام"""
+    user = update.effective_user
+    
+    # لاگ درخواست کاربر
+    db_manager.log_user_action(user.id, "FETCH_SIGNALS")
+    
+    # پیام در حال بارگذاری
+    loading_message = await update.message.reply_text(
+        "⏳ در حال دریافت آخرین سیگنال‌های ترید...\n\n📡 از کانال‌های تلگرام\n⏱ لطفاً چند ثانیه صبر کنید"
+    )
+    
+    try:
+        # دریافت سیگنال‌ها
+        signals = await get_latest_crypto_signals(days=3, max_signals=3)
+        
+        # حذف پیام بارگذاری
+        await loading_message.delete()
+        
+        if not signals or (signals[0].startswith("❌")):
+            await update.message.reply_text(
+                "⚠️ متأسفانه هیچ سیگنال جدیدی یافت نشد.\n\n"
+                "🔄 لطفاً چند دقیقه بعد مجدداً تلاش کنید\n"
+                "📞 در صورت تداوم مشکل، با پشتیبانی تماس بگیرید"
+            )
+            return
+        
+        # ارسال هدر
+        header_message = f"""🔥 **آخرین سیگنال‌های ترید**
+        
+📅 **تاریخ دریافت:** {datetime.datetime.now().strftime('%Y/%m/%d %H:%M')}
+📊 **تعداد سیگنال:** {len(signals)}
+🎯 **کانال‌ها:** @Shervin_Trading
+
+━━━━━━━━━━━━━━━━━━━━━━━━"""
+        
+        await update.message.reply_text(header_message, parse_mode='Markdown')
+        
+        # ارسال هر سیگنال
+        for i, signal in enumerate(signals, 1):
+            try:
+                signal_message = f"**🎯 سیگنال {i}:**\n\n{signal}"
+                await update.message.reply_text(
+                    signal_message, 
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+                
+                # تاخیر کوتاه بین سیگنال‌ها
+                await asyncio.sleep(1)
+                
+            except Exception as e:
+                print(f"❌ خطا در ارسال سیگنال {i}: {e}")
+                await update.message.reply_text(
+                    f"⚠️ خطا در نمایش سیگنال {i}"
+                )
+        
+        # پیام پایانی
+        footer_message = """━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ **تذکر مهم:**
+• این سیگنال‌ها صرفاً جهت اطلاع‌رسانی است
+• لطفاً تحقیقات خود را انجام دهید
+• مدیریت ریسک را رعایت کنید
+
+🔄 برای دریافت سیگنال‌های جدید: /signals"""
+        
+        await update.message.reply_text(footer_message, parse_mode='Markdown')
+        
+    except Exception as e:
+        await loading_message.delete()
+        print(f"❌ خطا در دریافت سیگنال‌ها: {e}")
+        await update.message.reply_text(
+            f"❌ خطا در دریافت سیگنال‌ها\n\n"
+            f"🔍 جزئیات: {str(e)[:100]}\n"
+            f"🔄 لطفاً مجدداً تلاش کنید"
+        )
 
 # Handler برای دستور /admin (فقط برای ادمین)
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1652,6 +1743,7 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("menu", menu_command))
     application.add_handler(CommandHandler("status", status_command))
+    application.add_handler(CommandHandler("signals", signals_command))
     application.add_handler(CommandHandler("admin", admin_command))
     
     # Handler برای پنل ادمین (callback queries)

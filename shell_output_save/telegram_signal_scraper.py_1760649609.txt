@@ -1,0 +1,66 @@
+🧪 تست Telegram Signal Scraper...
+🔍 استخراج سیگنال‌ها از @Shervin_Trading...
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> Status: RUNNING, Message: 
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:19:47.686Z ACTOR: Pulling container image of build kaecqmtn0Q7JoGj1a from registry.
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:19:49.300Z ACTOR: Creating container.
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:19:49.413Z ACTOR: Starting container.
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:19:52.559Z INFO  System info {"apifyVersion":"3.4.2","apifyClientVersion":"2.12.6","crawleeVersion":"3.13.9","osType":"Linux","nodeVersion":"v20.19.3"}
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:19:53.442Z INFO  Scraping messages older than 2025-10-14T00:00:00.000Z
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:19:53.514Z INFO  Starting crawler...
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> Status: RUNNING, Message: Starting the crawler.
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:19:53.655Z INFO  CheerioCrawler: Starting the crawler.
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:19:59.970Z INFO  Total messages scraped: 16
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:19:59.972Z 	Scraping messages 4910-2456 for profile "Shervin_Trading"
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:20:01.641Z INFO  Total messages scraped: 28
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:20:01.653Z 	Scraping messages 2455-1 for profile "Shervin_Trading"
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:20:02.068Z INFO  CheerioCrawler: All requests from the queue have been processed, the crawler will shut down.
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:20:02.272Z INFO  CheerioCrawler: Final request statistics: {"requestsFinished":21,"requestsFailed":0,"retryHistogram":[21],"requestAvgFailedDurationMillis":null,"requestAvgFinishedDurationMillis":2098,"requestsFinishedPerMinute":143,"requestsFailedPerMinute":0,"requestTotalDurationMillis":44048,"requestsTotal":21,"crawlerRuntimeMillis":8830}
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:20:02.280Z INFO  CheerioCrawler: Finished! Total 21 requests: 21 succeeded, 0 failed. {"terminal":true}
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> 2025-10-16T21:20:02.569Z INFO  Finished.
+[apify.telegram-scraper runId:JTzRV5XRF0XdQvuBI] -> Status: SUCCEEDED, Message: Finished! Total 21 requests: 21 succeeded, 0 failed.
+✅ 18 سیگنال از @Shervin_Trading دریافت شد
+
+============================================================
+Signal 1:
+🔥 **سیگنال جدید از @Shervin_Trading**
+
+📅 **تاریخ:** October 16
+💰 **ارز:** AAVE/USDT
+📊 **نوع:** LONG
+👀 **بازدید:** 3
+
+💬 **سیگنال:**
+🚨 سیگنال اختصاصی برای اعضای کانال 🚨  💎 ارز : AAVE / USDT   📈لانگ  🌩 لوریج: 10X    💵 میزان سرمایه ورودی: 5%  📍 نقطه ورود: MARKET / 241.16  💵 اهداف: 💰هدف اول : 243.6 💰هدف : 246.11 💰هدف نهایی : 250.3  😀 استاپ‌لاس : 235  ⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین…💵اینم تارگت 1 تاچ کرد رفقا نوش جان
+
+🔗 **لینک:** https://telegram.me/s/Shervin_Trading/5269
+
+
+============================================================
+Signal 2:
+🔥 **سیگنال جدید از @Shervin_Trading**
+
+📅 **تاریخ:** October 16
+💰 **ارز:** ID/USDT
+📊 **نوع:** LONG
+👀 **بازدید:** 3
+
+💬 **سیگنال:**
+🚨 سیگنال اختصاصی برای اعضای کانال 🚨  💎 ارز : ID / USDT   📈لانگ  🌩 لوریج: 10X    💵 میزان سرمایه ورودی: 5%  📍 نقطه ورود: 0.1160 / 0.1125  💵 اهداف: 💰هدف اول : 0.1167 💰هدف : 0.1191 💰هدف نهایی : 0.1215  😀 استاپ‌لاس : 0.1087  ⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین…💵تارگت 1 و 2 تاچ شده رفقا نوش جان
+
+🔗 **لینک:** https://telegram.me/s/Shervin_Trading/5268
+
+
+============================================================
+Signal 3:
+🔥 **سیگنال جدید از @Shervin_Trading**
+
+📅 **تاریخ:** October 15
+💰 **ارز:** AAVE/USDT
+📊 **نوع:** LONG
+👀 **بازدید:** 5
+
+💬 **سیگنال:**
+🚨 سیگنال اختصاصی برای اعضای کانال 🚨  💎 ارز : AAVE / USDT   📈لانگ  🌩 لوریج: 10X    💵 میزان سرمایه ورودی: 5%  📍 نقطه ورود: MARKET / 241.16  💵 اهداف: 💰هدف اول : 243.6 💰هدف : 246.11 💰هدف نهایی : 250.3  😀 استاپ‌لاس : 235  ⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین…👀رفت تا نزدیک تارگت بازم ریخت
+
+🔗 **لینک:** https://telegram.me/s/Shervin_Trading/5265
+

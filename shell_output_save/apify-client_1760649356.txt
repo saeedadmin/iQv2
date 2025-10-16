@@ -1,0 +1,65 @@
+Using Python 3.12.5 environment at: /tmp/.venv
+⠋ Resolving dependencies...                                                     ⠙ Resolving dependencies...                                                     ⠋ Resolving dependencies...                                                     ⠙ Resolving dependencies...                                                     ⠹ Resolving dependencies...                                                     ⠸ Resolving dependencies...                                                     ⠼ Resolving dependencies...                                                     ⠴ Resolving dependencies...                                                     ⠦ Resolving dependencies...                                                     ⠧ Resolving dependencies...                                                     ⠇ Resolving dependencies...                                                     ⠋ Resolving dependencies...                                                     ⠋ apify-client==2.2.0                                                           ⠙ apify-client==2.2.0                                                           ⠹ apify-client==2.2.0                                                           ⠸ apify-client==2.2.0                                                           ⠼ apify-client==2.2.0                                                           ⠴ apify-client==2.2.0                                                           ⠦ apify-client==2.2.0                                                           ⠧ apify-client==2.2.0                                                           ⠇ apify-client==2.2.0                                                           ⠋ apify-client==2.2.0                                                           ⠙ apify-client==2.2.0                                                           ⠹ apify-client==2.2.0                                                           ⠸ apify-client==2.2.0                                                           ⠼ apify-client==2.2.0                                                           ⠼ apify-shared==2.1.0                                                           ⠴ apify-shared==2.1.0                                                           ⠦ apify-shared==2.1.0                                                           ⠧ apify-shared==2.1.0                                                           ⠇ apify-shared==2.1.0                                                           ⠇ colorama==0.4.6                                                               ⠋ colorama==0.4.6                                                               ⠋ impit==0.7.1                                                                  ⠙ impit==0.7.1                                                                  ⠹ impit==0.7.1                                                                  ⠸ impit==0.7.1                                                                  ⠼ impit==0.7.1                                                                  ⠴ impit==0.7.1                                                                  ⠴ more-itertools==10.8.0                                                        ⠴                                                                               Resolved 5 packages in 6.31s
+⠋ Preparing packages... (0/0)                                                   ⠋ Preparing packages... (0/5)                                                   ⠙ Preparing packages... (0/5)                                                   ⠙ Preparing packages... (0/5)
+more-itertools ------------------------------     0 B/68.03 KiB                 ⠙ Preparing packages... (0/5)
+more-itertools ------------------------------ 8.00 KiB/68.03 KiB                ⠙ Preparing packages... (0/5)
+more-itertools ------------------------------ 16.00 KiB/68.03 KiB               ⠙ Preparing packages... (0/5)
+more-itertools ------------------------------ 24.00 KiB/68.03 KiB               ⠙ Preparing packages... (0/5)
+more-itertools ------------------------------ 32.00 KiB/68.03 KiB               ⠙ Preparing packages... (0/5)
+more-itertools ------------------------------ 40.00 KiB/68.03 KiB               ⠙ Preparing packages... (0/5)
+more-itertools ------------------------------ 48.00 KiB/68.03 KiB               ⠙ Preparing packages... (0/5)
+colorama   ------------------------------     0 B/24.74 KiB
+more-itertools ------------------------------ 48.00 KiB/68.03 KiB               ⠙ Preparing packages... (0/5)
+colorama   ------------------------------ 8.00 KiB/24.74 KiB
+more-itertools ------------------------------ 48.00 KiB/68.03 KiB               ⠙ Preparing packages... (0/5)
+colorama   ------------------------------ 8.00 KiB/24.74 KiB
+more-itertools ------------------------------ 48.00 KiB/68.03 KiB
+apify-client ------------------------------     0 B/83.90 KiB                   ⠙ Preparing packages... (0/5)
+colorama   ------------------------------ 8.00 KiB/24.74 KiB
+more-itertools ------------------------------ 48.00 KiB/68.03 KiB
+apify-client ------------------------------     0 B/83.90 KiB
+impit      ------------------------------     0 B/5.82 MiB                      ⠙ Preparing packages... (0/5)
+colorama   ------------------------------ 8.00 KiB/24.74 KiB
+more-itertools ------------------------------ 48.00 KiB/68.03 KiB
+apify-client ------------------------------     0 B/83.90 KiB
+impit      ------------------------------ 8.00 KiB/5.82 MiB                     ⠙ Preparing packages... (0/5)
+colorama   ------------------------------ 8.00 KiB/24.74 KiB
+more-itertools ------------------------------ 56.00 KiB/68.03 KiB
+apify-client ------------------------------     0 B/83.90 KiB
+impit      ------------------------------ 8.00 KiB/5.82 MiB                     ⠙ Preparing packages... (0/5)
+colorama   ------------------------------ 8.00 KiB/24.74 KiB
+more-itertools ------------------------------ 64.00 KiB/68.03 KiB
+apify-client ------------------------------     0 B/83.90 KiB
+impit      ------------------------------ 8.00 KiB/5.82 MiB                     ⠙ Preparing packages... (0/5)
+colorama   ------------------------------ 16.00 KiB/24.74 KiB
+more-itertools ------------------------------ 64.00 KiB/68.03 KiB
+apify-client ------------------------------     0 B/83.90 KiB
+impit      ------------------------------ 8.00 KiB/5.82 MiB                     ⠙ Preparing packages... (0/5)
+colorama   ------------------------------ 16.00 KiB/24.74 KiB
+more-itertools ------------------------------ 68.03 KiB/68.03 KiB
+apify-client ------------------------------     0 B/83.90 KiB
+impit      ------------------------------ 8.00 KiB/5.82 MiB                     ⠙ Preparing packages... (0/5)
+colorama   ------------------------------ 16.00 KiB/24.74 KiB
+more-itertools ------------------------------ 68.03 KiB/68.03 KiB
+apify-client ------------------------------     0 B/83.90 KiB
+impit      ------------------------------ 16.00 KiB/5.82 MiB                    ⠙ Preparing packages... (0/5)
+apify-shared ------------------------------ 8.00 KiB/16.10 KiB
+colorama   ------------------------------ 16.00 KiB/24.74 KiB
+apify-client ------------------------------ 8.00 KiB/83.90 KiB
+impit      ------------------------------ 2.76 MiB/5.82 MiB                     ⠙ Preparing packages... (0/5)
+apify-shared ------------------------------ 8.00 KiB/16.10 KiB
+colorama   ------------------------------ 16.00 KiB/24.74 KiB
+apify-client ------------------------------ 8.00 KiB/83.90 KiB
+impit      ------------------------------ 3.84 MiB/5.82 MiB                     ⠙ Preparing packages... (0/5)
+apify-shared ------------------------------ 16.00 KiB/16.10 KiB
+apify-client ------------------------------ 16.00 KiB/83.90 KiB
+impit      ------------------------------ 5.48 MiB/5.82 MiB                     ⠙ Preparing packages... (0/5)
+apify-client ------------------------------ 16.00 KiB/83.90 KiB
+impit      ------------------------------ 5.48 MiB/5.82 MiB                     ⠙ Preparing packages... (0/5)
+apify-client ------------------------------ 32.00 KiB/83.90 KiB                 ⠙ Preparing packages... (0/5)                                                   Prepared 5 packages in 96ms
+░░░░░░░░░░░░░░░░░░░░ [0/0] Installing wheels...                                 ░░░░░░░░░░░░░░░░░░░░ [0/5] Installing wheels...                                 ░░░░░░░░░░░░░░░░░░░░ [0/5] more-itertools==10.8.0                               ████░░░░░░░░░░░░░░░░ [1/5] more-itertools==10.8.0                               ████░░░░░░░░░░░░░░░░ [1/5] colorama==0.4.6                                      ████████░░░░░░░░░░░░ [2/5] colorama==0.4.6                                      ████████░░░░░░░░░░░░ [2/5] apify-shared==2.1.0                                  ████████████░░░░░░░░ [3/5] apify-shared==2.1.0                                  ████████████░░░░░░░░ [3/5] impit==0.7.1                                         ████████████████░░░░ [4/5] impit==0.7.1                                         ████████████████░░░░ [4/5] apify-client==2.2.0                                  ████████████████████ [5/5] apify-client==2.2.0                                  Installed 5 packages in 2ms
+ + apify-client==2.2.0
+ + apify-shared==2.1.0
+ + colorama==0.4.6
+ + impit==0.7.1
+ + more-itertools==10.8.0

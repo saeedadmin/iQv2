@@ -8,3 +8,4 @@ playwright>=1.40.0
 lxml>=4.9.0
 feedparser>=6.0.10
 Pillow>=10.0.0
+apify-client>=2.2.0
