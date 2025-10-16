@@ -1,0 +1,55 @@
+🚀 Testing i-scraper/telegram-channels-scraper...
+📊 Target: @Shervin_Trading
+--------------------------------------------------
+📅 Date range: 2025-10-16 to 2025-10-17
+🔧 Input: {'channels': ['@Shervin_Trading'], 'dateFrom': '2025-10-16', 'dateTo': '2025-10-17', 'proxyConfiguration': {'useApifyProxy': True}}
+⏳ Running i-scraper Actor...
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> Status: RUNNING, Message: 
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:49.359Z ACTOR: Pulling container image of build Cu2SpX6TKn2TAkAL0 from registry.
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:51.938Z ACTOR: Creating container.
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:52.070Z ACTOR: Starting container.
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:53.537Z Actor is running on the Apify platform, `disable_browser_sandbox` was changed to True.
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:53.738Z [apify] INFO  Initializing Actor...
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:53.744Z [apify] INFO  System info ({"apify_sdk_version": "2.7.0", "apify_client_version": "1.12.0", "crawlee_version": "0.6.11", "python_version": "3.13.5", "os": "linux"})
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.502Z [apify] INFO  No valid TELEGRAM_SESSION found — starting QR login flow...
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.636Z [apify] INFO  Scan the following QR code with Telegram app to authorize (you have 3 minutes to do it):
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.640Z
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.642Z
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.644Z     ██████████████  ██  ██        ████  ████  ████  ██      ██  ██████████████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.645Z     ██          ██    ████████      ██      ██████          ██  ██          ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.647Z     ██  ██████  ██    ████████    ██████  ██████  ██      ████  ██  ██████  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.648Z     ██  ██████  ██  ██  ██  ██        ████████  ████  ██  ████  ██  ██████  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.650Z     ██  ██████  ██  ████████    ██████  ██    ██████  ██  ████  ██  ██████  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.651Z     ██          ██  ██████      ████    ██████████  ████    ██  ██          ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.653Z     ██████████████  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██████████████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.655Z                     ██        ██    ██████  ██  ██  ██    ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.656Z     ██      ██  ██████    ██  ██        ████    ██  ████    ████████████    ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.658Z       ██  ██████    ████        ██  ████  ████          ██  ██████  ████  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.659Z       ██████  ████      ██      ██  ██████  ██          ████  ████      ████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.661Z     ████████████  ████  ██      ██    ████    ████  ██  ████      ██    ██  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.663Z         ██      ██  ██  ████    ██████    ██    ████████      ██████      ████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.664Z     ████████████  ██  ██████        ████████    ██      ██████      ██  ████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.666Z     ██████████████████      ████████    ██    ██████  ██  ██      ██████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.667Z       ██    ██      ████████    ██████    ██  ██  ██    ██  ████  ██  ████████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.669Z             ██  ████    ██          ██      ██        ██  ████████      ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.671Z       ██  ██      ██  ██  ██  ██        ████    ██  ████    ████  ██████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.672Z       ██  ██  ████    ██████████████  ██████    ██████    ████  ██████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.674Z           ██  ██  ██████          ██████  ██████  ██    ██  ████████    ████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.676Z         ██    ██████    ██          ██        ████    ██  ██    ████      ████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.677Z     ██  ██            ██████████  ██      ██  ██          ██████    ██████  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.679Z     ██  ████    ██  ██      ██  ████  ██    ██    ████    ██      ████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.680Z     ████  ██████      ██    ████████  ████  ██  ████    ██    ████████████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.682Z       ████  ████████  ██  ██    ████    ██      ██  ████  ██  ████      ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.684Z     ██  ██            ████  ██████  ██    ██████      ████████    ██████████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.685Z           ████  ████      ██  ██    ██████  ████          ████  ██  ████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.687Z         ████████  ██████████          ██      ████  ██  ██  ██  ██      ██  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.689Z     ██████████  ██████  ████      ██  ██  ████  ████  ██  ████████████    ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.690Z                     ██  ████  ████████████      ██      ██  ██      ██████████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.692Z     ██████████████  ██████  ██    ████  ██  ████████    ██  ██  ██  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.694Z     ██          ██      ██  ████    ██        ██            ██      ██  ██  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.695Z     ██  ██████  ██  ██  ██    ████  ██      ██    ██████    ██████████  ██  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.697Z     ██  ██████  ██          ████        ████  ████  ██        ██████  ██████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.699Z     ██  ██████  ██      ██  ██  ████      ██      ████  ██  ██  ████  ██  ██
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.700Z     ██          ██        ██  ██  ██████████████  ██        ██  ██      ████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.702Z     ██████████████  ██              ████      ██    ████  ██          ████████
+[apify.telegram-channels-scraper runId:II9eGubjSbmiXb4sy] -> 2025-10-16T18:59:55.704Z
