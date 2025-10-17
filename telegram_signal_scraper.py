@@ -263,9 +263,57 @@ class TelegramSignalScraper:
         
         return 'UNKNOWN'
     
+    def _clean_signal_text(self, text: str) -> str:
+        """
+        تمیز کردن متن سیگنال از کلمات اضافی و تکراری
+        
+        Args:
+            text: متن خام سیگنال
+            
+        Returns:
+            متن تمیز شده
+        """
+        import re
+        
+        # حذف متن‌های تبلیغاتی و اضافی
+        unwanted_phrases = [
+            r'🚨\s*سیگنال اختصاصی برای اعضای کانال\s*🚨',
+            r'🔥\s*سیگنال جدید از.*?🔥',
+            r'⚠️\s*مدیریت سرمایه و رعایت حد ضرر.*?است[\.]*',
+            r'نوش جان.*?$',
+            r'💵.*?تاچ.*?رفقا.*?$',
+            r'💵.*?تارگت.*?تاچ.*?$',
+            r'ضروری است',
+            r'اولین قدم برای موفقیت است',
+            r'ضروری است\.+',
+            r'\.{3,}.*$'  # حذف سه نقطه و متن بعدش
+        ]
+        
+        cleaned_text = text
+        for phrase in unwanted_phrases:
+            cleaned_text = re.sub(phrase, '', cleaned_text, flags=re.IGNORECASE | re.MULTILINE)
+        
+        # حذف خطوط خالی اضافی
+        cleaned_text = re.sub(r'\n\s*\n', '\n', cleaned_text)
+        
+        # حذف فضاهای اضافی
+        cleaned_text = re.sub(r'\s+', ' ', cleaned_text)
+        
+        # حذف جفت ارز اضافی اگر قبلاً در header ذکر شده
+        coin_patterns = [
+            r'💎\s*ارز\s*:\s*[A-Z]+\s*/\s*USDT',
+            r'💎\s*ارز\s*:\s*[A-Z]+\s*/\s*USD',
+            r'💎\s*ارز\s*:\s*[A-Z]+\s*/\s*BTC'
+        ]
+        
+        for pattern in coin_patterns:
+            cleaned_text = re.sub(pattern, '', cleaned_text, flags=re.IGNORECASE)
+        
+        return cleaned_text.strip()
+
     def format_signal_for_display(self, signal: Dict) -> str:
         """
-        فرمت کردن سیگنال برای نمایش - بهبود یافته
+        فرمت کردن سیگنال برای نمایش - بهبود یافته و تمیز
         
         Args:
             signal: دیکشنری سیگنال
@@ -274,34 +322,25 @@ class TelegramSignalScraper:
             متن فرمت شده و تمیز
         """
         # تمیز کردن متن سیگنال
-        text = signal['text']
+        raw_text = signal['text']
+        cleaned_text = self._clean_signal_text(raw_text)
         
-        # حذف کاراکترهای اضافی و فضاهای خالی
-        import re
-        text = re.sub(r'\s+', ' ', text)  # چندین فضای خالی را به یکی کاهش می‌دهد
-        text = re.sub(r'[.]{3,}', '...', text)  # چندین نقطه را به سه‌تا کاهش می‌دهد
-        text = text.replace('…', '...')  # یونیفای کردن نقاط
-        
-        # بریدن متن در محل مناسب (نه وسط کلمه)
-        if len(text) > 400:
-            # پیدا کردن آخرین فاصله قبل از 400 کاراکتر
-            cut_pos = text.rfind(' ', 0, 400)
-            if cut_pos > 300:  # اگر جای مناسبی پیدا شد
-                text = text[:cut_pos] + '...'
+        # اگر متن خیلی طولانی باشد، کوتاه کن
+        if len(cleaned_text) > 350:
+            # پیدا کردن آخرین فاصله قبل از 350 کاراکتر
+            cut_pos = cleaned_text.rfind(' ', 0, 350)
+            if cut_pos > 250:  # اگر جای مناسبی پیدا شد
+                cleaned_text = cleaned_text[:cut_pos] + '...'
             else:
-                text = text[:400] + '...'
+                cleaned_text = cleaned_text[:350] + '...'
         
         # ساخت پیام فرمت شده
         formatted = f"📅 **تاریخ:** {signal['date']}\n"
         formatted += f"💰 **ارز:** {signal['coin_pair']}\n"
         formatted += f"📊 **نوع:** {signal['signal_type']}\n"
         formatted += f"👀 **بازدید:** {signal['views']:,}\n\n"
-        formatted += f"💬 **سیگنال:**\n{text}"
+        formatted += f"💬 **سیگنال:**\n{cleaned_text}"
         
-        # فقط اگر لینک وجود داشته باشد اضافه کن
-        if signal.get('link') and signal['link'].strip():
-            formatted += f"\n\n🔗 **لینک:** {signal['link']}"
-            
         return formatted
 
 # تابع helper برای ربات

@@ -123,7 +123,7 @@ async def fetch_crypto_signals():
 # is_trading_signal function removed (Telethon dependency eliminated)
 
 async def fetch_fallback_signals():
-    """سیگنال‌های پیش‌فرض در صورت خطا در دریافت real-time - بهبود یافته"""
+    """سیگنال‌های پیش‌فرض در صورت خطا در دریافت real-time - بهبود یافته و تمیز"""
     return [
         """📅 **تاریخ:** October 17
 💰 **ارز:** BTC/USDT
@@ -131,20 +131,15 @@ async def fetch_fallback_signals():
 👀 **بازدید:** 2,456
 
 💬 **سیگنال:**
-🚨 سیگنال اختصاصی برای اعضای کانال 🚨
-
-💎 ارز : BTC / USDT
 📈 لانگ
 🌩 لوریج: 10X
 💵 میزان سرمایه ورودی: 5%
 📍 نقطه ورود: 67,200 / 66,800
 💵 اهداف:
-💰 هدف اول : 68,500
-💰 هدف دوم : 69,800
-💰 هدف نهایی : 71,200
-😀 استاپ‌لاس : 65,500
-
-⚠️ مدیریت سرمایه و رعایت حد ضرر، اولین قدم برای موفقیت است""",
+💰 هدف اول: 68,500
+💰 هدف دوم: 69,800
+💰 هدف نهایی: 71,200
+😀 استاپ‌لاس: 65,500""",
 
         """📅 **تاریخ:** October 17
 💰 **ارز:** ETH/USDT
@@ -152,20 +147,15 @@ async def fetch_fallback_signals():
 👀 **بازدید:** 1,892
 
 💬 **سیگنال:**
-🚨 سیگنال اختصاصی برای اعضای کانال 🚨
-
-💎 ارز : ETH / USDT
 📈 لانگ
 🌩 لوریج: 10X
 💵 میزان سرمایه ورودی: 5%
 📍 نقطه ورود: 2,650 / 2,620
 💵 اهداف:
-💰 هدف اول : 2,710
-💰 هدف دوم : 2,780
-💰 هدف نهایی : 2,850
-😀 استاپ‌لاس : 2,550
-
-⚠️ مدیریت سرمایه و رعایت حد ضرر ضروری است"""
+💰 هدف اول: 2,710
+💰 هدف دوم: 2,780
+💰 هدف نهایی: 2,850
+😀 استاپ‌لاس: 2,550"""
     ]
 
 # Functions for Fear & Greed Index
@@ -644,7 +634,7 @@ def format_general_news_message(news_list):
 
 
 def format_crypto_signals_message(signals):
-    """فرمت کردن پیام سیگنال‌های معاملاتی - بهبود یافته"""
+    """فرمت کردن پیام سیگنال‌های معاملاتی - بهبود یافته و تمیز"""
     
     if not signals:
         return "❌ در حال حاضر سیگنال جدیدی یافت نشد."
@@ -652,12 +642,19 @@ def format_crypto_signals_message(signals):
     message = "🚀 **آخرین سیگنال‌های خرید و فروش**\n\n"
     
     for i, signal_text in enumerate(signals, 1):
-        # حذف لینک‌ها و تمیز کردن
+        # تمیز کردن سیگنال از لینک‌ها و متن‌های اضافی
         import re
-        clean_signal = re.sub(r'🔗@\w+', '', signal_text)
+        clean_signal = signal_text
+        
+        # حذف لینک‌ها
+        clean_signal = re.sub(r'🔗\s*\*\*لینک:\*\*.*', '', clean_signal)
+        clean_signal = re.sub(r'🔗@\w+', '', clean_signal)
         clean_signal = re.sub(r'@\w+', '', clean_signal)
         clean_signal = re.sub(r'https?://[^\s]+', '', clean_signal)
-        clean_signal = re.sub(r'\n🔗.*', '', clean_signal)  # حذف خط لینک
+        clean_signal = re.sub(r'\n🔗.*', '', clean_signal)
+        
+        # حذف خطوط خالی اضافی
+        clean_signal = re.sub(r'\n\s*\n', '\n', clean_signal)
         clean_signal = clean_signal.strip()
         
         message += f"🔰 **سیگنال شماره {i}**\n"
