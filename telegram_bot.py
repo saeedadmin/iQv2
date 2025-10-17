@@ -16,7 +16,8 @@ import datetime
 import os
 import re
 import requests
-from aiohttp import web
+import weakref
+from aiohttp import web, ClientSession
 from dotenv import load_dotenv
 from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, ContextTypes, 
@@ -1721,7 +1722,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         except Exception:
             pass  # اگر نتوانست پیام خطا ارسال کند، نادیده بگیر
 
-def main() -> None:
+async def main() -> None:
     """تابع اصلی برای راه‌اندازی ربات"""
     logger.info("🚀 شروع ربات تلگرام پیشرفته...")
     logger.info(f"🔑 BOT_TOKEN: {'SET' if BOT_TOKEN else 'NOT SET'}")
@@ -1738,6 +1739,9 @@ def main() -> None:
     
     # ایجاد Application با token ربات
     application = Application.builder().token(BOT_TOKEN).build()
+    
+    # مقداردهی application (async)
+    await application.initialize()
 
     # Handler های دستورات اصلی
     application.add_handler(CommandHandler("start", start))
@@ -1789,108 +1793,194 @@ def main() -> None:
     logger.info(f"👨‍💼 ادمین: {ADMIN_USER_ID}")
     logger.info(f"🔗 آماده دریافت پیام...")
     
-    # شروع HTTP server برای health check در پس‌زمینه 
-    import threading
-    from http.server import HTTPServer, BaseHTTPRequestHandler
+    # شروع AsyncIO HTTP server برای health check و webhook
     import json
+    from aiohttp import web, ClientSession
+    import threading
+    import weakref
     
-    class HealthHandler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            if self.path in ['/health', '/']:
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                health_data = {
-                    "status": "healthy",
-                    "service": "telegram-bot", 
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "uptime": "running"
-                }
-                self.wfile.write(json.dumps(health_data).encode())
-            elif self.path == '/ping':
-                self.send_response(200)
-                self.send_header('Content-type', 'text/plain')
-                self.end_headers()
-                self.wfile.write(b'pong')
-            elif self.path == '/wake':
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                wake_data = {
-                    "status": "awake",
-                    "message": "Service is now active",
-                    "timestamp": datetime.datetime.now().isoformat()
-                }
-                self.wfile.write(json.dumps(wake_data).encode())
-            else:
-                self.send_response(404)
-                self.end_headers()
+    async def health_check(request):
+        """Health check endpoint"""
+        health_data = {
+            "status": "healthy",
+            "service": "telegram-bot", 
+            "timestamp": datetime.datetime.now().isoformat(),
+            "uptime": "running",
+            "mode": "webhook" if os.getenv('USE_WEBHOOK') == 'true' else "polling"
+        }
+        return web.json_response(health_data)
+    
+    async def ping_endpoint(request):
+        """Simple ping endpoint"""
+        return web.Response(text='pong')
+    
+    async def wake_endpoint(request):
+        """Wake endpoint"""
+        wake_data = {
+            "status": "awake",
+            "message": "Service is now active",
+            "timestamp": datetime.datetime.now().isoformat()
+        }
+        return web.json_response(wake_data)
+    
+    # ذخیره reference به application برای webhook
+    telegram_app_ref = weakref.ref(application)
+    
+    async def telegram_webhook(request):
+        """Webhook endpoint برای دریافت updates تلگرام"""
+        try:
+            app = telegram_app_ref()
+            if app is None:
+                return web.Response(status=500, text="Telegram app not available")
+                
+            # دریافت update از تلگرام
+            update_data = await request.json()
+            update = Update.de_json(update_data, app.bot)
+            
+            # پردازش update
+            await app.process_update(update)
+            
+            return web.Response(status=200, text="OK")
+        except Exception as e:
+            logger.error(f"❌ خطا در webhook: {e}")
+            return web.Response(status=500, text="Error")
+    
+    async def start_aiohttp_server():
+        """راه‌اندازی AsyncIO HTTP server"""
+        app_web = web.Application()
         
-        def log_message(self, format, *args):
-            pass  # سایلنت کردن لاگ‌های HTTP
-    
-    def start_health_server():
+        # اضافه کردن routes
+        app_web.router.add_get('/health', health_check)
+        app_web.router.add_get('/', health_check)
+        app_web.router.add_get('/ping', ping_endpoint)
+        app_web.router.add_get('/wake', wake_endpoint)
+        
+        # Webhook endpoint (فقط اگر فعال باشد)
+        if os.getenv('USE_WEBHOOK') == 'true':
+            app_web.router.add_post('/webhook', telegram_webhook)
+            logger.info("🔗 Webhook endpoint فعال شد: /webhook")
+        
+        # شروع server
         port = int(os.getenv('PORT', 8000))
-        httpd = HTTPServer(('0.0.0.0', port), HealthHandler)
-        logger.info(f"🏥 Health check server در پورت {port}")
-        httpd.serve_forever()
-    
-    # شروع health server در thread جداگانه
-    health_thread = threading.Thread(target=start_health_server, daemon=True)
-    health_thread.start()
-    
-    # Self-ping mechanism برای جلوگیری از sleep
-    def self_ping():
-        import requests
-        import time
+        runner = web.AppRunner(app_web)
+        await runner.setup()
         
+        site = web.TCPSite(runner, '0.0.0.0', port)
+        await site.start()
+        
+        logger.info(f"🏥 AsyncIO HTTP server در پورت {port}")
+        return runner
+    
+    # Async Keep-Alive Mechanism 
+    async def async_keep_alive():
+        """AsyncIO keep-alive mechanism"""
         app_url = os.getenv('KOYEB_PUBLIC_DOMAIN')
         if not app_url:
-            return  # اگر URL مشخص نباشد، ping نکن
+            return
             
         if not app_url.startswith('http'):
             app_url = f"https://{app_url}"
-            
-        while True:
-            try:
-                time.sleep(300)  # هر 5 دقیقه
-                response = requests.get(f"{app_url}/health", timeout=10)
-                if response.status_code == 200:
-                    logger.info("🏓 Self-ping موفق")
-                else:
-                    logger.warning(f"⚠️ Self-ping ناموفق: {response.status_code}")
-            except Exception as e:
-                logger.warning(f"⚠️ خطا در self-ping: {e}")
-    
-    # شروع self-ping در thread جداگانه 
-    if os.getenv('KOYEB_PUBLIC_DOMAIN'):
-        ping_thread = threading.Thread(target=self_ping, daemon=True)
-        ping_thread.start()
-        logger.info("🏓 Self-ping mechanism فعال شد")
-    
-    # اجرای ربات تا زمان فشردن Ctrl-C
-    try:
-        logger.info("📡 شروع polling...")
-        logger.info("🔍 بررسی اتصال Telegram...")
         
-        application.run_polling(
-            allowed_updates=Update.ALL_TYPES,
-            drop_pending_updates=True,  # حذف پیام‌های انتظار در صورت restart
-            poll_interval=1.0,          # کاهش فاصله polling
-            timeout=10                  # کاهش timeout
-        )
-    except KeyboardInterrupt:
-        logger.info("🛑 ربات متوقف شد")
-        bot_logger.log_system_event("BOT_STOPPED", "ربات توسط کاربر متوقف شد")
-    except Exception as e:
-        error_msg = str(e)
-        if "Conflict" in error_msg and "terminated by other getUpdates request" in error_msg:
-            logger.error("🚨 خطای Conflict در polling!")
-            logger.error("💡 راه حل: در Koyeb تمام deployments قدیمی رو حذف کن و فقط یکی بذار")
-            logger.error("📍 یا اگر ربات روی سیستم محلی اجرا میکنی، اونو متوقف کن")
-        else:
-            logger.error(f"❌ خطا در اجرای ربات: {e}")
-        bot_logger.log_error("خطا در اجرای ربات", e)
+        async with ClientSession() as session:
+            while True:
+                try:
+                    await asyncio.sleep(240)  # هر 4 دقیقه
+                    async with session.get(f"{app_url}/ping", timeout=10) as response:
+                        if response.status == 200:
+                            logger.info("🏓 Async keep-alive موفق")
+                        else:
+                            logger.warning(f"⚠️ Keep-alive ناموفق: {response.status}")
+                except Exception as e:
+                    logger.warning(f"⚠️ خطا در keep-alive: {e}")
+    
+    # شروع HTTP server در event loop
+    def start_http_in_thread():
+        """شروع HTTP server در thread جداگانه"""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        async def run_server():
+            # شروع HTTP server
+            runner = await start_aiohttp_server()
+            
+            # شروع keep-alive اگر DOMAIN تنظیم شده
+            if os.getenv('KOYEB_PUBLIC_DOMAIN'):
+                asyncio.create_task(async_keep_alive())
+                logger.info("🏓 Async keep-alive فعال شد")
+            
+            # نگهداری server
+            try:
+                while True:
+                    await asyncio.sleep(1)
+            finally:
+                await runner.cleanup()
+        
+        loop.run_until_complete(run_server())
+    
+    # شروع HTTP server در thread جداگانه
+    http_thread = threading.Thread(target=start_http_in_thread, daemon=True)
+    http_thread.start()
+    
+    # انتخاب بین Webhook و Polling
+    use_webhook = os.getenv('USE_WEBHOOK', 'false').lower() == 'true'
+    webhook_url = os.getenv('KOYEB_PUBLIC_DOMAIN')
+    
+    if use_webhook and webhook_url:
+        logger.info("🔗 تنظیم Webhook Mode...")
+        
+        if not webhook_url.startswith('http'):
+            webhook_url = f"https://{webhook_url}"
+        
+        # اجرای ربات با Webhook
+        try:
+            logger.info(f"📡 تنظیم webhook: {webhook_url}/webhook")
+            
+            # Set webhook
+            await application.bot.set_webhook(
+                url=f"{webhook_url}/webhook",
+                allowed_updates=["message", "callback_query"],
+                drop_pending_updates=True
+            )
+            
+            logger.info("✅ Webhook تنظیم شد!")
+            logger.info("🏃‍♂️ سرویس در حالت Webhook اجرا می‌شود...")
+            
+            # نگهداری سرویس زنده (در webhook mode نیازی به polling نیست)
+            while True:
+                await asyncio.sleep(30)
+                logger.info("🔄 Webhook Mode: Service alive")
+                
+        except KeyboardInterrupt:
+            logger.info("🛑 ربات متوقف شد")
+            await application.bot.delete_webhook()
+        except Exception as e:
+            logger.error(f"❌ خطا در webhook mode: {e}")
+            await application.bot.delete_webhook()
+            bot_logger.log_error("خطا در webhook mode", e)
+    else:
+        # اجرای ربات با Polling (حالت عادی)
+        try:
+            logger.info("📡 شروع polling...")
+            logger.info("🔍 بررسی اتصال Telegram...")
+            
+            application.run_polling(
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True,
+                poll_interval=1.0,
+                timeout=10
+            )
+        except KeyboardInterrupt:
+            logger.info("🛑 ربات متوقف شد")
+            bot_logger.log_system_event("BOT_STOPPED", "ربات توسط کاربر متوقف شد")
+        except Exception as e:
+            error_msg = str(e)
+            if "Conflict" in error_msg and "terminated by other getUpdates request" in error_msg:
+                logger.error("🚨 خطای Conflict در polling!")
+                logger.error("💡 راه حل: در Koyeb تمام deployments قدیمی رو حذف کن و فقط یکی بذار")
+                logger.error("📍 یا اگر ربات روی سیستم محلی اجرا میکنی، اونو متوقف کن")
+            else:
+                logger.error(f"❌ خطا در اجرای ربات: {e}")
+            bot_logger.log_error("خطا در اجرای ربات", e)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
