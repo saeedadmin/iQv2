@@ -37,16 +37,16 @@ class TelegramSignalScraper:
             'signal', 'long', 'short', 'entry', 'target', 'stop'
         ]
     
-    async def fetch_latest_signals(self, days: int = 3, max_signals: int = 10) -> List[Dict]:
+    async def fetch_latest_signals(self, days: int = 3, max_signals: int = 2) -> List[Dict]:
         """
-        دریافت آخرین سیگنال‌های ترید
+        دریافت آخرین سیگنال‌های ترید - بهبود یافته
         
         Args:
             days: تعداد روزهای گذشته برای جستجو
-            max_signals: حداکثر تعداد سیگنال
+            max_signals: حداکثر تعداد سیگنال (پیش‌فرض: 2)
             
         Returns:
-            لیست سیگنال‌های استخراج شده
+            لیست سیگنال‌های استخراج شده بدون تکرار
         """
         all_signals = []
         
@@ -58,11 +58,41 @@ class TelegramSignalScraper:
                 print(f"❌ خطا در دریافت سیگنال از کانال {channel}: {e}")
                 continue
         
+        # حذف سیگنال‌های تکراری بر اساس coin_pair و تاریخ
+        unique_signals = self._remove_duplicates(all_signals)
+        
         # مرتب‌سازی براساس تاریخ (جدیدترین اول)
-        all_signals.sort(key=lambda x: x.get('date', ''), reverse=True)
+        unique_signals.sort(key=lambda x: x.get('fulldate', '1900-01-01'), reverse=True)
         
         # برگرداندن حداکثر تعداد مشخص شده
-        return all_signals[:max_signals]
+        return unique_signals[:max_signals]
+    
+    def _remove_duplicates(self, signals: List[Dict]) -> List[Dict]:
+        """
+        حذف سیگنال‌های تکراری
+        
+        Args:
+            signals: لیست کل سیگنال‌ها
+            
+        Returns:
+            لیست سیگنال‌های یکتا
+        """
+        seen = set()
+        unique_signals = []
+        
+        for signal in signals:
+            # ایجاد کلید یکتا برای هر سیگنال
+            signal_key = (
+                signal.get('coin_pair', 'UNKNOWN'),
+                signal.get('signal_type', 'UNKNOWN'),
+                signal.get('date', 'N/A')
+            )
+            
+            if signal_key not in seen:
+                seen.add(signal_key)
+                unique_signals.append(signal)
+        
+        return unique_signals
     
     async def _scrape_channel(self, channel: str, days: int) -> List[Dict]:
         """
@@ -235,45 +265,56 @@ class TelegramSignalScraper:
     
     def format_signal_for_display(self, signal: Dict) -> str:
         """
-        فرمت کردن سیگنال برای نمایش
+        فرمت کردن سیگنال برای نمایش - بهبود یافته
         
         Args:
             signal: دیکشنری سیگنال
             
         Returns:
-            متن فرمت شده
+            متن فرمت شده و تمیز
         """
-        formatted = f"""🔥 **سیگنال جدید از {signal['channel']}**
-
-📅 **تاریخ:** {signal['date']}
-💰 **ارز:** {signal['coin_pair']}
-📊 **نوع:** {signal['signal_type']}
-👀 **بازدید:** {signal['views']:,}
-
-💬 **سیگنال:**
-{signal['text'][:500]}{'...' if len(signal['text']) > 500 else ''}
-
-🔗 **لینک:** {signal['link']}
-"""
+        # تمیز کردن متن سیگنال
+        text = signal['text']
         
-        if signal['has_image']:
-            formatted += "\n📸 **شامل تصویر**"
-        if signal['has_video']:
-            formatted += "\n🎥 **شامل ویدیو**"
+        # حذف کاراکترهای اضافی و فضاهای خالی
+        import re
+        text = re.sub(r'\s+', ' ', text)  # چندین فضای خالی را به یکی کاهش می‌دهد
+        text = re.sub(r'[.]{3,}', '...', text)  # چندین نقطه را به سه‌تا کاهش می‌دهد
+        text = text.replace('…', '...')  # یونیفای کردن نقاط
+        
+        # بریدن متن در محل مناسب (نه وسط کلمه)
+        if len(text) > 400:
+            # پیدا کردن آخرین فاصله قبل از 400 کاراکتر
+            cut_pos = text.rfind(' ', 0, 400)
+            if cut_pos > 300:  # اگر جای مناسبی پیدا شد
+                text = text[:cut_pos] + '...'
+            else:
+                text = text[:400] + '...'
+        
+        # ساخت پیام فرمت شده
+        formatted = f"📅 **تاریخ:** {signal['date']}\n"
+        formatted += f"💰 **ارز:** {signal['coin_pair']}\n"
+        formatted += f"📊 **نوع:** {signal['signal_type']}\n"
+        formatted += f"👀 **بازدید:** {signal['views']:,}\n\n"
+        formatted += f"💬 **سیگنال:**\n{text}"
+        
+        # فقط اگر لینک وجود داشته باشد اضافه کن
+        if signal.get('link') and signal['link'].strip():
+            formatted += f"\n\n🔗 **لینک:** {signal['link']}"
             
         return formatted
 
 # تابع helper برای ربات
-async def get_latest_crypto_signals(days: int = 3, max_signals: int = 5) -> List[str]:
+async def get_latest_crypto_signals(days: int = 3, max_signals: int = 2) -> List[str]:
     """
-    دریافت آخرین سیگنال‌های کریپتو برای ربات
+    دریافت آخرین سیگنال‌های کریپتو برای ربات - بهبود یافته
     
     Args:
         days: تعداد روزهای گذشته
-        max_signals: حداکثر تعداد سیگنال
+        max_signals: حداکثر تعداد سیگنال (پیش‌فرض: 2)
         
     Returns:
-        لیست سیگنال‌های فرمت شده برای نمایش
+        لیست سیگنال‌های فرمت شده و تمیز برای نمایش
     """
     try:
         scraper = TelegramSignalScraper()
