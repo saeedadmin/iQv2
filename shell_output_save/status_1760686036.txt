@@ -1,0 +1,91 @@
+On branch main
+Your branch is ahead of 'origin/main' by 10 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	deleted:    DEPLOYMENT_FINAL_GUIDE.md
+	deleted:    DEPLOYMENT_GUIDE.md
+	deleted:    FINAL_SOLUTION_KOYEB.md
+	deleted:    KOYEB_DEPLOYMENT.md
+	deleted:    KOYEB_TROUBLESHOOTING.md
+	deleted:    README_old.md
+	deleted:    REPOSITORY_CHECK.md
+	deleted:    TELEGRAM_API_SETUP.md
+	deleted:    analyze_successful_run.py
+	deleted:    check_actor_schema.py
+	deleted:    check_run_status.py
+	deleted:    check_wider_test.py
+	deleted:    check_working_actors.py
+	deleted:    comprehensive_test.py
+	deleted:    create_clean_repo.sh
+	deleted:    final_status_check.py
+	deleted:    get_latest_signals.py
+	deleted:    koyeb_ready_bot/.gitignore
+	deleted:    koyeb_ready_bot/Procfile
+	deleted:    koyeb_ready_bot/README.md
+	deleted:    koyeb_ready_bot/admin_panel.py
+	deleted:    koyeb_ready_bot/ai_news.py
+	deleted:    koyeb_ready_bot/database.py
+	deleted:    koyeb_ready_bot/keyboards.py
+	deleted:    koyeb_ready_bot/logger_system.py
+	deleted:    koyeb_ready_bot/public_menu.py
+	deleted:    koyeb_ready_bot/requirements.txt
+	deleted:    koyeb_ready_bot/runtime.txt
+	deleted:    koyeb_ready_bot/telegram_bot.py
+	deleted:    koyeb_ready_bot/telegram_signal_scraper.py
+	deleted:    latest_shervin_signals.json
+	deleted:    latest_successful_results.json
+	deleted:    manage_logs.py
+	deleted:    pyproject.toml
+	deleted:    "shell_output_save/\"_1760369332.txt"
+	deleted:    shell_output_save/--force-reinstall_1760348545.txt
+	deleted:    shell_output_save/--upgrade_1760346773.txt
+	deleted:    shell_output_save/-50_1760366873.txt
+	deleted:    shell_output_save/aiohttp_1760364798.txt
+	deleted:    shell_output_save/aiohttp_1760368010.txt
+	deleted:    shell_output_save/aiohttp_1760368026.txt
+	deleted:    shell_output_save/analyze_successful_run.py_1760641498.txt
+	deleted:    shell_output_save/apify-client_1760641032.txt
+	deleted:    shell_output_save/apify-client_1760642871.txt
+	deleted:    shell_output_save/apify-client_1760648185.txt
+	deleted:    shell_output_save/apify-client_1760649356.txt
+	deleted:    shell_output_save/get_latest_signals.py_1760648208.txt
+	deleted:    shell_output_save/https:__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@github.com_saeedadmin_iQv2.git_1760381890.txt
+	deleted:    shell_output_save/main_1760380480.txt
+	deleted:    shell_output_save/main_1760424718.txt
+	deleted:    shell_output_save/monitor_timeout_1760641308_1760641363.txt
+	deleted:    shell_output_save/psutil_1760360956.txt
+	deleted:    shell_output_save/psutil_1760368055.txt
+	deleted:    shell_output_save/python-telegram-bot_1760362548.txt
+	deleted:    shell_output_save/python-telegram-bot_1760364103.txt
+	deleted:    shell_output_save/python-telegram-bot_1760370825.txt
+	deleted:    shell_output_save/requirements.txt_1760651176.txt
+	deleted:    shell_output_save/telegram_signal_scraper.py_1760649609.txt
+	deleted:    shell_output_save/test_new_telegram_actor.py_1760643851.txt
+	deleted:    shell_output_save/test_shervin_channel.py_1760643930.txt
+	deleted:    shell_output_save/timeout_1760641303.txt
+	deleted:    shell_output_save/uniq_1760383505.txt
+	deleted:    shervin_trading_results.json
+	deleted:    simple_apify_test.py
+	deleted:    start.sh
+	deleted:    successful_run_results.json
+	deleted:    telegram_scraper_results.json
+	deleted:    test_apify_scraper.py
+	deleted:    test_basic_apify.py
+	deleted:    test_deployment.py
+	deleted:    test_i_scraper.py
+	deleted:    test_i_scraper_shervin.py
+	deleted:    test_new_telegram_actor.py
+	deleted:    test_shervin_actors.py
+	deleted:    test_shervin_channel.py
+	deleted:    test_uniopn_channel.py
+	deleted:    test_url_formats.py
+	deleted:    test_wider_ranges.py
+	deleted:    tradingview_analysis_old.py
+	deleted:    uniopn_results.json
+	deleted:    uv.lock
+	deleted:    workspace.json
+
+no changes added to commit (use "git add" and/or "git commit -a")

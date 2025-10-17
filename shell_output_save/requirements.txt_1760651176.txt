@@ -1,129 +1,0 @@
-Using Python 3.12.5 environment at: /tmp/.venv
-⠋ Resolving dependencies...                                                     ⠙ Resolving dependencies...                                                     ⠋ Resolving dependencies...                                                     ⠙ Resolving dependencies...                                                     ⠹ Resolving dependencies...                                                     ⠸ Resolving dependencies...                                                     ⠼ Resolving dependencies...                                                     ⠼ python-telegram-bot==22.5                                                     ⠴ python-telegram-bot==22.5                                                     ⠦ python-telegram-bot==22.5                                                     ⠧ python-telegram-bot==22.5                                                     ⠧ psutil==7.1.0                                                                 ⠧ aiohttp==3.11.16                                                              ⠧ python-dotenv==1.1.1                                                          ⠧ requests==2.32.5                                                              ⠧ beautifulsoup4==4.13.5                                                        ⠧ playwright==1.52.0                                                            ⠧ lxml==6.0.2                                                                   ⠧ feedparser==6.0.12                                                            ⠧ pillow==11.3.0                                                                ⠧ apify-client==2.2.0                                                           ⠧ httpx==0.28.1                                                                 ⠇ httpx==0.28.1                                                                 ⠇ aiohappyeyeballs==2.6.1                                                       ⠇ aiosignal==1.4.0                                                              ⠇ attrs==25.3.0                                                                 ⠇ frozenlist==1.7.0                                                             ⠇ multidict==6.6.4                                                              ⠇ propcache==0.3.2                                                              ⠇ yarl==1.20.1                                                                  ⠇ charset-normalizer==3.4.3                                                     ⠇ idna==3.10                                                                    ⠇ urllib3==2.5.0                                                                ⠇ certifi==2025.8.3                                                             ⠇ soupsieve==2.8                                                                ⠇ typing-extensions==4.14.0                                                     ⠋ greenlet==3.2.3                                                               ⠙ greenlet==3.2.3                                                               ⠙ sgmllib3k==1.0.0                                                              ⠹ sgmllib3k==1.0.0                                                              ⠸ sgmllib3k==1.0.0                                                              ⠼ sgmllib3k==1.0.0                                                              ⠴ sgmllib3k==1.0.0                                                              ⠦ sgmllib3k==1.0.0                                                              ⠧ sgmllib3k==1.0.0                                                              ⠇ sgmllib3k==1.0.0                                                              ⠋ sgmllib3k==1.0.0                                                              ⠙ sgmllib3k==1.0.0                                                              ⠹ sgmllib3k==1.0.0                                                              ⠸ sgmllib3k==1.0.0                                                              ⠸ apify-shared==2.1.0                                                           ⠸ colorama==0.4.6                                                               ⠸ impit==0.7.1                                                                  ⠸ more-itertools==10.8.0                                                        ⠸ anyio==4.11.0                                                                 ⠸ httpcore==1.0.9                                                               ⠼ httpcore==1.0.9                                                               ⠴ httpcore==1.0.9                                                               ⠴ sniffio==1.3.1                                                                ⠴ h11==0.16.0                                                                   ⠴                                                                               Resolved 36 packages in 4.45s
-⠋ Preparing packages... (0/0)                                                   ⠋ Preparing packages... (0/10)                                                  ⠙ Preparing packages... (0/10)                                                     Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)                                                     Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-telegram-bot ------------------------------     0 B/713.84 KiB              Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-telegram-bot ------------------------------ 8.00 KiB/713.84 KiB             Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-telegram-bot ------------------------------ 16.00 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-telegram-bot ------------------------------ 24.00 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-telegram-bot ------------------------------ 31.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-telegram-bot ------------------------------ 39.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-telegram-bot ------------------------------ 47.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-telegram-bot ------------------------------ 55.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-telegram-bot ------------------------------ 63.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-telegram-bot ------------------------------ 71.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-more-itertools ------------------------------     0 B/68.03 KiB
-python-telegram-bot ------------------------------ 71.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-more-itertools ------------------------------ 8.00 KiB/68.03 KiB
-python-telegram-bot ------------------------------ 71.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-more-itertools ------------------------------ 8.00 KiB/68.03 KiB
-python-telegram-bot ------------------------------ 79.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-more-itertools ------------------------------ 16.00 KiB/68.03 KiB
-python-telegram-bot ------------------------------ 79.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-more-itertools ------------------------------ 24.00 KiB/68.03 KiB
-python-telegram-bot ------------------------------ 79.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-more-itertools ------------------------------ 32.00 KiB/68.03 KiB
-python-telegram-bot ------------------------------ 79.26 KiB/713.84 KiB            Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-python-dotenv ------------------------------ 16.00 KiB/20.07 KiB
-apify-client ------------------------------ 16.00 KiB/83.90 KiB
-python-telegram-bot ------------------------------ 127.26 KiB/713.84 KiB           Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-apify-client ------------------------------ 16.00 KiB/83.90 KiB
-python-telegram-bot ------------------------------ 135.26 KiB/713.84 KiB
-impit      ------------------------------ 8.00 KiB/5.82 MiB                        Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-apify-shared ------------------------------ 16.00 KiB/16.10 KiB
-colorama   ------------------------------ 16.00 KiB/24.74 KiB
-feedparser ------------------------------ 24.00 KiB/79.57 KiB
-apify-client ------------------------------ 32.00 KiB/83.90 KiB
-psutil     ------------------------------ 71.18 KiB/284.34 KiB
-python-telegram-bot ------------------------------ 159.26 KiB/713.84 KiB
-impit      ------------------------------ 1.58 MiB/5.82 MiB                        Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-apify-shared ------------------------------ 16.00 KiB/16.10 KiB
-colorama   ------------------------------ 16.00 KiB/24.74 KiB
-feedparser ------------------------------ 24.00 KiB/79.57 KiB
-apify-client ------------------------------ 32.00 KiB/83.90 KiB
-psutil     ------------------------------ 71.18 KiB/284.34 KiB
-python-telegram-bot ------------------------------ 159.26 KiB/713.84 KiB
-impit      ------------------------------ 1.59 MiB/5.82 MiB                        Building sgmllib3k==1.0.0
-⠙ Preparing packages... (0/10)
-colorama   ------------------------------ 16.00 KiB/24.74 KiB
-feedparser ------------------------------ 40.00 KiB/79.57 KiB
-apify-client ------------------------------ 40.00 KiB/83.90 KiB
-psutil     ------------------------------ 87.18 KiB/284.34 KiB
-python-telegram-bot ------------------------------ 159.26 KiB/713.84 KiB
-impit      ------------------------------ 3.30 MiB/5.82 MiB                        Building sgmllib3k==1.0.0
-⠹ Preparing packages... (3/10)
-colorama   ------------------------------ 16.00 KiB/24.74 KiB
-feedparser ------------------------------ 40.00 KiB/79.57 KiB
-apify-client ------------------------------ 40.00 KiB/83.90 KiB
-psutil     ------------------------------ 159.18 KiB/284.34 KiB
-python-telegram-bot ------------------------------ 191.26 KiB/713.84 KiB
-impit      ------------------------------ 3.73 MiB/5.82 MiB                        Building sgmllib3k==1.0.0
-⠹ Preparing packages... (3/10)
-colorama   ------------------------------ 16.00 KiB/24.74 KiB
-feedparser ------------------------------ 40.00 KiB/79.57 KiB
-apify-client ------------------------------ 40.00 KiB/83.90 KiB
-psutil     ------------------------------ 159.18 KiB/284.34 KiB
-python-telegram-bot ------------------------------ 191.26 KiB/713.84 KiB
-impit      ------------------------------ 3.86 MiB/5.82 MiB                        Building sgmllib3k==1.0.0
-⠹ Preparing packages... (3/10)
-colorama   ------------------------------ 24.00 KiB/24.74 KiB
-feedparser ------------------------------ 48.00 KiB/79.57 KiB
-apify-client ------------------------------ 56.00 KiB/83.90 KiB
-psutil     ------------------------------ 191.18 KiB/284.34 KiB
-python-telegram-bot ------------------------------ 199.26 KiB/713.84 KiB           Building sgmllib3k==1.0.0
-⠹ Preparing packages... (3/10)
-feedparser ------------------------------ 56.00 KiB/79.57 KiB
-apify-client ------------------------------ 64.00 KiB/83.90 KiB
-psutil     ------------------------------ 199.18 KiB/284.34 KiB
-python-telegram-bot ------------------------------ 207.26 KiB/713.84 KiB           Building sgmllib3k==1.0.0
-⠹ Preparing packages... (3/10)
-feedparser ------------------------------ 79.57 KiB/79.57 KiB
-psutil     ------------------------------ 271.18 KiB/284.34 KiB
-python-telegram-bot ------------------------------ 247.26 KiB/713.84 KiB           Building sgmllib3k==1.0.0
-⠹ Preparing packages... (3/10)
-psutil     ------------------------------ 284.34 KiB/284.34 KiB
-python-telegram-bot ------------------------------ 263.26 KiB/713.84 KiB           Building sgmllib3k==1.0.0
-⠹ Preparing packages... (3/10)
-python-telegram-bot ------------------------------ 287.26 KiB/713.84 KiB           Building sgmllib3k==1.0.0
-⠹ Preparing packages... (3/10)
-python-telegram-bot ------------------------------ 295.26 KiB/713.84 KiB           Building sgmllib3k==1.0.0
-⠹ Preparing packages... (3/10)
-python-telegram-bot ------------------------------ 303.26 KiB/713.84 KiB           Building sgmllib3k==1.0.0
-⠹ Preparing packages... (3/10)                                                     Building sgmllib3k==1.0.0
-⠸ Preparing packages... (9/10)                                                     Building sgmllib3k==1.0.0
-⠼ Preparing packages... (9/10)                                                     Building sgmllib3k==1.0.0
-⠴ Preparing packages... (9/10)                                                     Building sgmllib3k==1.0.0
-⠦ Preparing packages... (9/10)                                                     Building sgmllib3k==1.0.0
-⠧ Preparing packages... (9/10)                                                        Built sgmllib3k==1.0.0
-⠧ Preparing packages... (9/10)                                                  ⠧  (10/10)                                                                      Prepared 10 packages in 1.35s
-░░░░░░░░░░░░░░░░░░░░ [0/0] Installing wheels...                                 ░░░░░░░░░░░░░░░░░░░░ [0/10] Installing wheels...                                ░░░░░░░░░░░░░░░░░░░░ [0/10] more-itertools==10.8.0                              ██░░░░░░░░░░░░░░░░░░ [1/10] more-itertools==10.8.0                              ██░░░░░░░░░░░░░░░░░░ [1/10] python-dotenv==1.1.1                                ████░░░░░░░░░░░░░░░░ [2/10] python-dotenv==1.1.1                                ████░░░░░░░░░░░░░░░░ [2/10] apify-shared==2.1.0                                 ██████░░░░░░░░░░░░░░ [3/10] apify-shared==2.1.0                                 ██████░░░░░░░░░░░░░░ [3/10] impit==0.7.1                                        ████████░░░░░░░░░░░░ [4/10] impit==0.7.1                                        ████████░░░░░░░░░░░░ [4/10] colorama==0.4.6                                     ██████████░░░░░░░░░░ [5/10] colorama==0.4.6                                     ██████████░░░░░░░░░░ [5/10] apify-client==2.2.0                                 ████████████░░░░░░░░ [6/10] apify-client==2.2.0                                 ████████████░░░░░░░░ [6/10] feedparser==6.0.12                                  ██████████████░░░░░░ [7/10] feedparser==6.0.12                                  ██████████████░░░░░░ [7/10] psutil==7.1.0                                       ████████████████░░░░ [8/10] psutil==7.1.0                                       ████████████████░░░░ [8/10] python-telegram-bot==22.5                           ██████████████████░░ [9/10] python-telegram-bot==22.5                           Installed 10 packages in 7ms
- + apify-client==2.2.0
- + apify-shared==2.1.0
- + colorama==0.4.6
- + feedparser==6.0.12
- + impit==0.7.1
- + more-itertools==10.8.0
- + psutil==7.1.0
- + python-dotenv==1.1.1
- + python-telegram-bot==22.5
- + sgmllib3k==1.0.0

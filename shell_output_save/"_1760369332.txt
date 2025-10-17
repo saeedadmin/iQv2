@@ -1,999 +1,0 @@
-> > > > > > > > > > > > > > > > > ⠋ Preparing packages... (0/0)                                                   ⠋ Preparing packages... (0/26)                                                  ⠙ Preparing packages... (0/26)                                                     Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)                                                     Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------     0 B/3.62 MiB                         Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 8.00 KiB/3.62 MiB                        Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 16.00 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 24.00 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 31.22 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 39.22 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 47.22 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 55.22 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 63.22 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 71.22 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 79.22 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 87.22 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 95.22 KiB/3.62 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 103.22 KiB/3.62 MiB                      Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 111.22 KiB/3.62 MiB                      Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 119.22 KiB/3.62 MiB                      Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-numba      ------------------------------ 127.22 KiB/3.62 MiB                      Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-beautifulsoup4 ------------------------------     0 B/103.90 KiB
-numba      ------------------------------ 127.22 KiB/3.62 MiB                      Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-nltk       ------------------------------ 16.00 KiB/1.44 MiB
-numba      ------------------------------ 127.22 KiB/3.62 MiB                      Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-nltk       ------------------------------ 39.26 KiB/1.44 MiB
-numba      ------------------------------ 127.22 KiB/3.62 MiB                      Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-typing-inspection ------------------------------ 14.27 KiB/14.27 KiB
-platformdirs ------------------------------     0 B/18.21 KiB
-attrs      ------------------------------ 8.00 KiB/66.03 KiB
-idna       ------------------------------ 69.34 KiB/69.34 KiB
-certifi    ------------------------------     0 B/159.46 KiB
-propcache  ------------------------------     0 B/216.38 KiB
-frozenlist ------------------------------     0 B/236.73 KiB
-multidict  ------------------------------     0 B/250.10 KiB
-psutil     ------------------------------ 63.18 KiB/284.34 KiB
-yarl       ------------------------------     0 B/368.42 KiB
-msgpack    ------------------------------     0 B/417.54 KiB
-pydantic   ------------------------------     0 B/448.96 KiB
-greenlet   ------------------------------     0 B/593.35 KiB
-nltk       ------------------------------ 255.26 KiB/1.44 MiB
-pydantic-core ------------------------------     0 B/1.98 MiB
-numba      ------------------------------ 159.22 KiB/3.62 MiB
-cryptography ------------------------------     0 B/4.27 MiB
-fonttools  ------------------------------     0 B/4.70 MiB
-matplotlib ------------------------------     0 B/8.29 MiB
-pandas     ------------------------------     0 B/11.79 MiB
-pymupdf    ------------------------------     0 B/22.95 MiB
-llvmlite   ------------------------------     0 B/53.68 MiB                        Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-typing-inspection ------------------------------ 14.27 KiB/14.27 KiB
-platformdirs ------------------------------     0 B/18.21 KiB
-attrs      ------------------------------ 8.00 KiB/66.03 KiB
-certifi    ------------------------------     0 B/159.46 KiB
-propcache  ------------------------------     0 B/216.38 KiB
-frozenlist ------------------------------     0 B/236.73 KiB
-multidict  ------------------------------     0 B/250.10 KiB
-psutil     ------------------------------ 63.18 KiB/284.34 KiB
-yarl       ------------------------------     0 B/368.42 KiB
-msgpack    ------------------------------     0 B/417.54 KiB
-pydantic   ------------------------------     0 B/448.96 KiB
-greenlet   ------------------------------     0 B/593.35 KiB
-nltk       ------------------------------ 255.26 KiB/1.44 MiB
-pydantic-core ------------------------------     0 B/1.98 MiB
-numba      ------------------------------ 159.22 KiB/3.62 MiB
-cryptography ------------------------------     0 B/4.27 MiB
-fonttools  ------------------------------     0 B/4.70 MiB
-matplotlib ------------------------------     0 B/8.29 MiB
-pandas     ------------------------------     0 B/11.79 MiB
-pymupdf    ------------------------------     0 B/22.95 MiB
-llvmlite   ------------------------------     0 B/53.68 MiB                        Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-platformdirs ------------------------------     0 B/18.21 KiB
-attrs      ------------------------------ 48.00 KiB/66.03 KiB
-certifi    ------------------------------     0 B/159.46 KiB
-propcache  ------------------------------     0 B/216.38 KiB
-frozenlist ------------------------------     0 B/236.73 KiB
-multidict  ------------------------------     0 B/250.10 KiB
-psutil     ------------------------------ 63.18 KiB/284.34 KiB
-yarl       ------------------------------     0 B/368.42 KiB
-msgpack    ------------------------------     0 B/417.54 KiB
-pydantic   ------------------------------     0 B/448.96 KiB
-greenlet   ------------------------------     0 B/593.35 KiB
-nltk       ------------------------------ 255.26 KiB/1.44 MiB
-pydantic-core ------------------------------     0 B/1.98 MiB
-numba      ------------------------------ 159.22 KiB/3.62 MiB
-cryptography ------------------------------     0 B/4.27 MiB
-fonttools  ------------------------------     0 B/4.70 MiB
-matplotlib ------------------------------     0 B/8.29 MiB
-pandas     ------------------------------     0 B/11.79 MiB
-pymupdf    ------------------------------     0 B/22.95 MiB
-llvmlite   ------------------------------     0 B/53.68 MiB                        Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-attrs      ------------------------------ 64.00 KiB/66.03 KiB
-certifi    ------------------------------     0 B/159.46 KiB
-propcache  ------------------------------     0 B/216.38 KiB
-frozenlist ------------------------------     0 B/236.73 KiB
-multidict  ------------------------------     0 B/250.10 KiB
-psutil     ------------------------------ 95.18 KiB/284.34 KiB
-yarl       ------------------------------     0 B/368.42 KiB
-msgpack    ------------------------------     0 B/417.54 KiB
-pydantic   ------------------------------ 8.00 KiB/448.96 KiB
-greenlet   ------------------------------     0 B/593.35 KiB
-nltk       ------------------------------ 255.26 KiB/1.44 MiB
-pydantic-core ------------------------------     0 B/1.98 MiB
-numba      ------------------------------ 159.22 KiB/3.62 MiB
-cryptography ------------------------------     0 B/4.27 MiB
-fonttools  ------------------------------     0 B/4.70 MiB
-matplotlib ------------------------------     0 B/8.29 MiB
-pandas     ------------------------------     0 B/11.79 MiB
-pymupdf    ------------------------------     0 B/22.95 MiB
-llvmlite   ------------------------------     0 B/53.68 MiB                        Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-certifi    ------------------------------     0 B/159.46 KiB
-propcache  ------------------------------     0 B/216.38 KiB
-frozenlist ------------------------------     0 B/236.73 KiB
-multidict  ------------------------------     0 B/250.10 KiB
-psutil     ------------------------------ 95.18 KiB/284.34 KiB
-yarl       ------------------------------     0 B/368.42 KiB
-msgpack    ------------------------------     0 B/417.54 KiB
-pydantic   ------------------------------ 31.25 KiB/448.96 KiB
-greenlet   ------------------------------     0 B/593.35 KiB
-nltk       ------------------------------ 255.26 KiB/1.44 MiB
-pydantic-core ------------------------------     0 B/1.98 MiB
-numba      ------------------------------ 159.22 KiB/3.62 MiB
-cryptography ------------------------------     0 B/4.27 MiB
-fonttools  ------------------------------     0 B/4.70 MiB
-matplotlib ------------------------------     0 B/8.29 MiB
-pandas     ------------------------------ 8.00 KiB/11.79 MiB
-pymupdf    ------------------------------     0 B/22.95 MiB
-llvmlite   ------------------------------     0 B/53.68 MiB                        Building workspace @ file:///workspace
-⠙ Preparing packages... (0/26)
-certifi    ------------------------------ 16.00 KiB/159.46 KiB
-propcache  ------------------------------ 31.19 KiB/216.38 KiB
-frozenlist ------------------------------ 31.20 KiB/236.73 KiB
-multidict  ------------------------------ 31.19 KiB/250.10 KiB
-psutil     ------------------------------ 95.18 KiB/284.34 KiB
-yarl       ------------------------------ 31.20 KiB/368.42 KiB
-msgpack    ------------------------------ 31.20 KiB/417.54 KiB
-pydantic   ------------------------------ 31.25 KiB/448.96 KiB
-greenlet   ------------------------------     0 B/593.35 KiB
-nltk       ------------------------------ 255.26 KiB/1.44 MiB
-pydantic-core ------------------------------     0 B/1.98 MiB
-numba      ------------------------------ 159.22 KiB/3.62 MiB
-cryptography ------------------------------     0 B/4.27 MiB
-fonttools  ------------------------------ 31.18 KiB/4.70 MiB
-matplotlib ------------------------------ 31.21 KiB/8.29 MiB
-pandas     ------------------------------ 31.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 31.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 31.21 KiB/53.68 MiB                      Building workspace @ file:///workspace
-⠹ Preparing packages... (6/26)
-certifi    ------------------------------ 63.25 KiB/159.46 KiB
-propcache  ------------------------------ 63.19 KiB/216.38 KiB
-frozenlist ------------------------------ 63.20 KiB/236.73 KiB
-multidict  ------------------------------ 95.19 KiB/250.10 KiB
-psutil     ------------------------------ 191.18 KiB/284.34 KiB
-yarl       ------------------------------ 95.20 KiB/368.42 KiB
-msgpack    ------------------------------ 95.20 KiB/417.54 KiB
-pydantic   ------------------------------ 95.25 KiB/448.96 KiB
-greenlet   ------------------------------ 63.22 KiB/593.35 KiB
-nltk       ------------------------------ 351.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 63.21 KiB/1.98 MiB
-numba      ------------------------------ 255.22 KiB/3.62 MiB
-cryptography ------------------------------ 63.24 KiB/4.27 MiB
-fonttools  ------------------------------ 79.18 KiB/4.70 MiB
-matplotlib ------------------------------ 63.21 KiB/8.29 MiB
-pandas     ------------------------------ 95.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 63.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 63.21 KiB/53.68 MiB                      Building workspace @ file:///workspace
-⠹ Preparing packages... (6/26)
-certifi    ------------------------------ 95.25 KiB/159.46 KiB
-propcache  ------------------------------ 95.19 KiB/216.38 KiB
-frozenlist ------------------------------ 95.20 KiB/236.73 KiB
-multidict  ------------------------------ 127.19 KiB/250.10 KiB
-yarl       ------------------------------ 127.20 KiB/368.42 KiB
-msgpack    ------------------------------ 95.20 KiB/417.54 KiB
-pydantic   ------------------------------ 127.25 KiB/448.96 KiB
-greenlet   ------------------------------ 95.22 KiB/593.35 KiB
-nltk       ------------------------------ 383.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 95.21 KiB/1.98 MiB
-numba      ------------------------------ 287.22 KiB/3.62 MiB
-cryptography ------------------------------ 95.24 KiB/4.27 MiB
-fonttools  ------------------------------ 119.18 KiB/4.70 MiB
-matplotlib ------------------------------ 111.21 KiB/8.29 MiB
-pandas     ------------------------------ 127.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 95.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 127.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠹ Preparing packages... (6/26)
-propcache  ------------------------------ 127.19 KiB/216.38 KiB
-frozenlist ------------------------------ 127.20 KiB/236.73 KiB
-multidict  ------------------------------ 127.19 KiB/250.10 KiB
-yarl       ------------------------------ 127.20 KiB/368.42 KiB
-msgpack    ------------------------------ 127.20 KiB/417.54 KiB
-pydantic   ------------------------------ 127.25 KiB/448.96 KiB
-greenlet   ------------------------------ 95.22 KiB/593.35 KiB
-nltk       ------------------------------ 415.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 127.21 KiB/1.98 MiB
-numba      ------------------------------ 319.22 KiB/3.62 MiB
-cryptography ------------------------------ 95.24 KiB/4.27 MiB
-fonttools  ------------------------------ 127.18 KiB/4.70 MiB
-matplotlib ------------------------------ 127.21 KiB/8.29 MiB
-pandas     ------------------------------ 127.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 127.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 127.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠹ Preparing packages... (6/26)
-propcache  ------------------------------ 127.19 KiB/216.38 KiB
-frozenlist ------------------------------ 127.20 KiB/236.73 KiB
-multidict  ------------------------------ 127.19 KiB/250.10 KiB
-yarl       ------------------------------ 127.20 KiB/368.42 KiB
-msgpack    ------------------------------ 127.20 KiB/417.54 KiB
-pydantic   ------------------------------ 127.25 KiB/448.96 KiB
-greenlet   ------------------------------ 95.22 KiB/593.35 KiB
-nltk       ------------------------------ 415.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 127.21 KiB/1.98 MiB
-numba      ------------------------------ 319.22 KiB/3.62 MiB
-cryptography ------------------------------ 119.24 KiB/4.27 MiB
-fonttools  ------------------------------ 127.18 KiB/4.70 MiB
-matplotlib ------------------------------ 127.21 KiB/8.29 MiB
-pandas     ------------------------------ 127.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 127.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 127.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠹ Preparing packages... (6/26)
-frozenlist ------------------------------ 159.20 KiB/236.73 KiB
-multidict  ------------------------------ 159.19 KiB/250.10 KiB
-yarl       ------------------------------ 159.20 KiB/368.42 KiB
-msgpack    ------------------------------ 159.20 KiB/417.54 KiB
-pydantic   ------------------------------ 175.25 KiB/448.96 KiB
-greenlet   ------------------------------ 159.22 KiB/593.35 KiB
-nltk       ------------------------------ 479.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 159.21 KiB/1.98 MiB
-numba      ------------------------------ 383.22 KiB/3.62 MiB
-cryptography ------------------------------ 159.24 KiB/4.27 MiB
-fonttools  ------------------------------ 159.18 KiB/4.70 MiB
-matplotlib ------------------------------ 159.21 KiB/8.29 MiB
-pandas     ------------------------------ 159.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 159.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 159.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠹ Preparing packages... (6/26)
-frozenlist ------------------------------ 159.20 KiB/236.73 KiB
-yarl       ------------------------------ 191.20 KiB/368.42 KiB
-msgpack    ------------------------------ 159.20 KiB/417.54 KiB
-pydantic   ------------------------------ 191.25 KiB/448.96 KiB
-greenlet   ------------------------------ 159.22 KiB/593.35 KiB
-nltk       ------------------------------ 479.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 159.21 KiB/1.98 MiB
-numba      ------------------------------ 383.22 KiB/3.62 MiB
-cryptography ------------------------------ 159.24 KiB/4.27 MiB
-fonttools  ------------------------------ 183.18 KiB/4.70 MiB
-matplotlib ------------------------------ 159.21 KiB/8.29 MiB
-pandas     ------------------------------ 191.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 159.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 159.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠹ Preparing packages... (6/26)
-yarl       ------------------------------ 191.20 KiB/368.42 KiB
-msgpack    ------------------------------ 191.20 KiB/417.54 KiB
-pydantic   ------------------------------ 191.25 KiB/448.96 KiB
-greenlet   ------------------------------ 159.22 KiB/593.35 KiB
-nltk       ------------------------------ 479.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 175.21 KiB/1.98 MiB
-numba      ------------------------------ 383.22 KiB/3.62 MiB
-cryptography ------------------------------ 159.24 KiB/4.27 MiB
-fonttools  ------------------------------ 191.18 KiB/4.70 MiB
-matplotlib ------------------------------ 191.21 KiB/8.29 MiB
-pandas     ------------------------------ 191.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 191.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 159.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠹ Preparing packages... (6/26)
-yarl       ------------------------------ 191.20 KiB/368.42 KiB
-msgpack    ------------------------------ 191.20 KiB/417.54 KiB
-pydantic   ------------------------------ 191.25 KiB/448.96 KiB
-greenlet   ------------------------------ 159.22 KiB/593.35 KiB
-nltk       ------------------------------ 479.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 183.21 KiB/1.98 MiB
-numba      ------------------------------ 383.22 KiB/3.62 MiB
-cryptography ------------------------------ 159.24 KiB/4.27 MiB
-fonttools  ------------------------------ 191.18 KiB/4.70 MiB
-matplotlib ------------------------------ 191.21 KiB/8.29 MiB
-pandas     ------------------------------ 191.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 191.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 159.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠹ Preparing packages... (6/26)
-yarl       ------------------------------ 223.20 KiB/368.42 KiB
-msgpack    ------------------------------ 223.20 KiB/417.54 KiB
-pydantic   ------------------------------ 255.25 KiB/448.96 KiB
-greenlet   ------------------------------ 223.22 KiB/593.35 KiB
-nltk       ------------------------------ 543.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 223.21 KiB/1.98 MiB
-numba      ------------------------------ 471.22 KiB/3.62 MiB
-cryptography ------------------------------ 191.24 KiB/4.27 MiB
-fonttools  ------------------------------ 223.18 KiB/4.70 MiB
-matplotlib ------------------------------ 223.21 KiB/8.29 MiB
-pandas     ------------------------------ 223.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 223.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 223.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠸ Preparing packages... (11/26)
-yarl       ------------------------------ 367.20 KiB/368.42 KiB
-msgpack    ------------------------------ 287.20 KiB/417.54 KiB
-pydantic   ------------------------------ 319.25 KiB/448.96 KiB
-greenlet   ------------------------------ 255.22 KiB/593.35 KiB
-nltk       ------------------------------ 639.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 287.21 KiB/1.98 MiB
-numba      ------------------------------ 607.22 KiB/3.62 MiB
-cryptography ------------------------------ 287.24 KiB/4.27 MiB
-fonttools  ------------------------------ 287.18 KiB/4.70 MiB
-matplotlib ------------------------------ 287.21 KiB/8.29 MiB
-pandas     ------------------------------ 287.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 287.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 287.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠸ Preparing packages... (11/26)
-msgpack    ------------------------------ 287.20 KiB/417.54 KiB
-pydantic   ------------------------------ 319.25 KiB/448.96 KiB
-greenlet   ------------------------------ 255.22 KiB/593.35 KiB
-nltk       ------------------------------ 647.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 287.21 KiB/1.98 MiB
-numba      ------------------------------ 615.22 KiB/3.62 MiB
-cryptography ------------------------------ 287.24 KiB/4.27 MiB
-fonttools  ------------------------------ 319.18 KiB/4.70 MiB
-matplotlib ------------------------------ 287.21 KiB/8.29 MiB
-pandas     ------------------------------ 319.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 287.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 287.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠸ Preparing packages... (11/26)
-msgpack    ------------------------------ 351.20 KiB/417.54 KiB
-pydantic   ------------------------------ 383.25 KiB/448.96 KiB
-greenlet   ------------------------------ 319.22 KiB/593.35 KiB
-nltk       ------------------------------ 735.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 351.21 KiB/1.98 MiB
-numba      ------------------------------ 727.22 KiB/3.62 MiB
-cryptography ------------------------------ 351.24 KiB/4.27 MiB
-fonttools  ------------------------------ 351.18 KiB/4.70 MiB
-matplotlib ------------------------------ 351.21 KiB/8.29 MiB
-pandas     ------------------------------ 351.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 351.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 319.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠸ Preparing packages... (11/26)
-pydantic   ------------------------------ 383.25 KiB/448.96 KiB
-greenlet   ------------------------------ 351.22 KiB/593.35 KiB
-nltk       ------------------------------ 831.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 375.21 KiB/1.98 MiB
-numba      ------------------------------ 767.22 KiB/3.62 MiB
-cryptography ------------------------------ 351.24 KiB/4.27 MiB
-fonttools  ------------------------------ 383.18 KiB/4.70 MiB
-matplotlib ------------------------------ 383.21 KiB/8.29 MiB
-pandas     ------------------------------ 383.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 351.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 351.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠸ Preparing packages... (11/26)
-greenlet   ------------------------------ 351.22 KiB/593.35 KiB
-nltk       ------------------------------ 831.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 383.21 KiB/1.98 MiB
-numba      ------------------------------ 767.22 KiB/3.62 MiB
-cryptography ------------------------------ 383.24 KiB/4.27 MiB
-fonttools  ------------------------------ 391.18 KiB/4.70 MiB
-matplotlib ------------------------------ 383.21 KiB/8.29 MiB
-pandas     ------------------------------ 383.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 383.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 383.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠸ Preparing packages... (11/26)
-greenlet   ------------------------------ 383.22 KiB/593.35 KiB
-nltk       ------------------------------ 903.26 KiB/1.44 MiB
-pydantic-core ------------------------------ 415.21 KiB/1.98 MiB
-numba      ------------------------------ 831.22 KiB/3.62 MiB
-cryptography ------------------------------ 415.24 KiB/4.27 MiB
-fonttools  ------------------------------ 447.18 KiB/4.70 MiB
-matplotlib ------------------------------ 415.21 KiB/8.29 MiB
-pandas     ------------------------------ 415.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 415.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 415.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠼ Preparing packages... (14/26)
-greenlet   ------------------------------ 479.22 KiB/593.35 KiB
-nltk       ------------------------------ 1.03 MiB/1.44 MiB
-pydantic-core ------------------------------ 511.21 KiB/1.98 MiB
-numba      ------------------------------ 991.22 KiB/3.62 MiB
-cryptography ------------------------------ 511.24 KiB/4.27 MiB
-fonttools  ------------------------------ 543.18 KiB/4.70 MiB
-matplotlib ------------------------------ 511.21 KiB/8.29 MiB
-pandas     ------------------------------ 511.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 487.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 479.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠼ Preparing packages... (14/26)
-greenlet   ------------------------------ 479.22 KiB/593.35 KiB
-nltk       ------------------------------ 1.03 MiB/1.44 MiB
-pydantic-core ------------------------------ 511.21 KiB/1.98 MiB
-numba      ------------------------------ 991.22 KiB/3.62 MiB
-cryptography ------------------------------ 511.24 KiB/4.27 MiB
-fonttools  ------------------------------ 543.18 KiB/4.70 MiB
-matplotlib ------------------------------ 511.21 KiB/8.29 MiB
-pandas     ------------------------------ 511.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 511.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 495.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠼ Preparing packages... (14/26)
-python-telegram-bot ------------------------------ 31.23 KiB/713.84 KiB
-nltk       ------------------------------ 1.16 MiB/1.44 MiB
-pydantic-core ------------------------------ 575.21 KiB/1.98 MiB
-numba      ------------------------------ 1.09 MiB/3.62 MiB
-cryptography ------------------------------ 543.24 KiB/4.27 MiB
-fonttools  ------------------------------ 575.18 KiB/4.70 MiB
-matplotlib ------------------------------ 575.21 KiB/8.29 MiB
-pandas     ------------------------------ 575.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 543.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 543.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠼ Preparing packages... (14/26)
-python-telegram-bot ------------------------------ 31.23 KiB/713.84 KiB
-nltk       ------------------------------ 1.34 MiB/1.44 MiB
-pydantic-core ------------------------------ 575.21 KiB/1.98 MiB
-numba      ------------------------------ 1.09 MiB/3.62 MiB
-cryptography ------------------------------ 543.24 KiB/4.27 MiB
-fonttools  ------------------------------ 575.18 KiB/4.70 MiB
-matplotlib ------------------------------ 575.21 KiB/8.29 MiB
-pandas     ------------------------------ 575.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 543.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 543.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠼ Preparing packages... (14/26)
-python-telegram-bot ------------------------------ 31.23 KiB/713.84 KiB
-nltk       ------------------------------ 1.34 MiB/1.44 MiB
-pydantic-core ------------------------------ 575.21 KiB/1.98 MiB
-numba      ------------------------------ 1.10 MiB/3.62 MiB
-cryptography ------------------------------ 543.24 KiB/4.27 MiB
-fonttools  ------------------------------ 575.18 KiB/4.70 MiB
-matplotlib ------------------------------ 575.21 KiB/8.29 MiB
-pandas     ------------------------------ 575.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 543.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 543.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠼ Preparing packages... (14/26)
-python-telegram-bot ------------------------------ 95.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 639.21 KiB/1.98 MiB
-numba      ------------------------------ 1.16 MiB/3.62 MiB
-cryptography ------------------------------ 607.24 KiB/4.27 MiB
-fonttools  ------------------------------ 639.18 KiB/4.70 MiB
-matplotlib ------------------------------ 639.21 KiB/8.29 MiB
-pandas     ------------------------------ 639.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 607.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 607.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠴ Preparing packages... (16/26)
-python-telegram-bot ------------------------------ 95.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 639.21 KiB/1.98 MiB
-numba      ------------------------------ 1.49 MiB/3.62 MiB
-cryptography ------------------------------ 607.24 KiB/4.27 MiB
-fonttools  ------------------------------ 639.18 KiB/4.70 MiB
-matplotlib ------------------------------ 639.21 KiB/8.29 MiB
-pandas     ------------------------------ 639.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 607.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 607.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠴ Preparing packages... (16/26)
-python-telegram-bot ------------------------------ 95.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 639.21 KiB/1.98 MiB
-numba      ------------------------------ 1.49 MiB/3.62 MiB
-cryptography ------------------------------ 607.24 KiB/4.27 MiB
-fonttools  ------------------------------ 647.18 KiB/4.70 MiB
-matplotlib ------------------------------ 639.21 KiB/8.29 MiB
-pandas     ------------------------------ 639.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 607.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 607.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠴ Preparing packages... (16/26)
-python-telegram-bot ------------------------------ 159.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 703.21 KiB/1.98 MiB
-numba      ------------------------------ 1.78 MiB/3.62 MiB
-cryptography ------------------------------ 671.24 KiB/4.27 MiB
-fonttools  ------------------------------ 711.18 KiB/4.70 MiB
-matplotlib ------------------------------ 703.21 KiB/8.29 MiB
-pandas     ------------------------------ 703.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 671.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 671.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠴ Preparing packages... (16/26)
-python-telegram-bot ------------------------------ 159.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 703.21 KiB/1.98 MiB
-numba      ------------------------------ 1.78 MiB/3.62 MiB
-cryptography ------------------------------ 671.24 KiB/4.27 MiB
-fonttools  ------------------------------ 719.18 KiB/4.70 MiB
-matplotlib ------------------------------ 703.21 KiB/8.29 MiB
-pandas     ------------------------------ 703.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 671.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 671.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠦ Preparing packages... (16/26)
-python-telegram-bot ------------------------------ 223.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 767.21 KiB/1.98 MiB
-numba      ------------------------------ 2.50 MiB/3.62 MiB
-cryptography ------------------------------ 735.24 KiB/4.27 MiB
-fonttools  ------------------------------ 775.18 KiB/4.70 MiB
-matplotlib ------------------------------ 767.21 KiB/8.29 MiB
-pandas     ------------------------------ 767.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 735.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 735.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠦ Preparing packages... (16/26)
-python-telegram-bot ------------------------------ 223.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 767.21 KiB/1.98 MiB
-numba      ------------------------------ 2.50 MiB/3.62 MiB
-cryptography ------------------------------ 735.24 KiB/4.27 MiB
-fonttools  ------------------------------ 783.18 KiB/4.70 MiB
-matplotlib ------------------------------ 767.21 KiB/8.29 MiB
-pandas     ------------------------------ 767.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 735.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 735.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠦ Preparing packages... (16/26)
-python-telegram-bot ------------------------------ 303.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 831.21 KiB/1.98 MiB
-numba      ------------------------------ 3.00 MiB/3.62 MiB
-cryptography ------------------------------ 831.24 KiB/4.27 MiB
-fonttools  ------------------------------ 863.18 KiB/4.70 MiB
-matplotlib ------------------------------ 831.21 KiB/8.29 MiB
-pandas     ------------------------------ 831.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 831.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 831.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠦ Preparing packages... (16/26)
-python-telegram-bot ------------------------------ 383.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 895.21 KiB/1.98 MiB
-numba      ------------------------------ 3.37 MiB/3.62 MiB
-cryptography ------------------------------ 895.24 KiB/4.27 MiB
-fonttools  ------------------------------ 927.18 KiB/4.70 MiB
-matplotlib ------------------------------ 911.21 KiB/8.29 MiB
-pandas     ------------------------------ 895.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 895.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 895.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠦ Preparing packages... (16/26)
-python-telegram-bot ------------------------------ 383.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 927.21 KiB/1.98 MiB
-cryptography ------------------------------ 927.24 KiB/4.27 MiB
-fonttools  ------------------------------ 959.18 KiB/4.70 MiB
-matplotlib ------------------------------ 927.21 KiB/8.29 MiB
-pandas     ------------------------------ 927.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 911.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 927.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠦ Preparing packages... (16/26)
-python-telegram-bot ------------------------------ 415.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 959.21 KiB/1.98 MiB
-cryptography ------------------------------ 959.24 KiB/4.27 MiB
-fonttools  ------------------------------ 991.18 KiB/4.70 MiB
-matplotlib ------------------------------ 959.21 KiB/8.29 MiB
-pandas     ------------------------------ 959.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 927.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 951.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠧ Preparing packages... (17/26)
-python-telegram-bot ------------------------------ 631.23 KiB/713.84 KiB
-pydantic-core ------------------------------ 967.21 KiB/1.98 MiB
-cryptography ------------------------------ 959.24 KiB/4.27 MiB
-fonttools  ------------------------------ 991.18 KiB/4.70 MiB
-matplotlib ------------------------------ 959.21 KiB/8.29 MiB
-pandas     ------------------------------ 959.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 959.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 959.21 KiB/53.68 MiB                     Building workspace @ file:///workspace
-⠧ Preparing packages... (17/26)
-pydantic-core ------------------------------ 1.38 MiB/1.98 MiB
-cryptography ------------------------------ 1023.24 KiB/4.27 MiB
-fonttools  ------------------------------ 1.03 MiB/4.70 MiB
-matplotlib ------------------------------ 1023.21 KiB/8.29 MiB
-pandas     ------------------------------ 1023.21 KiB/11.79 MiB
-pymupdf    ------------------------------ 1023.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 1023.21 KiB/53.68 MiB                    Building workspace @ file:///workspace
-⠧ Preparing packages... (17/26)
-pydantic-core ------------------------------ 1.50 MiB/1.98 MiB
-cryptography ------------------------------ 1.03 MiB/4.27 MiB
-fonttools  ------------------------------ 1.06 MiB/4.70 MiB
-matplotlib ------------------------------ 1.03 MiB/8.29 MiB
-pandas     ------------------------------ 1.03 MiB/11.79 MiB
-pymupdf    ------------------------------ 1023.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 1023.21 KiB/53.68 MiB                    Building workspace @ file:///workspace
-⠧ Preparing packages... (17/26)
-pydantic-core ------------------------------ 1.50 MiB/1.98 MiB
-cryptography ------------------------------ 1.04 MiB/4.27 MiB
-fonttools  ------------------------------ 1.06 MiB/4.70 MiB
-matplotlib ------------------------------ 1.03 MiB/8.29 MiB
-pandas     ------------------------------ 1.03 MiB/11.79 MiB
-pymupdf    ------------------------------ 1023.24 KiB/22.95 MiB
-llvmlite   ------------------------------ 1023.21 KiB/53.68 MiB                    Building workspace @ file:///workspace
-⠧ Preparing packages... (17/26)
-cryptography ------------------------------ 1.09 MiB/4.27 MiB
-fonttools  ------------------------------ 1.09 MiB/4.70 MiB
-matplotlib ------------------------------ 1.09 MiB/8.29 MiB
-pandas     ------------------------------ 1.12 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.09 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.09 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠇ Preparing packages... (19/26)
-cryptography ------------------------------ 1.12 MiB/4.27 MiB
-fonttools  ------------------------------ 1.16 MiB/4.70 MiB
-matplotlib ------------------------------ 1.12 MiB/8.29 MiB
-pandas     ------------------------------ 1.22 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.12 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.12 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠇ Preparing packages... (19/26)
-cryptography ------------------------------ 1.12 MiB/4.27 MiB
-fonttools  ------------------------------ 1.16 MiB/4.70 MiB
-matplotlib ------------------------------ 1.12 MiB/8.29 MiB
-pandas     ------------------------------ 1.23 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.12 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.12 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠇ Preparing packages... (19/26)
-cryptography ------------------------------ 1.19 MiB/4.27 MiB
-fonttools  ------------------------------ 1.23 MiB/4.70 MiB
-matplotlib ------------------------------ 1.22 MiB/8.29 MiB
-pandas     ------------------------------ 1.97 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.19 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.19 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠇ Preparing packages... (19/26)
-cryptography ------------------------------ 1.19 MiB/4.27 MiB
-fonttools  ------------------------------ 1.24 MiB/4.70 MiB
-matplotlib ------------------------------ 1.22 MiB/8.29 MiB
-pandas     ------------------------------ 1.97 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.19 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.19 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠇ Preparing packages... (19/26)
-cryptography ------------------------------ 1.28 MiB/4.27 MiB
-fonttools  ------------------------------ 1.31 MiB/4.70 MiB
-matplotlib ------------------------------ 1.28 MiB/8.29 MiB
-pandas     ------------------------------ 2.66 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.28 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.28 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠋ Preparing packages... (19/26)
-cryptography ------------------------------ 1.28 MiB/4.27 MiB
-fonttools  ------------------------------ 1.31 MiB/4.70 MiB
-matplotlib ------------------------------ 1.28 MiB/8.29 MiB
-pandas     ------------------------------ 2.66 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.28 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.28 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠋ Preparing packages... (19/26)
-cryptography ------------------------------ 1.37 MiB/4.27 MiB
-fonttools  ------------------------------ 1.41 MiB/4.70 MiB
-matplotlib ------------------------------ 1.37 MiB/8.29 MiB
-pandas     ------------------------------ 3.38 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.37 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.37 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠋ Preparing packages... (19/26)
-cryptography ------------------------------ 1.37 MiB/4.27 MiB
-fonttools  ------------------------------ 1.41 MiB/4.70 MiB
-matplotlib ------------------------------ 1.37 MiB/8.29 MiB
-pandas     ------------------------------ 3.41 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.37 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.37 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠋ Preparing packages... (19/26)
-cryptography ------------------------------ 1.47 MiB/4.27 MiB
-fonttools  ------------------------------ 1.50 MiB/4.70 MiB
-matplotlib ------------------------------ 1.47 MiB/8.29 MiB
-pandas     ------------------------------ 4.09 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.44 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.47 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (19/26)
-cryptography ------------------------------ 1.47 MiB/4.27 MiB
-fonttools  ------------------------------ 1.50 MiB/4.70 MiB
-matplotlib ------------------------------ 1.47 MiB/8.29 MiB
-pandas     ------------------------------ 4.10 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.47 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.47 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (19/26)
-cryptography ------------------------------ 1.53 MiB/4.27 MiB
-fonttools  ------------------------------ 1.59 MiB/4.70 MiB
-matplotlib ------------------------------ 1.56 MiB/8.29 MiB
-pandas     ------------------------------ 4.81 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.53 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.53 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (19/26)
-cryptography ------------------------------ 1.53 MiB/4.27 MiB
-fonttools  ------------------------------ 1.59 MiB/4.70 MiB
-matplotlib ------------------------------ 1.56 MiB/8.29 MiB
-pandas     ------------------------------ 4.81 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.53 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.53 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠙ Preparing packages... (19/26)
-cryptography ------------------------------ 1.62 MiB/4.27 MiB
-fonttools  ------------------------------ 1.66 MiB/4.70 MiB
-matplotlib ------------------------------ 1.62 MiB/8.29 MiB
-pandas     ------------------------------ 5.51 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.62 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.62 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠹ Preparing packages... (19/26)
-cryptography ------------------------------ 1.62 MiB/4.27 MiB
-fonttools  ------------------------------ 1.66 MiB/4.70 MiB
-matplotlib ------------------------------ 1.62 MiB/8.29 MiB
-pandas     ------------------------------ 5.54 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.62 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.62 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠹ Preparing packages... (19/26)
-cryptography ------------------------------ 1.72 MiB/4.27 MiB
-fonttools  ------------------------------ 1.75 MiB/4.70 MiB
-matplotlib ------------------------------ 1.72 MiB/8.29 MiB
-pandas     ------------------------------ 6.21 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.70 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.72 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠹ Preparing packages... (19/26)
-cryptography ------------------------------ 1.72 MiB/4.27 MiB
-fonttools  ------------------------------ 1.75 MiB/4.70 MiB
-matplotlib ------------------------------ 1.72 MiB/8.29 MiB
-pandas     ------------------------------ 6.21 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.71 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.72 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠹ Preparing packages... (19/26)
-cryptography ------------------------------ 1.78 MiB/4.27 MiB
-fonttools  ------------------------------ 1.81 MiB/4.70 MiB
-matplotlib ------------------------------ 1.78 MiB/8.29 MiB
-pandas     ------------------------------ 6.96 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.78 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.78 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠸ Preparing packages... (19/26)
-cryptography ------------------------------ 1.78 MiB/4.27 MiB
-fonttools  ------------------------------ 1.81 MiB/4.70 MiB
-matplotlib ------------------------------ 1.78 MiB/8.29 MiB
-pandas     ------------------------------ 7.07 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.78 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.78 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠸ Preparing packages... (19/26)
-cryptography ------------------------------ 1.84 MiB/4.27 MiB
-fonttools  ------------------------------ 1.89 MiB/4.70 MiB
-matplotlib ------------------------------ 1.87 MiB/8.29 MiB
-pandas     ------------------------------ 7.65 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.84 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.84 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠸ Preparing packages... (19/26)
-cryptography ------------------------------ 1.84 MiB/4.27 MiB
-fonttools  ------------------------------ 1.90 MiB/4.70 MiB
-matplotlib ------------------------------ 1.87 MiB/8.29 MiB
-pandas     ------------------------------ 7.65 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.84 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.84 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠼ Preparing packages... (19/26)
-cryptography ------------------------------ 1.93 MiB/4.27 MiB
-fonttools  ------------------------------ 1.97 MiB/4.70 MiB
-matplotlib ------------------------------ 1.94 MiB/8.29 MiB
-pandas     ------------------------------ 8.37 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.91 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.91 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠼ Preparing packages... (19/26)
-cryptography ------------------------------ 1.94 MiB/4.27 MiB
-fonttools  ------------------------------ 1.97 MiB/4.70 MiB
-matplotlib ------------------------------ 1.94 MiB/8.29 MiB
-pandas     ------------------------------ 8.37 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.91 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.91 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠼ Preparing packages... (19/26)
-cryptography ------------------------------ 1.98 MiB/4.27 MiB
-fonttools  ------------------------------ 2.03 MiB/4.70 MiB
-matplotlib ------------------------------ 2.00 MiB/8.29 MiB
-pandas     ------------------------------ 9.05 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.97 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.97 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠼ Preparing packages... (19/26)
-cryptography ------------------------------ 1.99 MiB/4.27 MiB
-fonttools  ------------------------------ 2.03 MiB/4.70 MiB
-matplotlib ------------------------------ 2.00 MiB/8.29 MiB
-pandas     ------------------------------ 9.05 MiB/11.79 MiB
-pymupdf    ------------------------------ 1.97 MiB/22.95 MiB
-llvmlite   ------------------------------ 1.97 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠴ Preparing packages... (19/26)
-cryptography ------------------------------ 2.04 MiB/4.27 MiB
-fonttools  ------------------------------ 2.09 MiB/4.70 MiB
-matplotlib ------------------------------ 2.06 MiB/8.29 MiB
-pandas     ------------------------------ 9.58 MiB/11.79 MiB
-pymupdf    ------------------------------ 2.03 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.03 MiB/53.68 MiB                       Building workspace @ file:///workspace
-⠴ Preparing packages... (19/26)
-cryptography ------------------------------ 2.05 MiB/4.27 MiB
-fonttools  ------------------------------ 2.09 MiB/4.70 MiB
-matplotlib ------------------------------ 2.06 MiB/8.29 MiB
-pandas     ------------------------------ 9.58 MiB/11.79 MiB
-pymupdf    ------------------------------ 2.03 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.03 MiB/53.68 MiB                          Built workspace @ file:///workspace
-⠴ Preparing packages... (19/26)
-cryptography ------------------------------ 2.09 MiB/4.27 MiB
-fonttools  ------------------------------ 2.12 MiB/4.70 MiB
-matplotlib ------------------------------ 2.09 MiB/8.29 MiB
-pandas     ------------------------------ 10.04 MiB/11.79 MiB
-pymupdf    ------------------------------ 2.09 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.09 MiB/53.68 MiB                    ⠴ Preparing packages... (19/26)
-cryptography ------------------------------ 2.09 MiB/4.27 MiB
-fonttools  ------------------------------ 2.12 MiB/4.70 MiB
-matplotlib ------------------------------ 2.09 MiB/8.29 MiB
-pandas     ------------------------------ 10.05 MiB/11.79 MiB
-pymupdf    ------------------------------ 2.09 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.09 MiB/53.68 MiB                    ⠴ Preparing packages... (19/26)
-cryptography ------------------------------ 2.09 MiB/4.27 MiB
-fonttools  ------------------------------ 2.12 MiB/4.70 MiB
-matplotlib ------------------------------ 2.10 MiB/8.29 MiB
-pandas     ------------------------------ 10.05 MiB/11.79 MiB
-pymupdf    ------------------------------ 2.09 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.09 MiB/53.68 MiB                    ⠴ Preparing packages... (19/26)
-cryptography ------------------------------ 2.19 MiB/4.27 MiB
-fonttools  ------------------------------ 2.22 MiB/4.70 MiB
-matplotlib ------------------------------ 2.19 MiB/8.29 MiB
-pandas     ------------------------------ 10.68 MiB/11.79 MiB
-pymupdf    ------------------------------ 2.16 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.19 MiB/53.68 MiB                    ⠦ Preparing packages... (20/26)
-cryptography ------------------------------ 2.19 MiB/4.27 MiB
-fonttools  ------------------------------ 2.22 MiB/4.70 MiB
-matplotlib ------------------------------ 2.19 MiB/8.29 MiB
-pandas     ------------------------------ 11.17 MiB/11.79 MiB
-pymupdf    ------------------------------ 2.19 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.19 MiB/53.68 MiB                    ⠦ Preparing packages... (20/26)
-cryptography ------------------------------ 2.25 MiB/4.27 MiB
-fonttools  ------------------------------ 2.29 MiB/4.70 MiB
-matplotlib ------------------------------ 2.45 MiB/8.29 MiB
-pymupdf    ------------------------------ 2.25 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.25 MiB/53.68 MiB                    ⠦ Preparing packages... (20/26)
-cryptography ------------------------------ 2.25 MiB/4.27 MiB
-fonttools  ------------------------------ 2.30 MiB/4.70 MiB
-matplotlib ------------------------------ 2.45 MiB/8.29 MiB
-pymupdf    ------------------------------ 2.25 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.25 MiB/53.68 MiB                    ⠦ Preparing packages... (20/26)
-cryptography ------------------------------ 2.56 MiB/4.27 MiB
-fonttools  ------------------------------ 2.53 MiB/4.70 MiB
-matplotlib ------------------------------ 2.62 MiB/8.29 MiB
-pymupdf    ------------------------------ 2.34 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.51 MiB/53.68 MiB                    ⠦ Preparing packages... (20/26)
-cryptography ------------------------------ 2.66 MiB/4.27 MiB
-fonttools  ------------------------------ 2.62 MiB/4.70 MiB
-matplotlib ------------------------------ 2.72 MiB/8.29 MiB
-pymupdf    ------------------------------ 2.59 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.63 MiB/53.68 MiB                    ⠧ Preparing packages... (21/26)
-cryptography ------------------------------ 2.97 MiB/4.27 MiB
-fonttools  ------------------------------ 2.81 MiB/4.70 MiB
-matplotlib ------------------------------ 3.03 MiB/8.29 MiB
-pymupdf    ------------------------------ 2.76 MiB/22.95 MiB
-llvmlite   ------------------------------ 2.75 MiB/53.68 MiB                    ⠧ Preparing packages... (21/26)
-cryptography ------------------------------ 3.09 MiB/4.27 MiB
-fonttools  ------------------------------ 2.97 MiB/4.70 MiB
-matplotlib ------------------------------ 3.16 MiB/8.29 MiB
-pymupdf    ------------------------------ 2.97 MiB/22.95 MiB
-llvmlite   ------------------------------ 3.00 MiB/53.68 MiB                    ⠧ Preparing packages... (21/26)
-cryptography ------------------------------ 3.28 MiB/4.27 MiB
-fonttools  ------------------------------ 3.28 MiB/4.70 MiB
-matplotlib ------------------------------ 3.48 MiB/8.29 MiB
-pymupdf    ------------------------------ 3.16 MiB/22.95 MiB
-llvmlite   ------------------------------ 3.19 MiB/53.68 MiB                    ⠇ Preparing packages... (21/26)
-cryptography ------------------------------ 3.59 MiB/4.27 MiB
-fonttools  ------------------------------ 3.41 MiB/4.70 MiB
-matplotlib ------------------------------ 3.66 MiB/8.29 MiB
-pymupdf    ------------------------------ 3.35 MiB/22.95 MiB
-llvmlite   ------------------------------ 3.31 MiB/53.68 MiB                    ⠇ Preparing packages... (21/26)
-cryptography ------------------------------ 3.75 MiB/4.27 MiB
-fonttools  ------------------------------ 3.62 MiB/4.70 MiB
-matplotlib ------------------------------ 3.81 MiB/8.29 MiB
-pymupdf    ------------------------------ 3.54 MiB/22.95 MiB
-llvmlite   ------------------------------ 3.64 MiB/53.68 MiB                    ⠇ Preparing packages... (21/26)
-cryptography ------------------------------ 4.08 MiB/4.27 MiB
-fonttools  ------------------------------ 3.91 MiB/4.70 MiB
-matplotlib ------------------------------ 4.16 MiB/8.29 MiB
-pymupdf    ------------------------------ 3.55 MiB/22.95 MiB
-llvmlite   ------------------------------ 3.81 MiB/53.68 MiB                    ⠇ Preparing packages... (21/26)
-cryptography ------------------------------ 4.19 MiB/4.27 MiB
-fonttools  ------------------------------ 4.16 MiB/4.70 MiB
-matplotlib ------------------------------ 4.30 MiB/8.29 MiB
-pymupdf    ------------------------------ 3.62 MiB/22.95 MiB
-llvmlite   ------------------------------ 4.12 MiB/53.68 MiB                    ⠇ Preparing packages... (21/26)
-fonttools  ------------------------------ 4.17 MiB/4.70 MiB
-matplotlib ------------------------------ 4.31 MiB/8.29 MiB
-pymupdf    ------------------------------ 3.66 MiB/22.95 MiB
-llvmlite   ------------------------------ 4.16 MiB/53.68 MiB                    ⠇ Preparing packages... (21/26)
-fonttools  ------------------------------ 4.38 MiB/4.70 MiB
-matplotlib ------------------------------ 4.67 MiB/8.29 MiB
-pymupdf    ------------------------------ 3.81 MiB/22.95 MiB
-llvmlite   ------------------------------ 4.44 MiB/53.68 MiB                    ⠋ Preparing packages... (22/26)
-fonttools  ------------------------------ 4.41 MiB/4.70 MiB
-matplotlib ------------------------------ 4.72 MiB/8.29 MiB
-pymupdf    ------------------------------ 4.30 MiB/22.95 MiB
-llvmlite   ------------------------------ 4.75 MiB/53.68 MiB                    ⠋ Preparing packages... (22/26)
-matplotlib ------------------------------ 4.85 MiB/8.29 MiB
-pymupdf    ------------------------------ 4.37 MiB/22.95 MiB
-llvmlite   ------------------------------ 4.81 MiB/53.68 MiB                    ⠋ Preparing packages... (22/26)
-matplotlib ------------------------------ 5.06 MiB/8.29 MiB
-pymupdf    ------------------------------ 4.61 MiB/22.95 MiB
-llvmlite   ------------------------------ 4.92 MiB/53.68 MiB                    ⠋ Preparing packages... (22/26)
-matplotlib ------------------------------ 5.41 MiB/8.29 MiB
-pymupdf    ------------------------------ 4.97 MiB/22.95 MiB
-llvmlite   ------------------------------ 5.30 MiB/53.68 MiB                    ⠋ Preparing packages... (22/26)
-matplotlib ------------------------------ 5.72 MiB/8.29 MiB
-pymupdf    ------------------------------ 5.28 MiB/22.95 MiB
-llvmlite   ------------------------------ 5.60 MiB/53.68 MiB                    ⠙ Preparing packages... (23/26)
-matplotlib ------------------------------ 6.06 MiB/8.29 MiB
-pymupdf    ------------------------------ 5.62 MiB/22.95 MiB
-llvmlite   ------------------------------ 6.01 MiB/53.68 MiB                    ⠙ Preparing packages... (23/26)
-matplotlib ------------------------------ 6.41 MiB/8.29 MiB
-pymupdf    ------------------------------ 5.94 MiB/22.95 MiB
-llvmlite   ------------------------------ 6.36 MiB/53.68 MiB                    ⠙ Preparing packages... (23/26)
-matplotlib ------------------------------ 6.93 MiB/8.29 MiB
-pymupdf    ------------------------------ 6.26 MiB/22.95 MiB
-llvmlite   ------------------------------ 6.57 MiB/53.68 MiB                    ⠹ Preparing packages... (23/26)
-matplotlib ------------------------------ 7.42 MiB/8.29 MiB
-pymupdf    ------------------------------ 6.66 MiB/22.95 MiB
-llvmlite   ------------------------------ 6.72 MiB/53.68 MiB                    ⠹ Preparing packages... (23/26)
-matplotlib ------------------------------ 7.62 MiB/8.29 MiB
-pymupdf    ------------------------------ 7.12 MiB/22.95 MiB
-llvmlite   ------------------------------ 7.06 MiB/53.68 MiB                    ⠹ Preparing packages... (23/26)
-matplotlib ------------------------------ 8.03 MiB/8.29 MiB
-pymupdf    ------------------------------ 7.48 MiB/22.95 MiB
-llvmlite   ------------------------------ 7.38 MiB/53.68 MiB                    ⠹ Preparing packages... (23/26)
-pymupdf    ------------------------------ 7.72 MiB/22.95 MiB
-llvmlite   ------------------------------ 7.71 MiB/53.68 MiB                    ⠹ Preparing packages... (23/26)
-pymupdf    ------------------------------ 7.94 MiB/22.95 MiB
-llvmlite   ------------------------------ 7.73 MiB/53.68 MiB                    ⠹ Preparing packages... (23/26)
-pymupdf    ------------------------------ 8.28 MiB/22.95 MiB
-llvmlite   ------------------------------ 8.23 MiB/53.68 MiB                    ⠸ Preparing packages... (24/26)
-pymupdf    ------------------------------ 8.79 MiB/22.95 MiB
-llvmlite   ------------------------------ 8.89 MiB/53.68 MiB                    ⠸ Preparing packages... (24/26)
-pymupdf    ------------------------------ 9.23 MiB/22.95 MiB
-llvmlite   ------------------------------ 9.26 MiB/53.68 MiB                    ⠸ Preparing packages... (24/26)
-pymupdf    ------------------------------ 9.83 MiB/22.95 MiB
-llvmlite   ------------------------------ 9.84 MiB/53.68 MiB                    ⠼ Preparing packages... (24/26)
-pymupdf    ------------------------------ 10.27 MiB/22.95 MiB
-llvmlite   ------------------------------ 10.33 MiB/53.68 MiB                   ⠼ Preparing packages... (24/26)
-pymupdf    ------------------------------ 10.72 MiB/22.95 MiB
-llvmlite   ------------------------------ 11.01 MiB/53.68 MiB                   ⠼ Preparing packages... (24/26)
-pymupdf    ------------------------------ 11.14 MiB/22.95 MiB
-llvmlite   ------------------------------ 11.66 MiB/53.68 MiB                   ⠼ Preparing packages... (24/26)
-pymupdf    ------------------------------ 11.76 MiB/22.95 MiB
-llvmlite   ------------------------------ 12.19 MiB/53.68 MiB                   ⠼ Preparing packages... (24/26)
-pymupdf    ------------------------------ 12.16 MiB/22.95 MiB
-llvmlite   ------------------------------ 12.75 MiB/53.68 MiB                   ⠴ Preparing packages... (24/26)
-pymupdf    ------------------------------ 12.69 MiB/22.95 MiB
-llvmlite   ------------------------------ 13.28 MiB/53.68 MiB                   ⠴ Preparing packages... (24/26)
-pymupdf    ------------------------------ 13.26 MiB/22.95 MiB
-llvmlite   ------------------------------ 13.80 MiB/53.68 MiB                   ⠴ Preparing packages... (24/26)
-pymupdf    ------------------------------ 13.79 MiB/22.95 MiB
-llvmlite   ------------------------------ 14.30 MiB/53.68 MiB                   ⠴ Preparing packages... (24/26)
-pymupdf    ------------------------------ 14.47 MiB/22.95 MiB
-llvmlite   ------------------------------ 14.67 MiB/53.68 MiB                   ⠦ Preparing packages... (24/26)
-pymupdf    ------------------------------ 14.75 MiB/22.95 MiB
-llvmlite   ------------------------------ 15.45 MiB/53.68 MiB                   ⠦ Preparing packages... (24/26)
-pymupdf    ------------------------------ 15.34 MiB/22.95 MiB
-llvmlite   ------------------------------ 15.95 MiB/53.68 MiB                   ⠦ Preparing packages... (24/26)
-pymupdf    ------------------------------ 15.87 MiB/22.95 MiB
-llvmlite   ------------------------------ 16.51 MiB/53.68 MiB                   ⠦ Preparing packages... (24/26)
-pymupdf    ------------------------------ 16.36 MiB/22.95 MiB
-llvmlite   ------------------------------ 16.89 MiB/53.68 MiB                   ⠧ Preparing packages... (24/26)
-pymupdf    ------------------------------ 17.16 MiB/22.95 MiB
-llvmlite   ------------------------------ 17.26 MiB/53.68 MiB                   ⠧ Preparing packages... (24/26)
-pymupdf    ------------------------------ 17.80 MiB/22.95 MiB
-llvmlite   ------------------------------ 17.79 MiB/53.68 MiB                   ⠧ Preparing packages... (24/26)
-pymupdf    ------------------------------ 18.17 MiB/22.95 MiB
-llvmlite   ------------------------------ 18.30 MiB/53.68 MiB                   ⠧ Preparing packages... (24/26)
-pymupdf    ------------------------------ 18.75 MiB/22.95 MiB
-llvmlite   ------------------------------ 18.85 MiB/53.68 MiB                   ⠇ Preparing packages... (24/26)
-pymupdf    ------------------------------ 19.29 MiB/22.95 MiB
-llvmlite   ------------------------------ 19.36 MiB/53.68 MiB                   ⠇ Preparing packages... (24/26)
-pymupdf    ------------------------------ 19.78 MiB/22.95 MiB
-llvmlite   ------------------------------ 19.86 MiB/53.68 MiB                   ⠇ Preparing packages... (24/26)
-pymupdf    ------------------------------ 20.32 MiB/22.95 MiB
-llvmlite   ------------------------------ 20.33 MiB/53.68 MiB                   ⠇ Preparing packages... (24/26)
-pymupdf    ------------------------------ 20.87 MiB/22.95 MiB
-llvmlite   ------------------------------ 20.91 MiB/53.68 MiB                   ⠋ Preparing packages... (24/26)
-pymupdf    ------------------------------ 21.36 MiB/22.95 MiB
-llvmlite   ------------------------------ 21.47 MiB/53.68 MiB                   ⠋ Preparing packages... (24/26)
-pymupdf    ------------------------------ 21.80 MiB/22.95 MiB
-llvmlite   ------------------------------ 21.98 MiB/53.68 MiB                   ⠋ Preparing packages... (24/26)
-pymupdf    ------------------------------ 22.44 MiB/22.95 MiB
-llvmlite   ------------------------------ 22.48 MiB/53.68 MiB                   ⠙ Preparing packages... (24/26)
-pymupdf    ------------------------------ 22.87 MiB/22.95 MiB
-llvmlite   ------------------------------ 23.04 MiB/53.68 MiB                   ⠙ Preparing packages... (24/26)
-llvmlite   ------------------------------ 23.13 MiB/53.68 MiB                   ⠙ Preparing packages... (24/26)
-llvmlite   ------------------------------ 24.08 MiB/53.68 MiB                   ⠙ Preparing packages... (24/26)
-llvmlite   ------------------------------ 24.98 MiB/53.68 MiB                   ⠙ Preparing packages... (24/26)
-llvmlite   ------------------------------ 26.01 MiB/53.68 MiB                   ⠹ Preparing packages... (25/26)
-llvmlite   ------------------------------ 27.14 MiB/53.68 MiB                   ⠹ Preparing packages... (25/26)
-llvmlite   ------------------------------ 28.01 MiB/53.68 MiB                   ⠹ Preparing packages... (25/26)
-llvmlite   ------------------------------ 29.13 MiB/53.68 MiB                   ⠹ Preparing packages... (25/26)
-llvmlite   ------------------------------ 30.13 MiB/53.68 MiB                   ⠹ Preparing packages... (25/26)
-llvmlite   ------------------------------ 31.08 MiB/53.68 MiB                   ⠸ Preparing packages... (25/26)
-llvmlite   ------------------------------ 32.24 MiB/53.68 MiB                   ⠸ Preparing packages... (25/26)
-llvmlite   ------------------------------ 33.42 MiB/53.68 MiB                   ⠸ Preparing packages... (25/26)
-llvmlite   ------------------------------ 34.39 MiB/53.68 MiB                   ⠸ Preparing packages... (25/26)
-llvmlite   ------------------------------ 35.36 MiB/53.68 MiB                   ⠼ Preparing packages... (25/26)
-llvmlite   ------------------------------ 36.55 MiB/53.68 MiB                   ⠼ Preparing packages... (25/26)
-llvmlite   ------------------------------ 37.73 MiB/53.68 MiB                   ⠼ Preparing packages... (25/26)
-llvmlite   ------------------------------ 38.70 MiB/53.68 MiB                   ⠼ Preparing packages... (25/26)
-llvmlite   ------------------------------ 39.76 MiB/53.68 MiB                   ⠴ Preparing packages... (25/26)
-llvmlite   ------------------------------ 40.98 MiB/53.68 MiB                   ⠴ Preparing packages... (25/26)
-llvmlite   ------------------------------ 41.92 MiB/53.68 MiB                   ⠴ Preparing packages... (25/26)
-llvmlite   ------------------------------ 43.01 MiB/53.68 MiB                   ⠴ Preparing packages... (25/26)
-llvmlite   ------------------------------ 44.17 MiB/53.68 MiB                   ⠦ Preparing packages... (25/26)
-llvmlite   ------------------------------ 45.13 MiB/53.68 MiB                   ⠦ Preparing packages... (25/26)
-llvmlite   ------------------------------ 46.30 MiB/53.68 MiB                   ⠦ Preparing packages... (25/26)
-llvmlite   ------------------------------ 47.36 MiB/53.68 MiB                   ⠦ Preparing packages... (25/26)
-llvmlite   ------------------------------ 48.23 MiB/53.68 MiB                   ⠧ Preparing packages... (25/26)
-llvmlite   ------------------------------ 49.30 MiB/53.68 MiB                   ⠧ Preparing packages... (25/26)
-llvmlite   ------------------------------ 50.32 MiB/53.68 MiB                   ⠧ Preparing packages... (25/26)
-llvmlite   ------------------------------ 51.46 MiB/53.68 MiB                   ⠇ Preparing packages... (25/26)
-llvmlite   ------------------------------ 52.54 MiB/53.68 MiB                   ⠋ Preparing packages... (25/26)
-llvmlite   ------------------------------ 53.41 MiB/53.68 MiB                   ⠋ Preparing packages... (25/26)
-llvmlite   ------------------------------ 53.44 MiB/53.68 MiB                   ⠋ Preparing packages... (25/26)
-llvmlite   ------------------------------ 53.45 MiB/53.68 MiB                   ⠋ Preparing packages... (25/26)
-llvmlite   ------------------------------ 53.46 MiB/53.68 MiB                   ⠋ Preparing packages... (25/26)
-llvmlite   ------------------------------ 53.47 MiB/53.68 MiB                   ⠋ Preparing packages... (25/26)                                                 Uninstalled 24 packages in 279ms
-░░░░░░░░░░░░░░░░░░░░ [0/0] Installing wheels...                                 ░░░░░░░░░░░░░░░░░░░░ [0/26] Installing wheels...                                ░░░░░░░░░░░░░░░░░░░░ [0/26] beautifulsoup4==4.14.2                              ░░░░░░░░░░░░░░░░░░░░ [1/26] beautifulsoup4==4.14.2                              ░░░░░░░░░░░░░░░░░░░░ [1/26] typing-extensions==4.15.0                           █░░░░░░░░░░░░░░░░░░░ [2/26] typing-extensions==4.15.0                           █░░░░░░░░░░░░░░░░░░░ [2/26] idna==3.11                                          ██░░░░░░░░░░░░░░░░░░ [3/26] idna==3.11                                          ██░░░░░░░░░░░░░░░░░░ [3/26] typing-inspection==0.4.2                            ███░░░░░░░░░░░░░░░░░ [4/26] typing-inspection==0.4.2                            ███░░░░░░░░░░░░░░░░░ [4/26] platformdirs==4.5.0                                 ███░░░░░░░░░░░░░░░░░ [5/26] platformdirs==4.5.0                                 ███░░░░░░░░░░░░░░░░░ [5/26] attrs==25.4.0                                       ████░░░░░░░░░░░░░░░░ [6/26] attrs==25.4.0                                       ████░░░░░░░░░░░░░░░░ [6/26] psutil==7.1.0                                       █████░░░░░░░░░░░░░░░ [7/26] psutil==7.1.0                                       █████░░░░░░░░░░░░░░░ [7/26] certifi==2025.10.5                                  ██████░░░░░░░░░░░░░░ [8/26] certifi==2025.10.5                                  ██████░░░░░░░░░░░░░░ [8/26] propcache==0.4.1                                    ██████░░░░░░░░░░░░░░ [9/26] propcache==0.4.1                                    ██████████████████░░ [24/26] pymupdf==1.26.5                                    ███████████████████░ [25/26] pymupdf==1.26.5                                    Installed 26 packages in 108ms
-Result: {'error': 'تحلیلی برای bitcoin یافت نشد', 'crypto': 'bitcoin'}
-❌ Error: تحلیلی برای bitcoin یافت نشد

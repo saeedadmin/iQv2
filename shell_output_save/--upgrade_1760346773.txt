@@ -1,73 +1,0 @@
-Using Python 3.12.5 environment at: /tmp/.venv
-⠋ Resolving dependencies...                                                     ⠋ Resolving dependencies...                                                     ⠙ Resolving dependencies...                                                     ⠹ Resolving dependencies...                                                     ⠸ Resolving dependencies...                                                     ⠼ Resolving dependencies...                                                     ⠼ python-telegram-bot==22.5                                                     ⠴ python-telegram-bot==22.5                                                     ⠦ python-telegram-bot==22.5                                                     ⠧ python-telegram-bot==22.5                                                     ⠧ httpx==0.28.1                                                                 ⠧ anyio==4.11.0                                                                 ⠧ certifi==2025.10.5                                                            ⠧ httpcore==1.0.9                                                               ⠧ idna==3.11                                                                    ⠧ sniffio==1.3.1                                                                ⠧ typing-extensions==4.15.0                                                     ⠧ typing-extensions==4.15.0                                                     ⠧ h11==0.16.0                                                                   ⠧                                                                               Resolved 9 packages in 1.24s
-⠋ Preparing packages... (0/0)                                                   ⠋ Preparing packages... (0/4)                                                   ⠙ Preparing packages... (0/4)                                                   ⠙ Preparing packages... (0/4)
-idna       ------------------------------     0 B/69.34 KiB                     ⠙ Preparing packages... (0/4)
-idna       ------------------------------     0 B/69.34 KiB
-python-telegram-bot ------------------------------     0 B/713.84 KiB           ⠙ Preparing packages... (0/4)
-idna       ------------------------------     0 B/69.34 KiB
-python-telegram-bot ------------------------------ 8.00 KiB/713.84 KiB          ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------     0 B/43.57 KiB
-idna       ------------------------------     0 B/69.34 KiB
-python-telegram-bot ------------------------------ 8.00 KiB/713.84 KiB          ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 8.00 KiB/43.57 KiB
-idna       ------------------------------     0 B/69.34 KiB
-python-telegram-bot ------------------------------ 8.00 KiB/713.84 KiB          ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 16.00 KiB/43.57 KiB
-idna       ------------------------------     0 B/69.34 KiB
-python-telegram-bot ------------------------------ 8.00 KiB/713.84 KiB          ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------     0 B/69.34 KiB
-python-telegram-bot ------------------------------ 8.00 KiB/713.84 KiB          ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------ 8.00 KiB/69.34 KiB
-python-telegram-bot ------------------------------ 8.00 KiB/713.84 KiB          ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------ 8.00 KiB/69.34 KiB
-python-telegram-bot ------------------------------ 16.00 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------ 8.00 KiB/69.34 KiB
-python-telegram-bot ------------------------------ 17.14 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------ 8.00 KiB/69.34 KiB
-certifi    ------------------------------     0 B/159.46 KiB
-python-telegram-bot ------------------------------ 17.14 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------ 8.00 KiB/69.34 KiB
-certifi    ------------------------------ 8.00 KiB/159.46 KiB
-python-telegram-bot ------------------------------ 17.14 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------ 8.00 KiB/69.34 KiB
-certifi    ------------------------------ 8.00 KiB/159.46 KiB
-python-telegram-bot ------------------------------ 25.14 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------ 8.00 KiB/69.34 KiB
-certifi    ------------------------------ 8.00 KiB/159.46 KiB
-python-telegram-bot ------------------------------ 31.25 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------ 16.00 KiB/69.34 KiB
-certifi    ------------------------------ 8.00 KiB/159.46 KiB
-python-telegram-bot ------------------------------ 31.25 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------ 17.14 KiB/69.34 KiB
-certifi    ------------------------------ 8.00 KiB/159.46 KiB
-python-telegram-bot ------------------------------ 31.25 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-typing-extensions ------------------------------ 17.14 KiB/43.57 KiB
-idna       ------------------------------ 17.14 KiB/69.34 KiB
-certifi    ------------------------------ 16.00 KiB/159.46 KiB
-python-telegram-bot ------------------------------ 31.25 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-idna       ------------------------------ 51.36 KiB/69.34 KiB
-certifi    ------------------------------ 34.23 KiB/159.46 KiB
-python-telegram-bot ------------------------------ 51.36 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-certifi    ------------------------------ 63.26 KiB/159.46 KiB
-python-telegram-bot ------------------------------ 68.45 KiB/713.84 KiB         ⠙ Preparing packages... (0/4)
-python-telegram-bot ------------------------------ 179.13 KiB/713.84 KiB        ⠙ Preparing packages... (0/4)
-python-telegram-bot ------------------------------ 623.99 KiB/713.84 KiB        ⠙ Preparing packages... (0/4)                                                   Prepared 4 packages in 56ms
-Uninstalled 3 packages in 1ms
-░░░░░░░░░░░░░░░░░░░░ [0/0] Installing wheels...                                 ░░░░░░░░░░░░░░░░░░░░ [0/4] Installing wheels...                                 ░░░░░░░░░░░░░░░░░░░░ [0/4] typing-extensions==4.15.0                            █████░░░░░░░░░░░░░░░ [1/4] typing-extensions==4.15.0                            █████░░░░░░░░░░░░░░░ [1/4] idna==3.11                                           ██████████░░░░░░░░░░ [2/4] idna==3.11                                           ██████████░░░░░░░░░░ [2/4] certifi==2025.10.5                                   ███████████████░░░░░ [3/4] certifi==2025.10.5                                   ███████████████░░░░░ [3/4] python-telegram-bot==22.5                            ████████████████████ [4/4] python-telegram-bot==22.5                            Installed 4 packages in 3ms
- - certifi==2025.8.3
- + certifi==2025.10.5
- - idna==3.10
- + idna==3.11
- + python-telegram-bot==22.5
- - typing-extensions==4.14.0
- + typing-extensions==4.15.0
