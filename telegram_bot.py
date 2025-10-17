@@ -108,7 +108,7 @@ async def fetch_crypto_signals():
     """دریافت سیگنال‌های معاملاتی از کانال‌های تلگرام - بهبود یافته"""
     try:
         print("📍 دریافت آخرین 2 سیگنال از کانال‌های تلگرام...")
-        signals = await get_latest_crypto_signals(days=3, max_signals=2)
+        signals = await get_latest_crypto_signals(days=2, max_signals=2)
         
         if signals and signals[0].startswith("❌"):
             # اگر خطا داشت، از سیگنال‌های fallback استفاده کن
@@ -863,7 +863,7 @@ async def signals_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     try:
         # دریافت سیگنال‌ها
-        signals = await get_latest_crypto_signals(days=3, max_signals=3)
+        signals = await get_latest_crypto_signals(days=2, max_signals=3)
         
         # حذف پیام بارگذاری
         await loading_message.delete()

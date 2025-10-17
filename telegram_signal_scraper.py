@@ -37,7 +37,7 @@ class TelegramSignalScraper:
             'signal', 'long', 'short', 'entry', 'target', 'stop'
         ]
     
-    async def fetch_latest_signals(self, days: int = 3, max_signals: int = 2) -> List[Dict]:
+    async def fetch_latest_signals(self, days: int = 2, max_signals: int = 2) -> List[Dict]:
         """
         دریافت آخرین سیگنال‌های ترید - بهبود یافته
         
@@ -69,7 +69,7 @@ class TelegramSignalScraper:
     
     def _remove_duplicates(self, signals: List[Dict]) -> List[Dict]:
         """
-        حذف سیگنال‌های تکراری
+        حذف سیگنال‌های تکراری - ساده شده
         
         Args:
             signals: لیست کل سیگنال‌ها
@@ -135,7 +135,8 @@ class TelegramSignalScraper:
     
     def _extract_signals_from_results(self, results: List[Dict], channel: str) -> List[Dict]:
         """
-        استخراج سیگنال‌ها از نتایج خام
+        استخراج سیگنال‌ها از نتایج خام - ساده شده
+        فقط description و date استفاده می‌شود
         
         Args:
             results: نتایج خام از Apify
@@ -159,18 +160,14 @@ class TelegramSignalScraper:
                 
             message = result['message']
             description = message['description']
+            date = message.get('date', 'N/A')
             
             # بررسی اینکه آیا پیام سیگنال است
             if self._is_trading_signal(description):
                 signal = {
                     'channel': f"@{channel}",
-                    'date': message.get('date', 'N/A'),
-                    'fulldate': message.get('fulldate', 'N/A'),
-                    'views': message.get('views', 0),
+                    'date': date,
                     'text': description,
-                    'link': message.get('link', ''),
-                    'has_image': bool(message.get('image')),
-                    'has_video': bool(message.get('video')),
                     'signal_type': self._detect_signal_type(description),
                     'coin_pair': self._extract_coin_pair(description)
                 }
@@ -313,38 +310,28 @@ class TelegramSignalScraper:
 
     def format_signal_for_display(self, signal: Dict) -> str:
         """
-        فرمت کردن سیگنال برای نمایش - بهبود یافته و تمیز
+        فرمت کردن سیگنال برای نمایش - ساده و بدون محدودیت
         
         Args:
             signal: دیکشنری سیگنال
             
         Returns:
-            متن فرمت شده و تمیز
+            متن فرمت شده
         """
         # تمیز کردن متن سیگنال
         raw_text = signal['text']
         cleaned_text = self._clean_signal_text(raw_text)
         
-        # اگر متن خیلی طولانی باشد، کوتاه کن
-        if len(cleaned_text) > 350:
-            # پیدا کردن آخرین فاصله قبل از 350 کاراکتر
-            cut_pos = cleaned_text.rfind(' ', 0, 350)
-            if cut_pos > 250:  # اگر جای مناسبی پیدا شد
-                cleaned_text = cleaned_text[:cut_pos] + '...'
-            else:
-                cleaned_text = cleaned_text[:350] + '...'
-        
-        # ساخت پیام فرمت شده
+        # ساخت پیام فرمت شده - بدون محدودیت طول
         formatted = f"📅 **تاریخ:** {signal['date']}\n"
         formatted += f"💰 **ارز:** {signal['coin_pair']}\n"
-        formatted += f"📊 **نوع:** {signal['signal_type']}\n"
-        formatted += f"👀 **بازدید:** {signal['views']:,}\n\n"
+        formatted += f"📊 **نوع:** {signal['signal_type']}\n\n"
         formatted += f"💬 **سیگنال:**\n{cleaned_text}"
         
         return formatted
 
 # تابع helper برای ربات
-async def get_latest_crypto_signals(days: int = 3, max_signals: int = 2) -> List[str]:
+async def get_latest_crypto_signals(days: int = 2, max_signals: int = 2) -> List[str]:
     """
     دریافت آخرین سیگنال‌های کریپتو برای ربات - بهبود یافته
     
