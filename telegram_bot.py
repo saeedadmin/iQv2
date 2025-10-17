@@ -15,6 +15,7 @@ import asyncio
 import datetime
 import os
 import re
+import requests
 from aiohttp import web
 from dotenv import load_dotenv
 from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
@@ -1802,9 +1803,25 @@ def main() -> None:
                 health_data = {
                     "status": "healthy",
                     "service": "telegram-bot", 
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "uptime": "running"
                 }
                 self.wfile.write(json.dumps(health_data).encode())
+            elif self.path == '/ping':
+                self.send_response(200)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b'pong')
+            elif self.path == '/wake':
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                wake_data = {
+                    "status": "awake",
+                    "message": "Service is now active",
+                    "timestamp": datetime.datetime.now().isoformat()
+                }
+                self.wfile.write(json.dumps(wake_data).encode())
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -1821,6 +1838,35 @@ def main() -> None:
     # شروع health server در thread جداگانه
     health_thread = threading.Thread(target=start_health_server, daemon=True)
     health_thread.start()
+    
+    # Self-ping mechanism برای جلوگیری از sleep
+    def self_ping():
+        import requests
+        import time
+        
+        app_url = os.getenv('KOYEB_PUBLIC_DOMAIN')
+        if not app_url:
+            return  # اگر URL مشخص نباشد، ping نکن
+            
+        if not app_url.startswith('http'):
+            app_url = f"https://{app_url}"
+            
+        while True:
+            try:
+                time.sleep(300)  # هر 5 دقیقه
+                response = requests.get(f"{app_url}/health", timeout=10)
+                if response.status_code == 200:
+                    logger.info("🏓 Self-ping موفق")
+                else:
+                    logger.warning(f"⚠️ Self-ping ناموفق: {response.status_code}")
+            except Exception as e:
+                logger.warning(f"⚠️ خطا در self-ping: {e}")
+    
+    # شروع self-ping در thread جداگانه 
+    if os.getenv('KOYEB_PUBLIC_DOMAIN'):
+        ping_thread = threading.Thread(target=self_ping, daemon=True)
+        ping_thread.start()
+        logger.info("🏓 Self-ping mechanism فعال شد")
     
     # اجرای ربات تا زمان فشردن Ctrl-C
     try:
