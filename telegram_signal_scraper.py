@@ -177,34 +177,74 @@ class TelegramSignalScraper:
     
     def _is_trading_signal(self, text: str) -> bool:
         """
-        تشخیص اینکه آیا متن یک سیگنال ترید است
+        تشخیص دقیق اینکه آیا متن یک سیگنال ترید کامل است
+        باید عناصر اصلی سیگنال موجود باشد
         
         Args:
             text: متن پیام
             
         Returns:
-            True اگر سیگنال باشد
+            True اگر سیگنال کامل باشد
         """
         text_lower = text.lower()
         
-        # بررسی وجود کلیدواژه‌های سیگنال
-        for keyword in self.signal_keywords:
-            if keyword.lower() in text_lower:
-                return True
-        
-        # بررسی الگوهای مشخص سیگنال
-        signal_patterns = [
-            'entry', 'target', 'stop', 'leverage',
-            'ورود', 'هدف', 'استاپ', 'لوریج'
+        # 1. بررسی وجود نام ارز (حتمی)
+        has_coin = False
+        coin_patterns = [
+            r'([A-Z]{2,10})\s*/\s*(USDT|USD|BTC)',
+            r'ارز\s*:\s*([A-Z]{2,10})',
+            r'💎\s*ارز\s*:\s*([A-Z]{2,10})'
         ]
         
-        found_patterns = 0
-        for pattern in signal_patterns:
-            if pattern.lower() in text_lower:
-                found_patterns += 1
+        import re
+        for pattern in coin_patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                has_coin = True
+                break
         
-        # اگر حداقل 2 الگو پیدا شد، احتمالاً سیگنال است
-        return found_patterns >= 2
+        if not has_coin:
+            return False
+        
+        # 2. بررسی وجود نوع معامله (حتمی)
+        has_direction = any(word in text_lower for word in [
+            'لانگ', 'long', 'شورت', 'short', '📈', '📉'
+        ])
+        
+        if not has_direction:
+            return False
+        
+        # 3. بررسی وجود نقطه ورود (حتمی)
+        has_entry = any(word in text_lower for word in [
+            'entry', 'ورود', 'نقطه ورود', 'market', '📍'
+        ])
+        
+        if not has_entry:
+            return False
+        
+        # 4. بررسی وجود هدف (حتمی)
+        has_target = any(word in text_lower for word in [
+            'target', 'هدف', 'اهداف', '💰', 'tp'
+        ])
+        
+        if not has_target:
+            return False
+        
+        # 5. بررسی وجود استاپ لاس (حتمی)
+        has_stop = any(word in text_lower for word in [
+            'stop', 'استاپ', 'stoploss', 'sl', '😀'
+        ])
+        
+        if not has_stop:
+            return False
+        
+        # 6. بررسی وجود عدد (برای قیمت‌ها)
+        has_numbers = bool(re.search(r'\d+(?:\.\d+)?', text))
+        
+        if not has_numbers:
+            return False
+        
+        # اگر همه عناصر موجود باشند، سیگنال کامل است
+        return True
     
     def _detect_signal_type(self, text: str) -> str:
         """
@@ -334,6 +374,7 @@ class TelegramSignalScraper:
 async def get_latest_crypto_signals(days: int = 2, max_signals: int = 2) -> List[str]:
     """
     دریافت آخرین سیگنال‌های کریپتو برای ربات - بهبود یافته
+    فقط سیگنال‌های کامل برمی‌گردد
     
     Args:
         days: تعداد روزهای گذشته
@@ -347,7 +388,7 @@ async def get_latest_crypto_signals(days: int = 2, max_signals: int = 2) -> List
         signals = await scraper.fetch_latest_signals(days, max_signals)
         
         if not signals:
-            return ["❌ هیچ سیگنال جدیدی یافت نشد"]
+            return [f"💫 **سیگنال تازه‌ای نیست**\n\nدر {days} روز گذشته هیچ سیگنال کاملی پیدا نشد. 🕰️"]
         
         formatted_signals = []
         for signal in signals:
