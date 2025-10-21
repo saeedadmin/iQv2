@@ -75,8 +75,28 @@ class PostgreSQLManager:
                     is_admin BOOLEAN DEFAULT FALSE,
                     join_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    message_count INTEGER DEFAULT 0
+                    message_count INTEGER DEFAULT 0,
+                    spam_warnings INTEGER DEFAULT 0,
+                    block_until TIMESTAMP NULL,
+                    block_reason TEXT NULL
                 )
+            ''')
+            
+            # جدول tracking پیام‌ها برای anti-spam
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS user_message_tracking (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    message_type TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+                )
+            ''')
+            
+            # ایجاد index برای بهبود performance
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_message_tracking_user_time 
+                ON user_message_tracking(user_id, message_time DESC)
             ''')
             
             # جدول لاگ‌ها  
@@ -367,16 +387,42 @@ class PostgreSQLManager:
                 self.return_connection(conn)
 
     def is_user_blocked(self, user_id: int) -> bool:
-        """بررسی بلاک بودن کاربر"""
+        """بررسی بلاک بودن کاربر (همراه با چک کردن زمان)"""
         conn = None
         try:
             conn = self.get_connection()
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             
-            cursor.execute('SELECT is_blocked FROM users WHERE user_id = %s', (user_id,))
+            cursor.execute(
+                'SELECT is_blocked, block_until FROM users WHERE user_id = %s', 
+                (user_id,)
+            )
             result = cursor.fetchone()
             
-            return bool(result['is_blocked']) if result else False
+            if not result:
+                return False
+            
+            # اگر بلاک نیست، False برگردون
+            if not result['is_blocked']:
+                return False
+            
+            # اگر block_until تنظیم نشده (بلاک دائمی)، True برگردون
+            if not result['block_until']:
+                return True
+            
+            # چک کردن آیا زمان بلاک تموم شده یا نه
+            import datetime
+            if result['block_until'] <= datetime.datetime.now():
+                # زمان بلاک تموم شده، خودکار آنبلاک کن
+                cursor.execute(
+                    'UPDATE users SET is_blocked = FALSE, block_until = NULL WHERE user_id = %s',
+                    (user_id,)
+                )
+                conn.commit()
+                logger.info(f"✅ کاربر {user_id} به صورت خودکار آنبلاک شد")
+                return False
+            
+            return True
             
         except Exception as e:
             logger.error(f"❌ خطا در بررسی وضعیت بلاک کاربر: {e}")
@@ -519,6 +565,250 @@ class PostgreSQLManager:
         """تنظیم وضعیت ربات"""
         return self.set_setting('bot_enabled', '1' if enabled else '0')
 
+    def track_user_message(self, user_id: int, message_type: str = 'text') -> bool:
+        """ثبت پیام کاربر برای tracking اسپم"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                'INSERT INTO user_message_tracking (user_id, message_type) VALUES (%s, %s)',
+                (user_id, message_type)
+            )
+            conn.commit()
+            return True
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در ثبت tracking پیام: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def get_recent_message_count(self, user_id: int, seconds: int = 15) -> int:
+        """دریافت تعداد پیام‌های اخیر کاربر در N ثانیه گذشته"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT COUNT(*) FROM user_message_tracking 
+                WHERE user_id = %s 
+                AND message_time >= NOW() - INTERVAL '%s seconds'
+            ''', (user_id, seconds))
+            
+            count = cursor.fetchone()[0]
+            return count
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در شمارش پیام‌های اخیر: {e}")
+            return 0
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def cleanup_old_message_tracking(self, hours: int = 24) -> bool:
+        """پاک کردن رکوردهای قدیمی tracking (بیش از N ساعت)"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                "DELETE FROM user_message_tracking WHERE message_time < NOW() - INTERVAL '%s hours'",
+                (hours,)
+            )
+            conn.commit()
+            
+            deleted_count = cursor.rowcount
+            if deleted_count > 0:
+                logger.info(f"🗑️ {deleted_count} رکورد قدیمی tracking پاک شد")
+            
+            return True
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در پاک کردن tracking قدیمی: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def block_user_for_spam(self, user_id: int) -> Dict[str, any]:
+        """بلاک کردن کاربر به دلیل اسپم (با سطح‌بندی زمانی)"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            
+            # دریافت تعداد warnings قبلی
+            cursor.execute(
+                'SELECT spam_warnings FROM users WHERE user_id = %s',
+                (user_id,)
+            )
+            result = cursor.fetchone()
+            
+            current_warnings = result['spam_warnings'] if result else 0
+            new_warnings = current_warnings + 1
+            
+            # تعیین مدت زمان بلاک
+            import datetime
+            if new_warnings == 1:
+                # اولین بار: 1 روز
+                block_duration = datetime.timedelta(days=1)
+                block_level = "1 روز"
+            elif new_warnings == 2:
+                # دومین بار: 1 هفته
+                block_duration = datetime.timedelta(days=7)
+                block_level = "1 هفته"
+            else:
+                # سومین بار و بعد: دائمی
+                block_duration = None
+                block_level = "دائمی"
+            
+            # محاسبه زمان پایان بلاک
+            if block_duration:
+                block_until = datetime.datetime.now() + block_duration
+            else:
+                block_until = None
+            
+            # بلاک کردن کاربر
+            cursor.execute('''
+                UPDATE users 
+                SET is_blocked = TRUE, 
+                    spam_warnings = %s, 
+                    block_until = %s,
+                    block_reason = 'spam'
+                WHERE user_id = %s
+            ''', (new_warnings, block_until, user_id))
+            
+            conn.commit()
+            
+            logger.warning(f"🚫 کاربر {user_id} به دلیل اسپم بلاک شد (سطح {new_warnings}: {block_level})")
+            
+            return {
+                'success': True,
+                'warning_level': new_warnings,
+                'block_duration': block_level,
+                'block_until': block_until,
+                'is_permanent': block_duration is None
+            }
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در بلاک کردن کاربر: {e}")
+            return {'success': False, 'error': str(e)}
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def get_blocked_users_with_time(self) -> List[Dict]:
+        """دریافت لیست کاربران بلاک شده همراه با زمان"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cursor.execute('''
+                SELECT user_id, username, first_name, 
+                       spam_warnings, block_until, block_reason
+                FROM users 
+                WHERE is_blocked = TRUE
+                ORDER BY block_until ASC NULLS LAST
+            ''')
+            
+            results = cursor.fetchall()
+            
+            blocked_users = []
+            for row in results:
+                user_dict = dict(row)
+                if user_dict.get('block_until'):
+                    user_dict['block_until'] = user_dict['block_until'].strftime('%Y-%m-%d %H:%M:%S')
+                blocked_users.append(user_dict)
+            
+            return blocked_users
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت کاربران بلاک شده: {e}")
+            return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def manual_unblock_user(self, user_id: int) -> bool:
+        """آنبلاک دستی کاربر (بدون تغییر spam_warnings)"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                UPDATE users 
+                SET is_blocked = FALSE, 
+                    block_until = NULL
+                WHERE user_id = %s
+            ''', (user_id,))
+            
+            conn.commit()
+            logger.info(f"✅ کاربر {user_id} به صورت دستی آنبلاک شد")
+            return cursor.rowcount > 0
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در آنبلاک دستی کاربر: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def auto_unblock_expired_users(self) -> int:
+        """آنبلاک خودکار کاربرهایی که زمان بلاکشان تمام شده"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            import datetime
+            cursor.execute('''
+                UPDATE users 
+                SET is_blocked = FALSE, 
+                    block_until = NULL
+                WHERE is_blocked = TRUE 
+                AND block_until IS NOT NULL 
+                AND block_until <= %s
+            ''', (datetime.datetime.now(),))
+            
+            conn.commit()
+            
+            unblocked_count = cursor.rowcount
+            if unblocked_count > 0:
+                logger.info(f"✅ {unblocked_count} کاربر به صورت خودکار آنبلاک شدند")
+            
+            return unblocked_count
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در آنبلاک خودکار: {e}")
+            return 0
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
     def close(self):
         """بستن pool اتصالات"""
         if hasattr(self, 'connection_pool'):

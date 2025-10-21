@@ -106,6 +106,123 @@ async def check_user_access(user_id: int) -> bool:
     
     return True
 
+# تنظیمات Anti-Spam
+SPAM_MESSAGE_LIMIT = 8  # تعداد پیام مجاز
+SPAM_TIME_WINDOW = 15   # در چند ثانیه
+
+async def check_spam_and_handle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """بررسی اسپم و مدیریت بلاک خودکار
+    
+    Returns:
+        True: کاربر اسپم کرده و بلاک شد
+        False: کاربر عادی است
+    """
+    user = update.effective_user
+    
+    # ادمین از چک اسپم معاف است
+    if user.id == ADMIN_USER_ID:
+        return False
+    
+    # ثبت پیام کاربر در tracking
+    db_manager.track_user_message(user.id, 'text')
+    
+    # بررسی تعداد پیام‌های اخیر
+    recent_messages = db_manager.get_recent_message_count(user.id, SPAM_TIME_WINDOW)
+    
+    # اگر تعداد پیام‌ها از حد مجاز بیشتر شد
+    if recent_messages > SPAM_MESSAGE_LIMIT:
+        # بلاک کردن کاربر
+        block_result = db_manager.block_user_for_spam(user.id)
+        
+        if block_result['success']:
+            # لاگ بلاک اسپم
+            bot_logger.log_admin_action(
+                0,  # سیستم
+                "AUTO_SPAM_BLOCK",
+                target_user=user.id,
+                details=f"{recent_messages} پیام در {SPAM_TIME_WINDOW} ثانیه - سطح {block_result['warning_level']}"
+            )
+            
+            # ارسال نوتیفیکیشن به کاربر
+            await send_spam_block_notification(update, context, block_result)
+            
+            # ارسال نوتیفیکیشن به ادمین
+            await send_admin_spam_notification(context, user, block_result)
+            
+            return True
+    
+    return False
+
+async def send_spam_block_notification(update: Update, context: ContextTypes.DEFAULT_TYPE, block_result: dict):
+    """ارسال نوتیفیکیشن بلاک به کاربر"""
+    try:
+        warning_level = block_result['warning_level']
+        block_duration = block_result['block_duration']
+        is_permanent = block_result['is_permanent']
+        
+        if is_permanent:
+            message = f"""🚫 **شما به طور دائمی بلاک شدید**
+
+⚠️ **دلیل:** ارسال پیام‌های متوالی (اسپم)
+📊 **سطح بلاک:** {warning_level} (دائمی)
+
+❌ **این سومین بار است که به دلیل اسپم بلاک می‌شوید.**
+دسترسی شما به طور دائم محدود شده است.
+
+💡 برای بازگشایی حساب، با ادمین تماس بگیرید."""
+        else:
+            block_until_str = ""
+            if block_result.get('block_until'):
+                block_until_str = block_result['block_until'].strftime('%Y/%m/%d ساعت %H:%M')
+            
+            message = f"""⚠️ **شما موقتاً بلاک شدید**
+
+🚫 **دلیل:** ارسال پیام‌های متوالی (اسپم)
+⏰ **مدت بلاک:** {block_duration}
+📊 **سطح بلاک:** {warning_level}
+📅 **تا تاریخ:** {block_until_str}
+
+💡 **توجه:**
+• از ارسال پیام‌های پشت سر هم خودداری کنید
+• بار بعد مدت بلاک طولانی‌تر خواهد بود
+• در صورت تکرار، بلاک دائمی اعمال می‌شود
+
+✅ پس از اتمام مدت بلاک، خودکار آزاد خواهید شد."""
+        
+        await update.message.reply_text(message, parse_mode='Markdown')
+        
+    except Exception as e:
+        logger.error(f"❌ خطا در ارسال نوتیفیکیشن بلاک به کاربر: {e}")
+
+async def send_admin_spam_notification(context: ContextTypes.DEFAULT_TYPE, user, block_result: dict):
+    """ارسال نوتیفیکیشن به ادمین"""
+    try:
+        warning_level = block_result['warning_level']
+        block_duration = block_result['block_duration']
+        
+        message = f"""🚨 **هشدار اسپم - بلاک خودکار**
+
+👤 **کاربر:**
+• نام: {user.full_name or 'ندارد'}
+• آیدی: `{user.id}`
+• یوزرنیم: @{user.username or 'ندارد'}
+
+📊 **جزئیات بلاک:**
+• سطح: {warning_level}
+• مدت: {block_duration}
+• دلیل: ارسال پیام‌های متوالی (اسپم)
+
+⏰ **زمان:** {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}"""
+        
+        await context.bot.send_message(
+            chat_id=ADMIN_USER_ID,
+            text=message,
+            parse_mode='Markdown'
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ خطا در ارسال نوتیفیکیشن به ادمین: {e}")
+
 # Signal functions removed - will be re-implemented later
 
 # Functions for Fear & Greed Index
@@ -995,6 +1112,12 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await update.message.reply_text("🔧 ربات در حال تعمیر است. لطفاً بعداً تلاش کنید.")
         return
     
+    # 🚨 چک اسپم - قبل از هر عملیاتی
+    is_spam = await check_spam_and_handle(update, context)
+    if is_spam:
+        # کاربر اسپم کرده و بلاک شده - دیگر پردازش نشه
+        return
+    
     # به‌روزرسانی فعالیت کاربر
     db_manager.update_user_activity(user.id)
     
@@ -1507,6 +1630,39 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         except Exception:
             pass  # اگر نتوانست پیام خطا ارسال کند، نادیده بگیر
 
+# Background Tasks برای Anti-Spam System
+async def auto_unblock_task():
+    """تسک پس‌زمینه برای آنبلاک خودکار کاربرها"""
+    while True:
+        try:
+            # هر 1 دقیقه چک کن
+            await asyncio.sleep(60)
+            
+            # آنبلاک کاربرهایی که زمانشان تموم شده
+            unblocked_count = db_manager.auto_unblock_expired_users()
+            
+            # فقط اگر کاربری آنبلاک شد، لاگ کن
+            if unblocked_count > 0:
+                bot_logger.log_system_event(
+                    "AUTO_UNBLOCK",
+                    f"{unblocked_count} کاربر به صورت خودکار آنبلاک شدند"
+                )
+        except Exception as e:
+            logger.error(f"❌ خطا در auto_unblock_task: {e}")
+
+async def cleanup_tracking_task():
+    """تسک پس‌زمینه برای پاک‌سازی رکوردهای قدیمی tracking"""
+    while True:
+        try:
+            # هر 1 ساعت یکبار پاک‌سازی کن
+            await asyncio.sleep(3600)
+            
+            # پاک کردن رکوردهای بیش از 24 ساعته
+            db_manager.cleanup_old_message_tracking(hours=24)
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در cleanup_tracking_task: {e}")
+
 async def main() -> None:
     """تابع اصلی برای راه‌اندازی ربات"""
     logger.info("🚀 شروع ربات تلگرام پیشرفته...")
@@ -1709,6 +1865,12 @@ async def main() -> None:
     # شروع HTTP server در thread جداگانه
     http_thread = threading.Thread(target=start_http_in_thread, daemon=True)
     http_thread.start()
+    
+    # 🚨 شروع Background Tasks برای Anti-Spam System
+    logger.info("🧹 شروع Background Tasks...")
+    asyncio.create_task(auto_unblock_task())
+    asyncio.create_task(cleanup_tracking_task())
+    logger.info("✅ Background Tasks فعال شدند (auto-unblock, cleanup)")
     
     # انتخاب بین Webhook و Polling
     use_webhook = os.getenv('USE_WEBHOOK', 'false').lower() == 'true'
