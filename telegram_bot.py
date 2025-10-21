@@ -36,8 +36,10 @@ else:
 from admin_panel import AdminPanel
 from public_menu import PublicMenuManager
 from logger_system import bot_logger
-from keyboards import get_main_menu_markup, get_public_section_markup, get_ai_menu_markup
+from keyboards import get_main_menu_markup, get_public_section_markup, get_ai_menu_markup, get_ai_chat_mode_markup
 from ai_news import get_ai_news
+from ai_chat_handler import GeminiChatHandler, AIChatStateManager
+from ai_image_generator import AIImageGenerator
 # Signal scraper removed - will be re-implemented later
 
 # Optional imports - TradingView Analysis
@@ -79,6 +81,11 @@ else:
 db_logger = DatabaseLogger(db_manager)
 admin_panel = AdminPanel(db_manager, ADMIN_USER_ID)
 public_menu = PublicMenuManager(db_manager)
+
+# Initialize AI systems
+gemini_chat = GeminiChatHandler()
+ai_chat_state = AIChatStateManager(db_manager)
+ai_image_gen = AIImageGenerator()
 
 # Initialize TradingView fetcher if available
 if TRADINGVIEW_AVAILABLE:
@@ -1336,10 +1343,10 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 به دنیای AI خوش آمدید! 🚀
 
 🔍 *خدمات موجود:*
-• 📰 آخرین اخبار هوش مصنوعی از منابع معتبر
-• 🌐 پیشرفت‌های جدید در دنیای AI
+• 💬 *چت با هوش مصنوعی:* پرسش و پاسخ با Gemini 2.0
+• 📰 *اخبار AI:* آخرین پیشرفت‌ها و اخبار
 
-از دکمه زیر برای دسترسی به اخبار استفاده کنید:
+از دکمه‌های زیر برای استفاده از خدمات انتخاب کنید:
         """
         
         # استفاده از کیبورد AI
@@ -1422,6 +1429,73 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         
         return
     
+    elif message_text == "💬 چت با هوش مصنوعی":
+        # شروع چت با AI
+        bot_logger.log_user_action(user.id, "AI_CHAT_START", "شروع چت با هوش مصنوعی")
+        
+        # فعال کردن حالت چت
+        ai_chat_state.start_chat(user.id)
+        
+        welcome_message = """
+🤖 *چت با هوش مصنوعی Gemini*
+
+سلام! من آماده پاسخگویی به سوالات شما هستم 🚀
+
+💬 *چگونه استفاده کنم？*
+• هر سوالی دارید بپرسید
+• می‌توانم در موضوعات مختلف کمک کنم
+• به فارسی و انگلیسی پاسخ می‌دهم
+
+❌ برای خروج از چت، دکمه "خروج از چت" را بزنید.
+
+❓ سوال خود را بپرسید:
+        """
+        
+        # نمایش کیبورد حالت چت (فقط دکمه خروج)
+        reply_markup = get_ai_chat_mode_markup()
+        
+        await update.message.reply_text(
+            welcome_message,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return
+    
+    elif message_text == "❌ خروج از چت":
+        # خروج از چت AI
+        if ai_chat_state.is_in_chat(user.id):
+            ai_chat_state.end_chat(user.id)
+            bot_logger.log_user_action(user.id, "AI_CHAT_END", "خروج از چت با AI")
+            
+            # دریافت آمار چت
+            stats = ai_chat_state.get_chat_stats(user.id)
+            
+            goodbye_message = f"""
+👋 *خداحافظی!*
+
+چت با هوش مصنوعی پایان یافت.
+
+📊 *آمار جلسه چت:*
+• تعداد پیام‌ها: {stats['message_count']}
+
+برای شروع مجدد چت، دکمه "💬 چت با هوش مصنوعی" را بزنید.
+            """
+            
+            # برگشت به منوی AI
+            reply_markup = get_ai_menu_markup()
+            
+            await update.message.reply_text(
+                goodbye_message,
+                reply_markup=reply_markup,
+                parse_mode='Markdown'
+            )
+        else:
+            await update.message.reply_text(
+                "⚠️ شما در حال حاضر در چت با AI نیستید.",
+                reply_markup=get_ai_menu_markup()
+            )
+        return
+    
     elif message_text == "📰 اخبار هوش مصنوعی":
         bot_logger.log_user_action(user.id, "AI_NEWS_REQUEST", "درخواست اخبار هوش مصنوعی")
         
@@ -1451,6 +1525,66 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         
         return
     
+    # چک کردن اینکه آیا کاربر در حالت چت با AI است
+    if ai_chat_state.is_in_chat(user.id):
+        # کاربر در حالت چت است - پیام را به AI بفرست
+        try:
+            # نمایش پیام "در حال پردازش"
+            typing_message = await update.message.reply_text("⏳ در حال فکر کردن...")
+            
+            # ارسال پیام به Gemini
+            result = gemini_chat.send_message(message_text)
+            
+            # حذف پیام typing
+            await typing_message.delete()
+            
+            if result['success']:
+                # فرمت کردن پاسخ برای تلگرام
+                formatted_response = gemini_chat.format_response_for_telegram(result['response'])
+                
+                # محدود کردن طول پیام (تلگرام حداکثر 4096 کاراکتر)
+                if len(formatted_response) > 4000:
+                    # تقسیم پیام به چند قسمت
+                    parts = [formatted_response[i:i+4000] for i in range(0, len(formatted_response), 4000)]
+                    for part in parts:
+                        await update.message.reply_text(
+                            part,
+                            parse_mode='HTML'
+                        )
+                else:
+                    await update.message.reply_text(
+                        formatted_response,
+                        parse_mode='HTML'
+                    )
+                
+                # افزایش شمارنده پیام‌ها
+                ai_chat_state.increment_message_count(user.id)
+                
+                # لاگ کردن چت
+                bot_logger.log_user_action(
+                    user.id, 
+                    "AI_CHAT_MESSAGE", 
+                    f"Tokens: {result['tokens_used']}"
+                )
+                
+            else:
+                # خطا در دریافت پاسخ
+                error_msg = result.get('error', 'خطای نامشخص')
+                await update.message.reply_text(
+                    f"❌ متأسفانه خطایی رخ داد:\n{error_msg}\n\nلطفاً دوباره تلاش کنید."
+                )
+                
+        except Exception as e:
+            logger.error(f"❌ خطا در پردازش چت AI: {e}")
+            try:
+                await typing_message.delete()
+            except:
+                pass
+            await update.message.reply_text(
+                "❌ متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید."
+            )
+        
+        return
     
     # برای پیام‌های ناشناخته، جواب نده
     # فقط فعالیت کاربر به‌روزرسانی شده و لاگ ثبت می‌شود

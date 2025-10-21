@@ -23,8 +23,14 @@ public_section_keyboard = [
 
 # کیبورد بخش هوش مصنوعی
 ai_menu_keyboard = [
+    [KeyboardButton("💬 چت با هوش مصنوعی")],
     [KeyboardButton("📰 اخبار هوش مصنوعی")],
     [KeyboardButton("🔙 بازگشت به منوی اصلی")]
+]
+
+# کیبورد حالت چت با AI (فقط دکمه خروج)
+ai_chat_mode_keyboard = [
+    [KeyboardButton("❌ خروج از چت")]
 ]
 
 def get_main_menu_markup():
@@ -38,3 +44,7 @@ def get_public_section_markup():
 def get_ai_menu_markup():
     """بازگرداندن کیبورد منوی هوش مصنوعی"""
     return ReplyKeyboardMarkup(ai_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+def get_ai_chat_mode_markup():
+    """بازگرداندن کیبورد حالت چت با AI"""
+    return ReplyKeyboardMarkup(ai_chat_mode_keyboard, resize_keyboard=True, one_time_keyboard=False)
