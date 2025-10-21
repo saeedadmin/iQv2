@@ -182,7 +182,15 @@ class PostgreSQLManager:
             cursor.execute('SELECT * FROM users WHERE user_id = %s', (user_id,))
             result = cursor.fetchone()
             
-            return dict(result) if result else None
+            if result:
+                user_dict = dict(result)
+                # تبدیل datetime objects به string
+                if user_dict.get('join_date'):
+                    user_dict['join_date'] = user_dict['join_date'].strftime('%Y-%m-%d %H:%M:%S')
+                if user_dict.get('last_activity'):
+                    user_dict['last_activity'] = user_dict['last_activity'].strftime('%Y-%m-%d %H:%M:%S')
+                return user_dict
+            return None
             
         except Exception as e:
             logger.error(f"❌ خطا در دریافت کاربر: {e}")
@@ -229,7 +237,19 @@ class PostgreSQLManager:
             cursor.execute('SELECT * FROM users ORDER BY join_date DESC')
             results = cursor.fetchall()
             
-            return [dict(row) for row in results]
+            # تبدیل datetime objects به string برای سازگاری
+            users = []
+            for row in results:
+                user_dict = dict(row)
+                # تبدیل join_date به string
+                if user_dict.get('join_date'):
+                    user_dict['join_date'] = user_dict['join_date'].strftime('%Y-%m-%d %H:%M:%S')
+                # تبدیل last_activity به string
+                if user_dict.get('last_activity'):
+                    user_dict['last_activity'] = user_dict['last_activity'].strftime('%Y-%m-%d %H:%M:%S')
+                users.append(user_dict)
+            
+            return users
             
         except Exception as e:
             logger.error(f"❌ خطا در دریافت کاربران: {e}")
@@ -425,7 +445,15 @@ class PostgreSQLManager:
             ''', (limit,))
             results = cursor.fetchall()
             
-            return [dict(row) for row in results]
+            # تبدیل timestamp به string
+            logs = []
+            for row in results:
+                log_dict = dict(row)
+                if log_dict.get('timestamp'):
+                    log_dict['timestamp'] = log_dict['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+                logs.append(log_dict)
+            
+            return logs
             
         except Exception as e:
             logger.error(f"❌ خطا در دریافت لاگ‌ها: {e}")
