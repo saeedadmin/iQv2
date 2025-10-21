@@ -83,7 +83,7 @@ admin_panel = AdminPanel(db_manager, ADMIN_USER_ID)
 public_menu = PublicMenuManager(db_manager)
 
 # Initialize AI systems
-gemini_chat = GeminiChatHandler()
+gemini_chat = GeminiChatHandler(db_manager=db_manager)
 ai_chat_state = AIChatStateManager(db_manager)
 ai_image_gen = AIImageGenerator()
 
@@ -1532,14 +1532,14 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             # نمایش پیام "در حال پردازش"
             typing_message = await update.message.reply_text("⏳ در حال فکر کردن...")
             
-            # ارسال پیام به Gemini
-            result = gemini_chat.send_message(message_text)
+            # ارسال پیام به Gemini با تاریخچه
+            result = gemini_chat.send_message_with_history(user.id, message_text)
             
             # حذف پیام typing
             await typing_message.delete()
             
             if result['success']:
-                # فرمت کردن پاسخ برای تلگرام
+                # فرمت کردن پاسخ برای تلگرام (با تشخیص و فرمت کد)
                 formatted_response = gemini_chat.format_response_for_telegram(result['response'])
                 
                 # محدود کردن طول پیام (تلگرام حداکثر 4096 کاراکتر)
@@ -1568,11 +1568,23 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 )
                 
             else:
-                # خطا در دریافت پاسخ
+                # بررسی rate limit
                 error_msg = result.get('error', 'خطای نامشخص')
-                await update.message.reply_text(
-                    f"❌ متأسفانه خطایی رخ داد:\n{error_msg}\n\nلطفاً دوباره تلاش کنید."
-                )
+                
+                if error_msg.startswith('rate_limit:'):
+                    # خطای rate limit
+                    wait_time = int(error_msg.split(':')[1])
+                    await update.message.reply_text(
+                        f"⏱️ **تعداد پیام بیش از حد مجاز**\n\n"
+                        f"لطفاً {wait_time} ثانیه صبر کنید و دوباره تلاش کنید.\n\n"
+                        f"🛡️ **محدودیت:** {gemini_chat.rate_limit_messages} پیام در {gemini_chat.rate_limit_seconds} ثانیه",
+                        parse_mode='Markdown'
+                    )
+                else:
+                    # خطای عادی
+                    await update.message.reply_text(
+                        f"❌ متأسفانه خطایی رخ داد:\n{error_msg}\n\nلطفاً دوباره تلاش کنید."
+                    )
                 
         except Exception as e:
             logger.error(f"❌ خطا در پردازش چت AI: {e}")

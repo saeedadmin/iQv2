@@ -136,6 +136,24 @@ class PostgreSQLManager:
                 )
             ''')
             
+            # جدول تاریخچه چت با AI
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ai_chat_history (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    role TEXT NOT NULL,
+                    message_text TEXT NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+                )
+            ''')
+            
+            # Index برای بهبود performance تاریخچه
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_chat_history_user_time
+                ON ai_chat_history(user_id, timestamp DESC)
+            ''')
+            
             # تنظیمات پیش‌فرض
             cursor.execute('''
                 INSERT INTO bot_settings (key, value, description)
@@ -838,6 +856,119 @@ class PostgreSQLManager:
             if conn:
                 conn.rollback()
             logger.error(f"❌ خطا در آنبلاک خودکار: {e}")
+            return 0
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def add_chat_message(self, user_id: int, role: str, message_text: str) -> bool:
+        """اضافه کردن پیام به تاریخچه چت"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO ai_chat_history (user_id, role, message_text)
+                VALUES (%s, %s, %s)
+            ''', (user_id, role, message_text))
+            
+            conn.commit()
+            return True
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در ذخیره پیام چت: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def get_chat_history(self, user_id: int, limit: int = 50) -> List[Dict[str, str]]:
+        """دریافت تاریخچه چت کاربر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cursor.execute('''
+                SELECT role, message_text, timestamp
+                FROM ai_chat_history
+                WHERE user_id = %s
+                ORDER BY timestamp ASC
+                LIMIT %s
+            ''', (user_id, limit))
+            
+            results = cursor.fetchall()
+            
+            # تبدیل به لیست dictionary
+            history = []
+            for row in results:
+                history.append({
+                    'role': row['role'],
+                    'message_text': row['message_text']
+                })
+            
+            return history
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت تاریخچه چت: {e}")
+            return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def clear_chat_history(self, user_id: int) -> bool:
+        """پاک کردن تاریخچه چت کاربر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                'DELETE FROM ai_chat_history WHERE user_id = %s',
+                (user_id,)
+            )
+            
+            conn.commit()
+            deleted_count = cursor.rowcount
+            
+            if deleted_count > 0:
+                logger.info(f"🗑️ {deleted_count} پیام از تاریخچه کاربر {user_id} پاک شد")
+            
+            return True
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در پاک کردن تاریخچه چت: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def get_chat_history_count(self, user_id: int) -> int:
+        """دریافت تعداد پیام‌های تاریخچه چت"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                'SELECT COUNT(*) FROM ai_chat_history WHERE user_id = %s',
+                (user_id,)
+            )
+            
+            count = cursor.fetchone()[0]
+            return count
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در شمارش تاریخچه چت: {e}")
             return 0
         finally:
             if conn:

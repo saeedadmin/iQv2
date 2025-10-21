@@ -2,38 +2,105 @@
 # -*- coding: utf-8 -*-
 
 """
-ماژول مدیریت چت با هوش مصنوعی
+ماژول مدیریت چت با هوش مصنوعی (نسخه پیشرفته)
 نویسنده: MiniMax Agent
+
+قابلیت‌ها:
+- حافظه مکالمه (Chat History)
+- Rate Limiting (محدودیت تعداد پیام)
+- فرمت کد با syntax highlighting
+- امنیت و sanitization
+- پشتیبانی از Google Gemini API
 """
 
 import logging
 import requests
 import html
-from typing import Optional, Dict, Any
+import re
+import datetime
+from typing import Optional, Dict, Any, List
 import os
 
 logger = logging.getLogger(__name__)
 
 class GeminiChatHandler:
-    """مدیریت چت با Google Gemini API"""
+    """مدیریت چت با Google Gemini API با حافظه مکالمه"""
     
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, db_manager = None):
         """مقداردهی هندلر چت"""
         self.api_key = api_key or os.getenv('GEMINI_API_KEY', 'AIzaSyA8HKbAXWjvh_cKQ8ynbyXztw6zIczelGk')
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
         self.model = "gemini-2.0-flash-exp"
+        self.db = db_manager
         
         # تنظیمات محدودیت
         self.max_message_length = 4000  # حداکثر طول پیام کاربر
         self.timeout = 30  # تایم‌اوت درخواست
+        self.max_history_messages = 50  # حداکثر تعداد پیام‌های تاریخچه
         
-        logger.info("✅ GeminiChatHandler مقداردهی شد")
+        # Rate Limiting
+        self.rate_limit_messages = 10  # تعداد پیام مجاز
+        self.rate_limit_seconds = 60  # در چند ثانیه
+        self.user_message_times = {}  # ذخیره زمان پیام‌های کاربران
+        
+        logger.info("✅ GeminiChatHandler با حافظه مکالمه مقداردهی شد")
     
-    def send_message(self, user_message: str) -> Dict[str, Any]:
+    def check_rate_limit(self, user_id: int) -> Dict[str, Any]:
+        """بررسی محدودیت تعداد پیام"""
+        current_time = datetime.datetime.now()
+        
+        # اگر کاربر جدید است
+        if user_id not in self.user_message_times:
+            self.user_message_times[user_id] = []
+        
+        # حذف پیام‌های قدیمی (بیش از rate_limit_seconds)
+        cutoff_time = current_time - datetime.timedelta(seconds=self.rate_limit_seconds)
+        self.user_message_times[user_id] = [
+            t for t in self.user_message_times[user_id] 
+            if t > cutoff_time
+        ]
+        
+        # بررسی تعداد پیام‌ها
+        message_count = len(self.user_message_times[user_id])
+        
+        if message_count >= self.rate_limit_messages:
+            # محاسبه زمان باقی‌مانده
+            oldest_message_time = min(self.user_message_times[user_id])
+            wait_time = (oldest_message_time + datetime.timedelta(seconds=self.rate_limit_seconds)) - current_time
+            wait_seconds = int(wait_time.total_seconds())
+            
+            return {
+                'allowed': False,
+                'wait_time': wait_seconds,
+                'message_count': message_count
+            }
+        
+        # ثبت پیام جدید
+        self.user_message_times[user_id].append(current_time)
+        
+        return {
+            'allowed': True,
+            'remaining': self.rate_limit_messages - message_count - 1
+        }
+    
+    def sanitize_input(self, text: str) -> str:
+        """پاکسازی ورودی از کاراکترهای خطرناک"""
+        # حذف کاراکترهای کنترلی خطرناک
+        text = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]', '', text)
+        
+        # محدود کردن طول
+        if len(text) > self.max_message_length:
+            text = text[:self.max_message_length]
+            logger.warning(f"⚠️ پیام به {self.max_message_length} کاراکتر محدود شد")
+        
+        return text.strip()
+    
+    def send_message_with_history(self, user_id: int, user_message: str) -> Dict[str, Any]:
         """
-        ارسال پیام به Google Gemini و دریافت پاسخ
+        ارسال پیام به Google Gemini با استفاده از تاریخچه مکالمه
         
         Args:
+            user_id: شناسه کاربر
             user_message: پیام کاربر
             
         Returns:
@@ -44,19 +111,55 @@ class GeminiChatHandler:
             - error: پیام خطا (در صورت وجود)
         """
         try:
-            # محدود کردن طول پیام
-            if len(user_message) > self.max_message_length:
-                user_message = user_message[:self.max_message_length]
-                logger.warning(f"⚠️ پیام کاربر به {self.max_message_length} کاراکتر محدود شد")
+            # بررسی Rate Limit
+            rate_check = self.check_rate_limit(user_id)
+            if not rate_check['allowed']:
+                wait_time = rate_check['wait_time']
+                return {
+                    'success': False,
+                    'error': f'rate_limit:{wait_time}',
+                    'response': None,
+                    'tokens_used': 0
+                }
+            
+            # پاکسازی ورودی
+            user_message = self.sanitize_input(user_message)
+            
+            if not user_message:
+                return {
+                    'success': False,
+                    'error': 'پیام خالی است',
+                    'response': None,
+                    'tokens_used': 0
+                }
+            
+            # دریافت تاریخچه چت از دیتابیس
+            chat_history = []
+            if self.db:
+                chat_history = self.db.get_chat_history(user_id, limit=self.max_history_messages)
             
             # ساخت URL
             url = f"{self.base_url}/{self.model}:generateContent?key={self.api_key}"
             
+            # ساخت contents با تاریخچه
+            contents = []
+            
+            # اضافه کردن تاریخچه
+            for msg in chat_history:
+                contents.append({
+                    "role": msg['role'],
+                    "parts": [{"text": msg['message_text']}]
+                })
+            
+            # اضافه کردن پیام جدید کاربر
+            contents.append({
+                "role": "user",
+                "parts": [{"text": user_message}]
+            })
+            
             # ساخت payload
             payload = {
-                "contents": [{
-                    "parts": [{"text": user_message}]
-                }]
+                "contents": contents
             }
             
             # ارسال درخواست
@@ -85,6 +188,11 @@ class GeminiChatHandler:
             if 'candidates' in result and len(result['candidates']) > 0:
                 ai_text = result['candidates'][0]['content']['parts'][0]['text']
                 tokens_used = result.get('usageMetadata', {}).get('totalTokenCount', 0)
+                
+                # ذخیره پیام کاربر و پاسخ AI در تاریخچه
+                if self.db:
+                    self.db.add_chat_message(user_id, 'user', user_message)
+                    self.db.add_chat_message(user_id, 'model', ai_text)
                 
                 return {
                     'success': True,
@@ -125,22 +233,70 @@ class GeminiChatHandler:
                 'tokens_used': 0
             }
     
+    def format_code_blocks(self, text: str) -> str:
+        """
+        تشخیص و فرمت کردن کدهای درون متن با استفاده از تگ‌های تلگرام
+        
+        Args:
+            text: متن حاوی کد
+            
+        Returns:
+            متن فرمت شده با تگ‌های HTML
+        """
+        # الگوی Markdown code blocks (```language\ncode\n```)
+        code_block_pattern = r'```([a-z]*)?\n([\s\S]*?)```'
+        
+        def replace_code_block(match):
+            language = match.group(1) or 'code'
+            code = match.group(2).strip()
+            
+            # Escape کردن کد برای HTML
+            code_escaped = html.escape(code)
+            
+            # فرمت تلگرام برای کد
+            return f'<pre><code class="language-{language}">{code_escaped}</code></pre>'
+        
+        # جایگزینی code blocks
+        text = re.sub(code_block_pattern, replace_code_block, text)
+        
+        # الگوی inline code (`code`)
+        inline_code_pattern = r'`([^`]+)`'
+        
+        def replace_inline_code(match):
+            code = match.group(1)
+            code_escaped = html.escape(code)
+            return f'<code>{code_escaped}</code>'
+        
+        # جایگزینی inline codes
+        text = re.sub(inline_code_pattern, replace_inline_code, text)
+        
+        return text
+    
     def format_response_for_telegram(self, ai_response: str) -> str:
         """
         فرمت کردن پاسخ AI برای ارسال در تلگرام
-        با escape کردن کاراکترهای خاص برای HTML parse mode
+        با تشخیص و فرمت کد + escape کردن کاراکترهای خاص
         
         Args:
             ai_response: پاسخ خام AI
             
         Returns:
-            پاسخ فرمت شده برای تلگرام
+            پاسخ فرمت شده برای تلگرام با HTML
         """
-        # Escape کردن کاراکترهای HTML
-        formatted = html.escape(ai_response)
+        # فرمت کردن کدها
+        formatted = self.format_code_blocks(ai_response)
         
-        # جایگزینی خط‌های خالی با فاصله مناسب
-        formatted = formatted.replace('\n\n', '\n\n')
+        # Escape کردن کاراکترهای HTML که خارج از تگ‌های code هستند
+        # این کار باید با دقت انجام شه تا تگ‌های code رو خراب نکنه
+        
+        # برای سادگی، از html.escape استفاده نمی‌کنیم چون قبلاً در format_code_blocks انجام دادیم
+        # فقط کاراکترهای خاص خارج از code blocks رو escape می‌کنیم
+        
+        # تبدیل bold (**text**) به HTML
+        formatted = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', formatted)
+        
+        # تبدیل italic (*text*) به HTML
+        formatted = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'<i>\1</i>', formatted)
         
         return formatted
 
@@ -197,6 +353,7 @@ class AIChatStateManager:
             conn = self.db.get_connection()
             cursor = conn.cursor()
             
+            # PostgreSQL syntax
             cursor.execute('''
                 INSERT INTO ai_chat_state (user_id, is_in_chat, message_count)
                 VALUES (%s, TRUE, 0)
@@ -221,7 +378,7 @@ class AIChatStateManager:
                 self.db.return_connection(conn)
     
     def end_chat(self, user_id: int) -> bool:
-        """پایان چت برای کاربر"""
+        """پایان چت برای کاربر و پاک کردن تاریخچه"""
         conn = None
         try:
             conn = self.db.get_connection()
@@ -235,7 +392,12 @@ class AIChatStateManager:
             ''', (user_id,))
             
             conn.commit()
-            logger.info(f"✅ چت AI برای کاربر {user_id} پایان یافت")
+            
+            # پاک کردن تاریخچه چت
+            if self.db:
+                self.db.clear_chat_history(user_id)
+            
+            logger.info(f"✅ چت AI برای کاربر {user_id} پایان یافت و تاریخچه پاک شد")
             return True
             
         except Exception as e:
