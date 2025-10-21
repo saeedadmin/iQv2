@@ -18,6 +18,7 @@ import requests
 import html
 import re
 import datetime
+import time
 from typing import Optional, Dict, Any, List
 import os
 
@@ -42,6 +43,10 @@ class GeminiChatHandler:
         self.rate_limit_messages = 10  # تعداد پیام مجاز
         self.rate_limit_seconds = 60  # در چند ثانیه
         self.user_message_times = {}  # ذخیره زمان پیام‌های کاربران
+        
+        # Retry Settings
+        self.max_retries = 3  # حداکثر تعداد تلاش مجدد
+        self.retry_delay_base = 2  # تأخیر پایه برای retry (ثانیه)
         
         logger.info("✅ GeminiChatHandler با حافظه مکالمه مقداردهی شد")
     
@@ -95,6 +100,103 @@ class GeminiChatHandler:
         
         return text.strip()
     
+    def _make_api_request(self, payload: Dict[str, Any], attempt: int = 1) -> Dict[str, Any]:
+        """
+        ارسال درخواست به API با retry logic
+        
+        Args:
+            payload: داده‌های ارسالی
+            attempt: شماره تلاش فعلی
+            
+        Returns:
+            Dictionary حاوی نتیجه درخواست
+        """
+        url = f"{self.base_url}/{self.model}:generateContent?key={self.api_key}"
+        
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                timeout=self.timeout,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            # بررسی status code
+            if response.status_code == 200:
+                return {
+                    'success': True,
+                    'response': response,
+                    'status_code': 200
+                }
+            
+            # خطاهای 5xx (Server Errors) - قابل retry
+            elif response.status_code in [500, 503, 504]:
+                error_detail = response.text
+                logger.warning(
+                    f"⚠️ خطای سرور {response.status_code} (تلاش {attempt}/{self.max_retries}): {error_detail}"
+                )
+                
+                # اگر هنوز تلاش باقی مانده، retry کن
+                if attempt < self.max_retries:
+                    # Exponential backoff: 2, 4, 8 ثانیه
+                    delay = self.retry_delay_base ** attempt
+                    logger.info(f"⏳ صبر {delay} ثانیه قبل از تلاش مجدد...")
+                    time.sleep(delay)
+                    
+                    # تلاش مجدد
+                    return self._make_api_request(payload, attempt + 1)
+                else:
+                    # تمام تلاش‌ها شکست خورد
+                    return {
+                        'success': False,
+                        'error_type': 'server_overload',
+                        'status_code': response.status_code,
+                        'detail': error_detail
+                    }
+            
+            # خطاهای 4xx (Client Errors) - غیرقابل retry
+            else:
+                error_detail = response.text
+                logger.error(f"❌ خطای API {response.status_code}: {error_detail}")
+                return {
+                    'success': False,
+                    'error_type': 'client_error',
+                    'status_code': response.status_code,
+                    'detail': error_detail
+                }
+                
+        except requests.exceptions.Timeout:
+            logger.error(f"❌ Timeout در تلاش {attempt}/{self.max_retries}")
+            
+            if attempt < self.max_retries:
+                delay = self.retry_delay_base ** attempt
+                logger.info(f"⏳ صبر {delay} ثانیه قبل از تلاش مجدد...")
+                time.sleep(delay)
+                return self._make_api_request(payload, attempt + 1)
+            else:
+                return {
+                    'success': False,
+                    'error_type': 'timeout',
+                    'status_code': None,
+                    'detail': 'زمان درخواست به پایان رسید'
+                }
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ خطا در ارتباط با API (تلاش {attempt}): {e}")
+            
+            if attempt < self.max_retries:
+                delay = self.retry_delay_base ** attempt
+                logger.info(f"⏳ صبر {delay} ثانیه قبل از تلاش مجدد...")
+                time.sleep(delay)
+                return self._make_api_request(payload, attempt + 1)
+            else:
+                return {
+                    'success': False,
+                    'error_type': 'network_error',
+                    'status_code': None,
+                    'detail': str(e)
+                }
+    
     def send_message_with_history(self, user_id: int, user_message: str) -> Dict[str, Any]:
         """
         ارسال پیام به Google Gemini با استفاده از تاریخچه مکالمه
@@ -109,6 +211,7 @@ class GeminiChatHandler:
             - response: متن پاسخ AI
             - tokens_used: تعداد توکن‌های استفاده شده
             - error: پیام خطا (در صورت وجود)
+            - error_type: نوع خطا (در صورت وجود)
         """
         try:
             # بررسی Rate Limit
@@ -118,6 +221,7 @@ class GeminiChatHandler:
                 return {
                     'success': False,
                     'error': f'rate_limit:{wait_time}',
+                    'error_type': 'rate_limit',
                     'response': None,
                     'tokens_used': 0
                 }
@@ -129,6 +233,7 @@ class GeminiChatHandler:
                 return {
                     'success': False,
                     'error': 'پیام خالی است',
+                    'error_type': 'empty_message',
                     'response': None,
                     'tokens_used': 0
                 }
@@ -137,9 +242,7 @@ class GeminiChatHandler:
             chat_history = []
             if self.db:
                 chat_history = self.db.get_chat_history(user_id, limit=self.max_history_messages)
-            
-            # ساخت URL
-            url = f"{self.base_url}/{self.model}:generateContent?key={self.api_key}"
+                logger.info(f"📚 بارگذاری {len(chat_history)} پیام از تاریخچه کاربر {user_id}")
             
             # ساخت contents با تاریخچه
             contents = []
@@ -162,32 +265,61 @@ class GeminiChatHandler:
                 "contents": contents
             }
             
-            # ارسال درخواست
-            response = requests.post(
-                url,
-                json=payload,
-                timeout=self.timeout,
-                headers={"Content-Type": "application/json"}
-            )
+            logger.info(f"🚀 ارسال درخواست به Gemini (تعداد پیام‌ها: {len(contents)})")
             
-            # بررسی status code
-            if response.status_code != 200:
-                error_msg = f"خطای API: {response.status_code}"
-                logger.error(f"❌ {error_msg} - {response.text}")
-                return {
-                    'success': False,
-                    'error': error_msg,
-                    'response': None,
-                    'tokens_used': 0
-                }
+            # ارسال درخواست با retry logic
+            api_result = self._make_api_request(payload)
             
-            # Parse کردن پاسخ
+            if not api_result['success']:
+                # خطا رخ داده - تشخیص نوع خطا
+                error_type = api_result.get('error_type')
+                status_code = api_result.get('status_code')
+                
+                if error_type == 'server_overload':
+                    # سرور overload است
+                    return {
+                        'success': False,
+                        'error': f'server_overload:{status_code}',
+                        'error_type': 'server_overload',
+                        'response': None,
+                        'tokens_used': 0
+                    }
+                elif error_type == 'timeout':
+                    return {
+                        'success': False,
+                        'error': 'timeout',
+                        'error_type': 'timeout',
+                        'response': None,
+                        'tokens_used': 0
+                    }
+                elif error_type == 'network_error':
+                    return {
+                        'success': False,
+                        'error': 'network_error',
+                        'error_type': 'network_error',
+                        'response': None,
+                        'tokens_used': 0
+                    }
+                else:
+                    # خطای کلاینت (4xx)
+                    return {
+                        'success': False,
+                        'error': f'client_error:{status_code}',
+                        'error_type': 'client_error',
+                        'response': None,
+                        'tokens_used': 0
+                    }
+            
+            # موفقیت - Parse کردن پاسخ
+            response = api_result['response']
             result = response.json()
             
             # استخراج متن پاسخ
             if 'candidates' in result and len(result['candidates']) > 0:
                 ai_text = result['candidates'][0]['content']['parts'][0]['text']
                 tokens_used = result.get('usageMetadata', {}).get('totalTokenCount', 0)
+                
+                logger.info(f"✅ پاسخ موفق از Gemini (توکن‌ها: {tokens_used})")
                 
                 # ذخیره پیام کاربر و پاسخ AI در تاریخچه
                 if self.db:
@@ -198,37 +330,25 @@ class GeminiChatHandler:
                     'success': True,
                     'response': ai_text,
                     'tokens_used': tokens_used,
-                    'error': None
+                    'error': None,
+                    'error_type': None
                 }
             else:
+                logger.error(f"❌ پاسخ نامعتبر از API: {result}")
                 return {
                     'success': False,
-                    'error': 'پاسخ نامعتبر از API',
+                    'error': 'invalid_response',
+                    'error_type': 'invalid_response',
                     'response': None,
                     'tokens_used': 0
                 }
                 
-        except requests.exceptions.Timeout:
-            logger.error("❌ Timeout در ارتباط با API")
-            return {
-                'success': False,
-                'error': 'زمان درخواست به پایان رسید',
-                'response': None,
-                'tokens_used': 0
-            }
-        except requests.exceptions.RequestException as e:
-            logger.error(f"❌ خطا در ارتباط با API: {e}")
-            return {
-                'success': False,
-                'error': 'خطا در ارتباط با سرور',
-                'response': None,
-                'tokens_used': 0
-            }
         except Exception as e:
-            logger.error(f"❌ خطای غیرمنتظره در GeminiChat: {e}")
+            logger.error(f"❌ خطای غیرمنتظره در GeminiChat: {e}", exc_info=True)
             return {
                 'success': False,
-                'error': 'خطای غیرمنتظره',
+                'error': 'unexpected_error',
+                'error_type': 'unexpected_error',
                 'response': None,
                 'tokens_used': 0
             }

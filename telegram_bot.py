@@ -1568,10 +1568,11 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 )
                 
             else:
-                # بررسی rate limit
+                # خطا رخ داده - بررسی نوع خطا
+                error_type = result.get('error_type', 'unknown')
                 error_msg = result.get('error', 'خطای نامشخص')
                 
-                if error_msg.startswith('rate_limit:'):
+                if error_type == 'rate_limit':
                     # خطای rate limit
                     wait_time = int(error_msg.split(':')[1])
                     await update.message.reply_text(
@@ -1580,10 +1581,45 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                         f"🛡️ **محدودیت:** {gemini_chat.rate_limit_messages} پیام در {gemini_chat.rate_limit_seconds} ثانیه",
                         parse_mode='Markdown'
                     )
-                else:
-                    # خطای عادی
+                    
+                elif error_type == 'server_overload':
+                    # سرور Google overload است (503, 500, 504)
+                    status_code = error_msg.split(':')[1] if ':' in error_msg else 'نامشخص'
                     await update.message.reply_text(
-                        f"❌ متأسفانه خطایی رخ داد:\n{error_msg}\n\nلطفاً دوباره تلاش کنید."
+                        f"⚠️ **سرور هوش مصنوعی مشغول است**\n\n"
+                        f"سرور Google Gemini در حال حاضر بار زیادی دارد.\n"
+                        f"این مشکل معمولاً موقتی است.\n\n"
+                        f"🔄 **چه کار کنید:**\n"
+                        f"• چند دقیقه صبر کنید و دوباره امتحان کنید\n"
+                        f"• یا دکمه 🚪 خروج از چت را بزنید و دوباره وارد شوید\n\n"
+                        f"_کد خطا: {status_code}_",
+                        parse_mode='Markdown'
+                    )
+                    
+                elif error_type == 'timeout':
+                    # زمان درخواست تمام شد
+                    await update.message.reply_text(
+                        f"⏱️ **زمان پاسخ‌دهی تمام شد**\n\n"
+                        f"پاسخ هوش مصنوعی بیش از حد طولانی شد.\n"
+                        f"این می‌تواند به دلیل بار سنگین سرور باشد.\n\n"
+                        f"🔄 لطفاً دوباره تلاش کنید."
+                    )
+                    
+                elif error_type == 'network_error':
+                    # خطای شبکه
+                    await update.message.reply_text(
+                        f"🌐 **خطای ارتباط با سرور**\n\n"
+                        f"مشکلی در ارتباط با سرور Google Gemini وجود دارد.\n\n"
+                        f"🔄 لطفاً چند لحظه صبر کنید و دوباره تلاش کنید."
+                    )
+                    
+                else:
+                    # سایر خطاها
+                    await update.message.reply_text(
+                        f"❌ **متأسفانه خطایی رخ داد**\n\n"
+                        f"نوع خطا: {error_type}\n"
+                        f"پیام: {error_msg}\n\n"
+                        f"🔄 لطفاً دوباره تلاش کنید."
                     )
                 
         except Exception as e:
