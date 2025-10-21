@@ -116,6 +116,17 @@ class PostgreSQLManager:
                 )
             ''')
             
+            # تنظیمات پیش‌فرض
+            cursor.execute('''
+                INSERT INTO bot_settings (key, value, description)
+                VALUES 
+                    ('bot_enabled', '1', 'Bot enabled/disabled status'),
+                    ('maintenance_mode', '0', 'Maintenance mode status'),
+                    ('welcome_message', 'سلام! به ربات خوش آمدید', 'Welcome message'),
+                    ('total_messages', '0', 'Total messages count')
+                ON CONFLICT (key) DO NOTHING
+            ''')
+            
             conn.commit()
             logger.info("✅ جداول دیتابیس ایجاد شدند")
             
@@ -335,6 +346,46 @@ class PostgreSQLManager:
                 cursor.close()
                 self.return_connection(conn)
 
+    def is_user_blocked(self, user_id: int) -> bool:
+        """بررسی بلاک بودن کاربر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cursor.execute('SELECT is_blocked FROM users WHERE user_id = %s', (user_id,))
+            result = cursor.fetchone()
+            
+            return bool(result['is_blocked']) if result else False
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در بررسی وضعیت بلاک کاربر: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def get_active_users_ids(self) -> List[int]:
+        """دریافت ID های کاربران فعال (غیر بلاک شده)"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT user_id FROM users WHERE is_blocked = FALSE')
+            results = cursor.fetchall()
+            
+            return [row[0] for row in results]
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت کاربران فعال: {e}")
+            return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
     def log_event(self, user_id: int, event_type: str, details: str = None) -> bool:
         """ثبت رویداد در لاگ"""
         conn = None
@@ -359,6 +410,86 @@ class PostgreSQLManager:
             if conn:
                 cursor.close()
                 self.return_connection(conn)
+
+    def get_recent_logs(self, limit: int = 50) -> List[Dict]:
+        """دریافت لاگ‌های اخیر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cursor.execute('''
+                SELECT * FROM bot_logs 
+                ORDER BY timestamp DESC 
+                LIMIT %s
+            ''', (limit,))
+            results = cursor.fetchall()
+            
+            return [dict(row) for row in results]
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت لاگ‌ها: {e}")
+            return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def get_setting(self, key: str) -> Optional[str]:
+        """دریافت تنظیم"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cursor.execute('SELECT value FROM bot_settings WHERE key = %s', (key,))
+            result = cursor.fetchone()
+            
+            return result['value'] if result else None
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت تنظیم: {e}")
+            return None
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def set_setting(self, key: str, value: str) -> bool:
+        """تنظیم یک تنظیم"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO bot_settings (key, value)
+                VALUES (%s, %s)
+                ON CONFLICT (key) DO UPDATE SET
+                    value = EXCLUDED.value,
+                    updated_at = CURRENT_TIMESTAMP
+            ''', (key, value))
+            
+            conn.commit()
+            return True
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در تنظیم: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def is_bot_enabled(self) -> bool:
+        """بررسی فعال بودن ربات"""
+        return self.get_setting('bot_enabled') == '1'
+
+    def set_bot_enabled(self, enabled: bool) -> bool:
+        """تنظیم وضعیت ربات"""
+        return self.set_setting('bot_enabled', '1' if enabled else '0')
 
     def close(self):
         """بستن pool اتصالات"""
