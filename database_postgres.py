@@ -129,7 +129,8 @@ class PostgreSQLManager:
                 cursor.close()
                 self.return_connection(conn)
 
-    def add_user(self, user_id: int, username: str = None, first_name: str = None, last_name: str = None) -> bool:
+    def add_user(self, user_id: int, username: str = None, first_name: str = None, 
+                 last_name: str = None, is_admin: bool = False) -> bool:
         """افزودن کاربر جدید"""
         conn = None
         try:
@@ -137,14 +138,15 @@ class PostgreSQLManager:
             cursor = conn.cursor()
             
             cursor.execute('''
-                INSERT INTO users (user_id, username, first_name, last_name)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO users (user_id, username, first_name, last_name, is_admin)
+                VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT (user_id) DO UPDATE SET
                     username = EXCLUDED.username,
                     first_name = EXCLUDED.first_name,
                     last_name = EXCLUDED.last_name,
+                    is_admin = EXCLUDED.is_admin,
                     last_activity = CURRENT_TIMESTAMP
-            ''', (user_id, username, first_name, last_name))
+            ''', (user_id, username, first_name, last_name, is_admin))
             
             conn.commit()
             return True
