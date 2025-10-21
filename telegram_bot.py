@@ -139,7 +139,7 @@ async def check_spam_and_handle(update: Update, context: ContextTypes.DEFAULT_TY
             bot_logger.log_admin_action(
                 0,  # سیستم
                 "AUTO_SPAM_BLOCK",
-                target_user=user.id,
+                target=f"User {user.id}",
                 details=f"{recent_messages} پیام در {SPAM_TIME_WINDOW} ثانیه - سطح {block_result['warning_level']}"
             )
             
