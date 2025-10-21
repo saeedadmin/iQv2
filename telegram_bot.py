@@ -707,31 +707,36 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     uptime_minutes = int((uptime_delta.total_seconds() % 3600) // 60)
     uptime_str = f"{uptime_hours} ساعت و {uptime_minutes} دقیقه"
     
+    # Escape کردن کاراکترهای خاص HTML
+    import html
+    safe_name = html.escape(user.full_name or "بدون نام")
+    safe_username = html.escape(user.username or "ندارد")
+    
     status_text = f"""
-📊 **وضعیت ربات و کاربر**
+📊 <b>وضعیت ربات و کاربر</b>
 
-**🤖 وضعیت ربات:**
+<b>🤖 وضعیت ربات:</b>
 • ربات: {bot_status}
 • مدت اجرا: {uptime_str}
 • کل کاربران: {stats['total']}
 
-**👤 اطلاعات شما:{admin_badge}**
-• نام: {user.full_name}
-• نام کاربری: @{user.username or 'ندارد'}
-• شناسه: `{user.id}`
+<b>👤 اطلاعات شما:{admin_badge}</b>
+• نام: {safe_name}
+• نام کاربری: @{safe_username}
+• شناسه: <code>{user.id}</code>
 • وضعیت: {user_status}
 
-**📈 آمار فعالیت شما:**
+<b>📈 آمار فعالیت شما:</b>
 • تاریخ عضویت: {join_date.strftime('%Y/%m/%d %H:%M')}
 • آخرین فعالیت: {last_activity.strftime('%Y/%m/%d %H:%M')}
 • روزهای عضویت: {days_since_join}
 • تعداد پیام‌ها: {user_data['message_count'] if user_data else 0}
 
-**🌐 اطلاعات سرور:**
+<b>🌐 اطلاعات سرور:</b>
 • زمان سرور: {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}
 • وضعیت اتصال: ✅ متصل
     """
-    await update.message.reply_text(status_text, parse_mode='Markdown')
+    await update.message.reply_text(status_text, parse_mode='HTML')
 
 # Signal command handler removed - will be re-implemented later
 
