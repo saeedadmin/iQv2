@@ -38,7 +38,7 @@ from public_menu import PublicMenuManager
 from logger_system import bot_logger
 from keyboards import get_main_menu_markup, get_public_section_markup, get_ai_menu_markup
 from ai_news import get_ai_news
-from telegram_signal_scraper import get_latest_crypto_signals
+# Signal scraper removed - will be re-implemented later
 
 # Optional imports - TradingView Analysis
 try:
@@ -103,62 +103,7 @@ async def check_user_access(user_id: int) -> bool:
     
     return True
 
-# Functions for crypto trading signals
-async def fetch_crypto_signals():
-    """دریافت سیگنال‌های معاملاتی از کانال‌های تلگرام - بهبود یافته"""
-    try:
-        print("📍 دریافت آخرین 2 سیگنال از کانال‌های تلگرام...")
-        signals = await get_latest_crypto_signals(days=2, max_signals=2)
-        
-        if signals and signals[0].startswith("❌"):
-            # اگر خطا داشت، از سیگنال‌های fallback استفاده کن
-            print("⚠️ خطا در دریافت سیگنال‌های جدید، استفاده از سیگنال‌های نمونه")
-            return await fetch_fallback_signals()
-        
-        return signals
-        
-    except Exception as e:
-        print(f"❌ خطا در دریافت سیگنال‌ها: {e}")
-        # اگر خطا داشت، از آخرین سیگنال‌های شناخته شده استفاده کن
-        return await fetch_fallback_signals()
-
-# is_trading_signal function removed (Telethon dependency eliminated)
-
-async def fetch_fallback_signals():
-    """سیگنال‌های پیش‌فرض در صورت خطا در دریافت real-time - بهبود یافته و تمیز"""
-    return [
-        """📅 **تاریخ:** October 17
-💰 **ارز:** BTC/USDT
-📊 **نوع:** LONG
-👀 **بازدید:** 2,456
-
-💬 **سیگنال:**
-📈 لانگ
-🌩 لوریج: 10X
-💵 میزان سرمایه ورودی: 5%
-📍 نقطه ورود: 67,200 / 66,800
-💵 اهداف:
-💰 هدف اول: 68,500
-💰 هدف دوم: 69,800
-💰 هدف نهایی: 71,200
-😀 استاپ‌لاس: 65,500""",
-
-        """📅 **تاریخ:** October 17
-💰 **ارز:** ETH/USDT
-📊 **نوع:** LONG
-👀 **بازدید:** 1,892
-
-💬 **سیگنال:**
-📈 لانگ
-🌩 لوریج: 10X
-💵 میزان سرمایه ورودی: 5%
-📍 نقطه ورود: 2,650 / 2,620
-💵 اهداف:
-💰 هدف اول: 2,710
-💰 هدف دوم: 2,780
-💰 هدف نهایی: 2,850
-😀 استاپ‌لاس: 2,550"""
-    ]
+# Signal functions removed - will be re-implemented later
 
 # Functions for Fear & Greed Index
 async def fetch_fear_greed_index():
@@ -635,36 +580,7 @@ def format_general_news_message(news_list):
 
 
 
-def format_crypto_signals_message(signals):
-    """فرمت کردن پیام سیگنال‌های معاملاتی - بهبود یافته و تمیز"""
-    
-    if not signals:
-        return "❌ در حال حاضر سیگنال جدیدی یافت نشد."
-
-    message = "🚀 **آخرین سیگنال‌های خرید و فروش**\n\n"
-    
-    for i, signal_text in enumerate(signals, 1):
-        # تمیز کردن سیگنال از لینک‌ها و متن‌های اضافی
-        import re
-        clean_signal = signal_text
-        
-        # حذف لینک‌ها
-        clean_signal = re.sub(r'🔗\s*\*\*لینک:\*\*.*', '', clean_signal)
-        clean_signal = re.sub(r'🔗@\w+', '', clean_signal)
-        clean_signal = re.sub(r'@\w+', '', clean_signal)
-        clean_signal = re.sub(r'https?://[^\s]+', '', clean_signal)
-        clean_signal = re.sub(r'\n🔗.*', '', clean_signal)
-        
-        # حذف خطوط خالی اضافی
-        clean_signal = re.sub(r'\n\s*\n', '\n', clean_signal)
-        clean_signal = clean_signal.strip()
-        
-        message += f"🔰 **سیگنال شماره {i}**\n"
-        message += "━━━━━━━━━━━━━━━\n"
-        message += f"{clean_signal}\n"
-        message += "━━━━━━━━━━━━━━━\n\n"
-    
-    return message
+# Signal message formatting removed - will be re-implemented later
 
 # Handler برای دستور /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -731,14 +647,14 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 /start - شروع مجدد ربات
 /help - نمایش این راهنما
 /status - وضعیت ربات و اطلاعات شما
-/signals - دریافت آخرین سیگنال‌های ترید 🔥
+
 
 **🔹 دستورات مدیریت:**
 /admin - پنل مدیریت کامل (فقط ادمین)
 
 **🔹 قابلیت‌های ربات:**
 ✅ پردازش پیام‌های متنی
-✅ سیگنال‌های ترید از کانال‌های تلگرام
+
 ✅ سیستم مدیریت کاربران
 ✅ آمارگیری و گزارش‌گیری
 ✅ پنل ادمین با امکانات کامل
@@ -746,7 +662,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 ✅ قابلیت پیام همگانی
 
 **🔹 نحوه استفاده:**
-• /signals برای دریافت آخرین سیگنال‌های ترید
+
 • هر پیام متنی بفرستید تا پردازش شود
 • از دستورات بالا برای عملکردهای خاص استفاده کنید
 • ادمین از طریق /admin به تمام امکانات دسترسی دارد
@@ -848,84 +764,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """
     await update.message.reply_text(status_text, parse_mode='Markdown')
 
-# Handler برای دستور /signals - دریافت آخرین سیگنال‌های ترید
-async def signals_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """دریافت آخرین سیگنال‌های ترید از کانال‌های تلگرام"""
-    user = update.effective_user
-    
-    # لاگ درخواست کاربر
-    db_manager.log_user_action(user.id, "FETCH_SIGNALS")
-    
-    # پیام در حال بارگذاری
-    loading_message = await update.message.reply_text(
-        "⏳ در حال دریافت آخرین سیگنال‌های ترید...\n\n📡 از کانال‌های تلگرام\n⏱ لطفاً چند ثانیه صبر کنید"
-    )
-    
-    try:
-        # دریافت سیگنال‌ها
-        signals = await get_latest_crypto_signals(days=2, max_signals=3)
-        
-        # حذف پیام بارگذاری
-        await loading_message.delete()
-        
-        if not signals or (signals[0].startswith("❌")):
-            await update.message.reply_text(
-                "⚠️ متأسفانه هیچ سیگنال جدیدی یافت نشد.\n\n"
-                "🔄 لطفاً چند دقیقه بعد مجدداً تلاش کنید\n"
-                "📞 در صورت تداوم مشکل، با پشتیبانی تماس بگیرید"
-            )
-            return
-        
-        # ارسال هدر
-        header_message = f"""🔥 **آخرین سیگنال‌های ترید**
-        
-📅 **تاریخ دریافت:** {datetime.datetime.now().strftime('%Y/%m/%d %H:%M')}
-📊 **تعداد سیگنال:** {len(signals)}
-🎯 **کانال‌ها:** @Shervin_Trading
-
-━━━━━━━━━━━━━━━━━━━━━━━━"""
-        
-        await update.message.reply_text(header_message, parse_mode='Markdown')
-        
-        # ارسال هر سیگنال
-        for i, signal in enumerate(signals, 1):
-            try:
-                signal_message = f"**🎯 سیگنال {i}:**\n\n{signal}"
-                await update.message.reply_text(
-                    signal_message, 
-                    parse_mode='Markdown',
-                    disable_web_page_preview=True
-                )
-                
-                # تاخیر کوتاه بین سیگنال‌ها
-                await asyncio.sleep(1)
-                
-            except Exception as e:
-                print(f"❌ خطا در ارسال سیگنال {i}: {e}")
-                await update.message.reply_text(
-                    f"⚠️ خطا در نمایش سیگنال {i}"
-                )
-        
-        # پیام پایانی
-        footer_message = """━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚠️ **تذکر مهم:**
-• این سیگنال‌ها صرفاً جهت اطلاع‌رسانی است
-• لطفاً تحقیقات خود را انجام دهید
-• مدیریت ریسک را رعایت کنید
-
-🔄 برای دریافت سیگنال‌های جدید: /signals"""
-        
-        await update.message.reply_text(footer_message, parse_mode='Markdown')
-        
-    except Exception as e:
-        await loading_message.delete()
-        print(f"❌ خطا در دریافت سیگنال‌ها: {e}")
-        await update.message.reply_text(
-            f"❌ خطا در دریافت سیگنال‌ها\n\n"
-            f"🔍 جزئیات: {str(e)[:100]}\n"
-            f"🔄 لطفاً مجدداً تلاش کنید"
-        )
+# Signal command handler removed - will be re-implemented later
 
 # Handler برای دستور /admin (فقط برای ادمین)
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1203,7 +1042,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 • 💰 قیمت تتر و دلار به تومان
 • 🚀 بیشترین صعود و نزول بازار
 • 📰 آخرین اخبار کریپتو از منابع معتبر
-• 🎯 سیگنال‌های خرید و فروش از منابع معتبر
+
 
 از دکمه‌های زیر برای دسترسی به خدمات استفاده کنید:
         """
@@ -1211,7 +1050,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         # کیبورد منوی ارزهای دیجیتال
         crypto_keyboard = [
             [KeyboardButton("📊 قیمت‌های لحظه‌ای"), KeyboardButton("📰 اخبار کریپتو")],
-            [KeyboardButton("🚀 سیگنال‌های خرید و فروش"), KeyboardButton("📈 تحلیل TradingView")],
+            [KeyboardButton("📈 تحلیل TradingView")],
             [KeyboardButton("😨 شاخص ترس و طمع"), KeyboardButton("🔙 بازگشت به منوی اصلی")]
         ]
         reply_markup = ReplyKeyboardMarkup(crypto_keyboard, resize_keyboard=True, one_time_keyboard=False)
@@ -1266,26 +1105,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     elif message_text == "📈 تحلیل TradingView":
         return await tradingview_analysis_start(update, context)
     
-    elif message_text == "🚀 سیگنال‌های خرید و فروش":
-        # نمایش پیام در حال بارگذاری
-        loading_message = await update.message.reply_text("⏳ در حال جستجوی جدیدترین سیگنال‌های معاملاتی...\n\nلطفاً چند ثانیه صبر کنید.")
-        
-        try:
-            # دریافت سیگنال‌های معاملاتی
-            signals_data = await fetch_crypto_signals()
-            message = format_crypto_signals_message(signals_data)
-            
-            # ویرایش پیام با نتایج
-            await loading_message.edit_text(
-                message,
-                disable_web_page_preview=True
-            )
-            
-        except Exception as e:
-            error_message = f"❌ خطا در دریافت سیگنال‌ها:\n{str(e)}"
-            await loading_message.edit_text(error_message)
-        
-        return
+
     
     elif message_text == "😨 شاخص ترس و طمع":
         # نمایش پیام در حال بارگذاری
@@ -1748,7 +1568,7 @@ async def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("menu", menu_command))
     application.add_handler(CommandHandler("status", status_command))
-    application.add_handler(CommandHandler("signals", signals_command))
+    # Signal command handler removed
     application.add_handler(CommandHandler("admin", admin_command))
     
     # Handler برای پنل ادمین (callback queries)
