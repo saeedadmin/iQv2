@@ -54,7 +54,10 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", 
     level=logging.INFO
 )
+# کاهش لاگ‌های غیرضروری برای کاهش بار
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
+logging.getLogger("aiohttp.server").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
@@ -1693,7 +1696,7 @@ async def main() -> None:
     
     # Async Keep-Alive Mechanism 
     async def async_keep_alive():
-        """AsyncIO keep-alive mechanism"""
+        """AsyncIO keep-alive mechanism - بهینه شده برای کاهش بار"""
         app_url = os.getenv('KOYEB_PUBLIC_DOMAIN')
         if not app_url:
             return
@@ -1702,16 +1705,20 @@ async def main() -> None:
             app_url = f"https://{app_url}"
         
         async with ClientSession() as session:
+            ping_count = 0
             while True:
                 try:
-                    await asyncio.sleep(240)  # هر 4 دقیقه
+                    await asyncio.sleep(600)  # هر 10 دقیقه (کاهش از 4 دقیقه)
                     async with session.get(f"{app_url}/ping", timeout=10) as response:
                         if response.status == 200:
-                            logger.info("🏓 Async keep-alive موفق")
+                            ping_count += 1
+                            # فقط هر 6 بار (یعنی هر 1 ساعت) لاگ کن
+                            if ping_count % 6 == 0:
+                                logger.info(f"✅ Keep-alive فعال است ({ping_count} ping موفق)")
                         else:
                             logger.warning(f"⚠️ Keep-alive ناموفق: {response.status}")
                 except Exception as e:
-                    logger.warning(f"⚠️ خطا در keep-alive: {e}")
+                    logger.error(f"❌ خطا در keep-alive: {e}")
     
     # شروع HTTP server در event loop
     def start_http_in_thread():
@@ -1764,11 +1771,14 @@ async def main() -> None:
             
             logger.info("✅ Webhook تنظیم شد!")
             logger.info("🏃‍♂️ سرویس در حالت Webhook اجرا می‌شود...")
+            logger.info("💡 Health check در /health فعال است")
             
-            # نگهداری سرویس زنده (در webhook mode نیازی به polling نیست)
+            # نگهداری سرویس زنده (Koyeb خودش /health را می‌زند)
+            heartbeat_count = 0
             while True:
-                await asyncio.sleep(30)
-                logger.info("🔄 Webhook Mode: Service alive")
+                await asyncio.sleep(1800)  # هر 30 دقیقه (کاهش از 30 ثانیه)
+                heartbeat_count += 1
+                logger.info(f"💚 Webhook Mode: فعال است ({heartbeat_count * 30} دقیقه uptime)")
                 
         except KeyboardInterrupt:
             logger.info("🛑 ربات متوقف شد")
