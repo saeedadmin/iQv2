@@ -147,6 +147,41 @@ class PostgreSQLManager:
                 ON CONFLICT (key) DO NOTHING
             ''')
             
+            # 🔄 Migration: اضافه کردن ستون‌های Anti-Spam به جداول موجود
+            try:
+                # بررسی وجود ستون spam_warnings
+                cursor.execute("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='users' AND column_name='spam_warnings'
+                """)
+                if not cursor.fetchone():
+                    cursor.execute('ALTER TABLE users ADD COLUMN spam_warnings INTEGER DEFAULT 0')
+                    logger.info("✅ ستون spam_warnings اضافه شد")
+                
+                # بررسی وجود ستون block_until
+                cursor.execute("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='users' AND column_name='block_until'
+                """)
+                if not cursor.fetchone():
+                    cursor.execute('ALTER TABLE users ADD COLUMN block_until TIMESTAMP NULL')
+                    logger.info("✅ ستون block_until اضافه شد")
+                
+                # بررسی وجود ستون block_reason
+                cursor.execute("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='users' AND column_name='block_reason'
+                """)
+                if not cursor.fetchone():
+                    cursor.execute('ALTER TABLE users ADD COLUMN block_reason TEXT NULL')
+                    logger.info("✅ ستون block_reason اضافه شد")
+                    
+            except Exception as migration_error:
+                logger.warning(f"⚠️ Migration warning: {migration_error}")
+            
             conn.commit()
             logger.info("✅ جداول دیتابیس ایجاد شدند")
             
