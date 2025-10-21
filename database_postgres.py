@@ -246,6 +246,49 @@ class PostgreSQLManager:
                 cursor.close()
                 self.return_connection(conn)
 
+    def get_user_stats(self) -> Dict[str, int]:
+        """دریافت آمار کاربران"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # تعداد کل کاربران
+            cursor.execute('SELECT COUNT(*) FROM users')
+            total = cursor.fetchone()[0]
+            
+            # کاربران فعال
+            cursor.execute('SELECT COUNT(*) FROM users WHERE is_blocked = FALSE')
+            active = cursor.fetchone()[0]
+            
+            # کاربران بلاک شده
+            cursor.execute('SELECT COUNT(*) FROM users WHERE is_blocked = TRUE')
+            blocked = cursor.fetchone()[0]
+            
+            # کاربران امروز
+            cursor.execute('SELECT COUNT(*) FROM users WHERE DATE(join_date) = CURRENT_DATE')
+            today_users = cursor.fetchone()[0]
+            
+            # کل پیام‌ها
+            cursor.execute('SELECT COALESCE(SUM(message_count), 0) FROM users')
+            total_messages = cursor.fetchone()[0]
+            
+            return {
+                'total': total,
+                'active': active,
+                'blocked': blocked,
+                'today': today_users,
+                'total_messages': total_messages
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت آمار کاربران: {e}")
+            return {'total': 0, 'active': 0, 'blocked': 0, 'today': 0, 'total_messages': 0}
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
     def block_user(self, user_id: int) -> bool:
         """مسدود کردن کاربر"""
         conn = None
