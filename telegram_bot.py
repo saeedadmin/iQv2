@@ -632,47 +632,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 # Handler برای دستور /help
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """نمایش راهنما"""
-    user = update.effective_user
-    
-    # بررسی دسترسی
-    if not await check_user_access(user.id):
-        return
-    
-    # به‌روزرسانی فعالیت کاربر
-    db_manager.update_user_activity(user.id)
-    
-    help_text = """
-📚 **راهنمای کامل ربات**
-
-**🔹 دستورات عمومی:**
-/start - شروع مجدد ربات
-/help - نمایش این راهنما
-/status - وضعیت ربات و اطلاعات شما
-
-
-**🔹 دستورات مدیریت:**
-/admin - پنل مدیریت کامل (فقط ادمین)
-
-**🔹 قابلیت‌های ربات:**
-✅ پردازش پیام‌های متنی
-
-✅ سیستم مدیریت کاربران
-✅ آمارگیری و گزارش‌گیری
-✅ پنل ادمین با امکانات کامل
-✅ سیستم لاگ و رصد فعالیت‌ها
-✅ قابلیت پیام همگانی
-
-**🔹 نحوه استفاده:**
-
-• هر پیام متنی بفرستید تا پردازش شود
-• از دستورات بالا برای عملکردهای خاص استفاده کنید
-• ادمین از طریق /admin به تمام امکانات دسترسی دارد
-
-**💡 نکته:** تمام فعالیت‌های شما ثبت و آمارگیری می‌شود.
-    """
-    await update.message.reply_text(help_text, parse_mode='Markdown')
+# Help command removed - not needed
 
 # Handler برای دستور /menu
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -741,12 +701,18 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_status = "🚫 بلاک شده" if db_manager.is_user_blocked(user.id) else "✅ فعال"
     admin_badge = " 👨‍💼" if user.id == ADMIN_USER_ID else ""
     
+    # محاسبه uptime به فرمت قابل خواندن
+    uptime_delta = datetime.datetime.now() - admin_panel.bot_start_time
+    uptime_hours = int(uptime_delta.total_seconds() // 3600)
+    uptime_minutes = int((uptime_delta.total_seconds() % 3600) // 60)
+    uptime_str = f"{uptime_hours} ساعت و {uptime_minutes} دقیقه"
+    
     status_text = f"""
 📊 **وضعیت ربات و کاربر**
 
 **🤖 وضعیت ربات:**
 • ربات: {bot_status}
-• مدت اجرا: {datetime.datetime.now() - admin_panel.bot_start_time}
+• مدت اجرا: {uptime_str}
 • کل کاربران: {stats['total']}
 
 **👤 اطلاعات شما:{admin_badge}**
@@ -1348,18 +1314,9 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
     
     
-    # برای پیام‌های ناشناخته، راهنمایی ساده
-    help_message = """
-ℹ️ از دکمه‌های منو استفاده کنید یا یکی از دستورات زیر را امتحان کنید:
-
-🔹 /start - شروع مجدد
-🔹 /menu - نمایش منو
-🔹 /help - راهنما
-🔹 /status - وضعیت ربات
-    """
-
-    
-    await update.message.reply_text(help_message)
+    # برای پیام‌های ناشناخته، جواب نده
+    # فقط فعالیت کاربر به‌روزرسانی شده و لاگ ثبت می‌شود
+    pass
 
 # Handler برای broadcast (پیام همگانی)
 async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -1568,7 +1525,7 @@ async def main() -> None:
 
     # Handler های دستورات اصلی
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
+    # Help command removed - not needed
     application.add_handler(CommandHandler("menu", menu_command))
     application.add_handler(CommandHandler("status", status_command))
     # Signal command handler removed
