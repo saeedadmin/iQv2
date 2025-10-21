@@ -197,27 +197,33 @@ async def send_spam_block_notification(update: Update, context: ContextTypes.DEF
 async def send_admin_spam_notification(context: ContextTypes.DEFAULT_TYPE, user, block_result: dict):
     """ارسال نوتیفیکیشن به ادمین"""
     try:
+        import html
+        
         warning_level = block_result['warning_level']
         block_duration = block_result['block_duration']
         
-        message = f"""🚨 **هشدار اسپم - بلاک خودکار**
+        # Escape کردن نام و یوزرنیم برای جلوگیری از خطای HTML
+        safe_full_name = html.escape(user.full_name or 'ندارد')
+        safe_username = html.escape(user.username or 'ندارد')
+        
+        message = f"""🚨 <b>هشدار اسپم - بلاک خودکار</b>
 
-👤 **کاربر:**
-• نام: {user.full_name or 'ندارد'}
-• آیدی: `{user.id}`
-• یوزرنیم: @{user.username or 'ندارد'}
+👤 <b>کاربر:</b>
+• نام: {safe_full_name}
+• آیدی: <code>{user.id}</code>
+• یوزرنیم: @{safe_username}
 
-📊 **جزئیات بلاک:**
+📊 <b>جزئیات بلاک:</b>
 • سطح: {warning_level}
 • مدت: {block_duration}
 • دلیل: ارسال پیام‌های متوالی (اسپم)
 
-⏰ **زمان:** {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}"""
+⏰ <b>زمان:</b> {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}"""
         
         await context.bot.send_message(
             chat_id=ADMIN_USER_ID,
             text=message,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         
     except Exception as e:
@@ -869,19 +875,23 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # لاگ دسترسی ادمین
     bot_logger.log_admin_action(user.id, "ADMIN_PANEL_ACCESS")
     
+    # Escape کردن نام برای جلوگیری از خطای HTML
+    import html
+    safe_first_name = html.escape(user.first_name or "ادمین")
+    
     welcome_text = f"""
-🔧 **پنل مدیریت ربات**
+🔧 <b>پنل مدیریت ربات</b>
 
-خوش آمدید {user.first_name}! 👨‍💼
+خوش آمدید {safe_first_name}! 👨‍💼
 
 این پنل امکانات کاملی برای مدیریت ربات فراهم می‌کند:
 
-🖥️ **سیستم:** مدیریت منابع و وضعیت
-👥 **کاربران:** مدیریت و آمارگیری کاربران  
-📊 **آمار:** گزارش‌های تفصیلی
-📋 **لاگ‌ها:** رصد فعالیت‌ها
-📢 **پیام همگانی:** ارسال به همه کاربران
-⚙️ **تنظیمات:** پیکربندی ربات
+🖥️ <b>سیستم:</b> مدیریت منابع و وضعیت
+👥 <b>کاربران:</b> مدیریت و آمارگیری کاربران  
+📊 <b>آمار:</b> گزارش‌های تفصیلی
+📋 <b>لاگ‌ها:</b> رصد فعالیت‌ها
+📢 <b>پیام همگانی:</b> ارسال به همه کاربران
+⚙️ <b>تنظیمات:</b> پیکربندی ربات
 
 یک بخش را انتخاب کنید:
     """
@@ -889,7 +899,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_text(
         welcome_text,
         reply_markup=admin_panel.create_main_menu_keyboard(),
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 # Handler برای شروع فرآیند تحلیل TradingView

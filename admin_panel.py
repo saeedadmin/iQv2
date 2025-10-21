@@ -355,10 +355,13 @@ class AdminPanel:
     
     async def show_main_menu(self, query):
         """نمایش منوی اصلی"""
+        import html
+        safe_first_name = html.escape(query.from_user.first_name or "ادمین")
+        
         message = f"""
-🔧 **پنل مدیریت ربات**
+🔧 <b>پنل مدیریت ربات</b>
 
-👨‍💼 ادمین: {query.from_user.first_name}
+👨‍💼 ادمین: {safe_first_name}
 🕐 زمان: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 یک گزینه را انتخاب کنید:
@@ -366,7 +369,7 @@ class AdminPanel:
         await query.edit_message_text(
             message,
             reply_markup=self.create_main_menu_keyboard(),
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
     
     async def show_system_menu(self, query):
@@ -810,8 +813,14 @@ class AdminPanel:
         else:
             message = f"🚫 **کاربران بلاک شده** ({len(blocked_users)} کاربر):\n\n"
             for i, user in enumerate(blocked_users[:10]):
-                username = f"@{user['username']}" if user['username'] else "بدون نام کاربری"
-                message += f"{i+1}. {user['first_name']} ({username})\n"
+                # Escape کردن نام و یوزرنیم
+                safe_first_name = str(user['first_name'] or 'کاربر').replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace(']', '\\]')
+                if user['username']:
+                    safe_username = str(user['username']).replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace(']', '\\]')
+                    username = f"@{safe_username}"
+                else:
+                    username = "بدون نام کاربری"
+                message += f"{i+1}. {safe_first_name} ({username})\n"
                 message += f"   └ ID: `{user['user_id']}`\n"
             
             if len(blocked_users) > 10:
@@ -834,12 +843,16 @@ class AdminPanel:
             if not user_info:
                 message = "❌ کاربر یافت نشد!"
             elif user_info['is_blocked']:
-                message = f"⚠️ کاربر {user_info['first_name']} قبلاً بلاک شده است."
+                # Escape کردن نام کاربر
+                safe_name = str(user_info['first_name'] or 'کاربر').replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace(']', '\\]')
+                message = f"⚠️ کاربر {safe_name} قبلاً بلاک شده است."
             else:
                 success = self.db.block_user(user_id)
                 if success:
+                    # Escape کردن نام کاربر
+                    safe_name = str(user_info['first_name'] or 'کاربر').replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace(']', '\\]')
                     bot_logger.log_admin_action(query.from_user.id, f"USER_BLOCKED", f"User {user_id} blocked")
-                    message = f"🚫 کاربر {user_info['first_name']} با موفقیت بلاک شد."
+                    message = f"🚫 کاربر {safe_name} با موفقیت بلاک شد."
                 else:
                     message = "❌ خطا در بلاک کردن کاربر"
             
@@ -868,12 +881,16 @@ class AdminPanel:
             if not user_info:
                 message = "❌ کاربر یافت نشد!"
             elif not user_info['is_blocked']:
-                message = f"⚠️ کاربر {user_info['first_name']} قبلاً آزاد است."
+                # Escape کردن نام کاربر
+                safe_name = str(user_info['first_name'] or 'کاربر').replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace(']', '\\]')
+                message = f"⚠️ کاربر {safe_name} قبلاً آزاد است."
             else:
                 success = self.db.unblock_user(user_id)
                 if success:
+                    # Escape کردن نام کاربر
+                    safe_name = str(user_info['first_name'] or 'کاربر').replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace(']', '\\]')
                     bot_logger.log_admin_action(query.from_user.id, f"USER_UNBLOCKED", f"User {user_id} unblocked")
-                    message = f"🔓 کاربر {user_info['first_name']} با موفقیت آزاد شد."
+                    message = f"🔓 کاربر {safe_name} با موفقیت آزاد شد."
                 else:
                     message = "❌ خطا در آزاد کردن کاربر"
             
