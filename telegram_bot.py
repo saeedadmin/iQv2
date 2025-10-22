@@ -22,6 +22,9 @@ from dotenv import load_dotenv
 from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, ContextTypes, 
                           MessageHandler, filters, CallbackQueryHandler, ConversationHandler)
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
 
 # Load environment variables
 load_dotenv()
@@ -1116,6 +1119,145 @@ async def tradingview_analysis_process(update: Update, context: ContextTypes.DEF
             await update.message.reply_text("❌ ورودی نامعتبر. لطفاً نام ارز را به فرمت صحیح وارد کنید یا /cancel برای لغو بفرستید.")
             return TRADINGVIEW_ANALYSIS
 
+# کالبک هندلر برای دکمه‌های اشتراک اخبار
+async def news_subscription_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """مدیریت callback query برای دکمه‌های اشتراک اخبار"""
+    query = update.callback_query
+    user = update.effective_user
+    
+    # تایید callback query
+    await query.answer()
+    
+    if query.data == "news_sub_confirm":
+        # فعال کردن اشتراک
+        success = db_manager.enable_news_subscription(user.id)
+        
+        if success:
+            bot_logger.log_user_action(user.id, "NEWS_SUBSCRIPTION_ENABLED", "اشتراک اخبار فعال شد")
+            
+            confirmation_message = """
+✅ **اشتراک اخبار فعال شد!**
+
+🎉 از این پس ربات هر روز 3 بار به صورت خودکار آخرین اخبار را برای شما ارسال می‌کند.
+
+⏰ **زمان‌های ارسال:**
+• 🌅 8:00 صبح
+• 🌇 14:00 ظهر
+• 🌃 20:00 شب
+
+🔕 برای لغو اشتراک، از دکمه "🔕 لغو اشتراک اخبار" استفاده کنید.
+            """
+            
+            # برگشت به کیبورد بخش عمومی با دکمه لغو اشتراک
+            reply_markup = get_public_section_markup(is_subscribed=True)
+            
+            # حذف دکمه‌های inline و نمایش پیام تایید
+            await query.edit_message_text(
+                text=confirmation_message,
+                parse_mode='Markdown'
+            )
+            
+            # ارسال پیام جدید با کیبورد بروز شده
+            await context.bot.send_message(
+                chat_id=user.id,
+                text="🔗 بازگشت به بخش عمومی",
+                reply_markup=reply_markup
+            )
+        else:
+            await query.edit_message_text(
+                text="❌ خطا در فعال‌سازی اشتراک. لطفاً دوباره تلاش کنید."
+            )
+    
+    elif query.data == "news_sub_cancel":
+        # انصراف از فعال‌سازی اشتراک
+        bot_logger.log_user_action(user.id, "NEWS_SUBSCRIPTION_CANCELLED", "انصراف از فعال‌سازی اشتراک")
+        
+        await query.edit_message_text(
+            text="❌ **انصراف**\n\nفعال‌سازی اشتراک اخبار لغو شد. شما می‌توانید هر زمان دوباره تلاش کنید.",
+            parse_mode='Markdown'
+        )
+
+# تابع ارسال خودکار اخبار برای مشترکان
+async def send_scheduled_news(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """ارسال خودکار اخبار برای مشترکان (فراخوانی توسط scheduler)"""
+    try:
+        logger.info("📡 شروع ارسال خودکار اخبار...")
+        
+        # دریافت لیست مشترکان
+        subscribers = db_manager.get_news_subscribers()
+        
+        if not subscribers:
+            logger.info("⚠️ هیچ مشترکی برای اخبار وجود ندارد")
+            return
+        
+        logger.info(f"👥 تعداد مشترکان: {len(subscribers)}")
+        
+        # دریافت آخرین اخبار
+        news_list = await fetch_tasnim_news()
+        
+        if not news_list:
+            logger.error("❌ خطا در دریافت اخبار برای ارسال خودکار")
+            return
+        
+        # فرمت کردن پیام اخبار
+        news_message = format_general_news_message(news_list)
+        
+        # اضافه کردن یک هدر برای ارسال خودکار
+        header = f"""🔔 **اخبار خودکار - {datetime.datetime.now().strftime('%Y/%m/%d %H:%M')}**
+
+"""
+        full_message = header + news_message
+        
+        # شمارنده برای ارسال موفق و ناموفق
+        success_count = 0
+        failed_count = 0
+        
+        # ارسال برای هر مشترک
+        for user_id in subscribers:
+            try:
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=full_message,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=False
+                )
+                success_count += 1
+                logger.info(f"✅ اخبار برای کاربر {user_id} ارسال شد")
+                
+                # تاخیر کوتاه برای جلوگیری از flood
+                await asyncio.sleep(0.05)  # 50ms delay
+                
+            except Exception as e:
+                failed_count += 1
+                logger.warning(f"⚠️ خطا در ارسال برای کاربر {user_id}: {e}")
+                
+                # اگر کاربر ربات رو بلاک کرده (احتمالاً Forbidden error)
+                if "Forbidden" in str(e):
+                    # غیرفعال کردن اشتراک برای این کاربر
+                    db_manager.disable_news_subscription(user_id)
+                    logger.info(f"🚫 اشتراک کاربر {user_id} به دلیل بلاک کردن ربات غیرفعال شد")
+        
+        # لاگ نتیجه نهایی
+        logger.info(
+            f"✅ ارسال خودکار اخبار کامل شد | "
+            f"موفق: {success_count} | ناموفق: {failed_count}"
+        )
+        
+        # ارسال گزارش به ادمین
+        await context.bot.send_message(
+            chat_id=ADMIN_USER_ID,
+            text=f"""📡 **گزارش ارسال خودکار اخبار**
+
+⏰ زمان: {datetime.datetime.now().strftime('%Y/%m/%d %H:%M')}
+✅ موفق: {success_count}
+❌ ناموفق: {failed_count}
+👥 جمع مشترکان: {len(subscribers)}""",
+            parse_mode='Markdown'
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ خطای کلی در ارسال خودکار اخبار: {e}")
+
 # Handler برای پیام‌های متنی (echo)
 async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """راهنمایی برای پیام‌های ناشناخته"""
@@ -1313,6 +1455,9 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         # نمایش منوی بخش عمومی
         bot_logger.log_user_action(user.id, "PUBLIC_SECTION_ACCESS", "ورود به بخش عمومی")
         
+        # بررسی وضعیت اشتراک کاربر
+        is_subscribed = db_manager.is_news_subscribed(user.id)
+        
         message = """
 🔗 *بخش عمومی*
 
@@ -1320,17 +1465,89 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 🔍 *خدمات موجود:*
 • 📺 اخبار عمومی از منابع معتبر فارسی
+• 📰 دنبال کردن اخبار: دریافت خودکار اخبار روزانه
 
 لطفاً یکی از گزینه‌های زیر را انتخاب کنید:
         """
         
-        reply_markup = get_public_section_markup()
+        # نمایش کیبورد بر اساس وضعیت اشتراک
+        reply_markup = get_public_section_markup(is_subscribed=is_subscribed)
         
         await update.message.reply_text(
             message,
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
+        return
+    
+    elif message_text == "📰 دنبال کردن اخبار":
+        # فعال‌سازی اشتراک اخبار
+        bot_logger.log_user_action(user.id, "NEWS_SUBSCRIPTION_ENABLE", "درخواست فعال‌سازی اشتراک اخبار")
+        
+        # پیام توضیحی
+        info_message = """
+📰 **دنبال کردن اخبار خودکار**
+
+با فعال کردن این قابلیت، ربات هر روز **3 بار** به صورت خودکار سرتیتر اخبار روز را برای شما ارسال می‌کند:
+
+⏰ **زمان‌بندی ارسال:**
+• 🌅 صبح: 8:00
+• 🌇 ظهر: 14:00
+• 🌃 شب: 20:00
+
+📰 **محتوا:**
+سرتیتر آخرین اخبار روز از منابع معتبر فارسی
+
+✅ **رایگان** و **بدون محدودیت**
+
+⚠️ شما می‌توانید هر زمان از دکمه "🔕 لغو اشتراک" استفاده کنید.
+
+آیا مایل به فعال‌سازی هستید؟
+        """
+        
+        # دکمه‌های تایید و انصراف
+        keyboard = [
+            [InlineKeyboardButton("✅ بله، فعال کن", callback_data="news_sub_confirm")],
+            [InlineKeyboardButton("❌ انصراف", callback_data="news_sub_cancel")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(
+            info_message,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return
+    
+    elif message_text == "🔕 لغو اشتراک اخبار":
+        # غیرفعال‌سازی اشتراک اخبار
+        bot_logger.log_user_action(user.id, "NEWS_SUBSCRIPTION_DISABLE", "درخواست لغو اشتراک اخبار")
+        
+        # غیرفعال کردن اشتراک
+        success = db_manager.disable_news_subscription(user.id)
+        
+        if success:
+            success_message = """
+✅ **اشتراک اخبار لغو شد**
+
+دیگر اخبار خودکار برای شما ارسال نخواهد شد.
+
+شما می‌توانید هر زمان دوباره فعال کنید.
+            """
+            
+            # برگشت به کیبورد عمومی با دکمه دنبال کردن
+            reply_markup = get_public_section_markup(is_subscribed=False)
+            
+            await update.message.reply_text(
+                success_message,
+                reply_markup=reply_markup,
+                parse_mode='Markdown'
+            )
+        else:
+            await update.message.reply_text(
+                "❌ خطا در لغو اشتراک. لطفاً دوباره تلاش کنید."
+            )
+        
         return
     
     elif message_text == "🤖 هوش مصنوعی":
@@ -1890,6 +2107,9 @@ async def main() -> None:
     # Handler برای منوی عمومی (callback queries)  
     application.add_handler(CallbackQueryHandler(public_menu.handle_public_callback, pattern="^(public_|crypto_)"))
     
+    # Handler برای اشتراک اخبار (callback queries)
+    application.add_handler(CallbackQueryHandler(news_subscription_callback, pattern="^news_sub_"))
+    
     # Handler برای broadcast callbacks
     application.add_handler(CallbackQueryHandler(broadcast_callback_handler, pattern="^broadcast_"))
     
@@ -2063,6 +2283,46 @@ async def main() -> None:
     asyncio.create_task(auto_unblock_task())
     asyncio.create_task(cleanup_tracking_task())
     logger.info("✅ Background Tasks فعال شدند (auto-unblock, cleanup)")
+    
+    # 📆 راه‌اندازی Scheduler برای ارسال خودکار اخبار
+    logger.info("🕒 راه‌اندازی Scheduler برای ارسال خودکار اخبار...")
+    
+    # ایجاد scheduler
+    scheduler = AsyncIOScheduler(timezone=pytz.timezone('Asia/Tehran'))
+    
+    # اضافه کردن job برای صبح (8:00)
+    scheduler.add_job(
+        send_scheduled_news,
+        trigger=CronTrigger(hour=8, minute=0, timezone='Asia/Tehran'),
+        args=[application],
+        id='morning_news',
+        name='ارسال اخبار صبح',
+        replace_existing=True
+    )
+    
+    # اضافه کردن job برای ظهر (14:00)
+    scheduler.add_job(
+        send_scheduled_news,
+        trigger=CronTrigger(hour=14, minute=0, timezone='Asia/Tehran'),
+        args=[application],
+        id='afternoon_news',
+        name='ارسال اخبار ظهر',
+        replace_existing=True
+    )
+    
+    # اضافه کردن job برای شب (20:00)
+    scheduler.add_job(
+        send_scheduled_news,
+        trigger=CronTrigger(hour=20, minute=0, timezone='Asia/Tehran'),
+        args=[application],
+        id='evening_news',
+        name='ارسال اخبار شب',
+        replace_existing=True
+    )
+    
+    # شروع scheduler
+    scheduler.start()
+    logger.info("✅ Scheduler فعال شد - اخبار در ساعت‌های 8:00, 14:00, 20:00 (وقت ایران) ارسال خواهد شد")
     
     # انتخاب بین Webhook و Polling
     use_webhook = os.getenv('USE_WEBHOOK', 'false').lower() == 'true'

@@ -57,7 +57,8 @@ class DatabaseManager:
                         is_admin INTEGER DEFAULT 0,
                         join_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        message_count INTEGER DEFAULT 0
+                        message_count INTEGER DEFAULT 0,
+                        news_subscription_enabled INTEGER DEFAULT 0
                     )
                 ''')
                 
@@ -302,6 +303,58 @@ class DatabaseManager:
     def set_bot_enabled(self, enabled: bool) -> bool:
         """تنظیم وضعیت ربات"""
         return self.set_setting('bot_enabled', '1' if enabled else '0')
+    
+    def enable_news_subscription(self, user_id: int) -> bool:
+        """فعال کردن اشتراک اخبار برای کاربر"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('UPDATE users SET news_subscription_enabled = 1 WHERE user_id = ?', (user_id,))
+                conn.commit()
+                logger.info(f"✅ اشتراک اخبار برای کاربر {user_id} فعال شد")
+                return True
+        except Exception as e:
+            logger.error(f"خطا در فعال‌سازی اشتراک اخبار: {e}")
+            return False
+    
+    def disable_news_subscription(self, user_id: int) -> bool:
+        """غیرفعال کردن اشتراک اخبار برای کاربر"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('UPDATE users SET news_subscription_enabled = 0 WHERE user_id = ?', (user_id,))
+                conn.commit()
+                logger.info(f"❌ اشتراک اخبار برای کاربر {user_id} غیرفعال شد")
+                return True
+        except Exception as e:
+            logger.error(f"خطا در غیرفعال‌سازی اشتراک اخبار: {e}")
+            return False
+    
+    def is_news_subscribed(self, user_id: int) -> bool:
+        """بررسی اشتراک اخبار کاربر"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT news_subscription_enabled FROM users WHERE user_id = ?', (user_id,))
+                result = cursor.fetchone()
+                return bool(result['news_subscription_enabled']) if result else False
+        except Exception as e:
+            logger.error(f"خطا در بررسی اشتراک اخبار: {e}")
+            return False
+    
+    def get_news_subscribers(self) -> List[int]:
+        """دریافت لیست کاربران مشترک اخبار (فعال و غیربلاک شده)"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT user_id FROM users 
+                    WHERE news_subscription_enabled = 1 AND is_blocked = 0
+                ''')
+                return [row['user_id'] for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"خطا در دریافت لیست مشترکان اخبار: {e}")
+            return []
 
 # نمونه سیستم لاگ سفارشی
 class DatabaseLogger:
