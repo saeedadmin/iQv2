@@ -975,6 +975,104 @@ class PostgreSQLManager:
                 cursor.close()
                 self.return_connection(conn)
     
+    def enable_news_subscription(self, user_id: int) -> bool:
+        """فعال کردن اشتراک اخبار برای کاربر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                'UPDATE users SET news_subscription_enabled = 1 WHERE user_id = %s',
+                (user_id,)
+            )
+            
+            conn.commit()
+            logger.info(f"✅ اشتراک اخبار برای کاربر {user_id} فعال شد")
+            return True
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در فعال‌سازی اشتراک اخبار: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def disable_news_subscription(self, user_id: int) -> bool:
+        """غیرفعال کردن اشتراک اخبار برای کاربر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                'UPDATE users SET news_subscription_enabled = 0 WHERE user_id = %s',
+                (user_id,)
+            )
+            
+            conn.commit()
+            logger.info(f"✅ اشتراک اخبار برای کاربر {user_id} غیرفعال شد")
+            return True
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در غیرفعال‌سازی اشتراک اخبار: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def is_news_subscribed(self, user_id: int) -> bool:
+        """بررسی وضعیت اشتراک اخبار کاربر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                'SELECT news_subscription_enabled FROM users WHERE user_id = %s',
+                (user_id,)
+            )
+            
+            result = cursor.fetchone()
+            return result[0] == 1 if result else False
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در بررسی وضعیت اشتراک: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def get_news_subscribers(self) -> list:
+        """دریافت لیست کاربران مشترک اخبار (فعال و غیربلاک شده)"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                'SELECT user_id FROM users WHERE news_subscription_enabled = 1 AND is_blocked = 0'
+            )
+            
+            subscribers = [row[0] for row in cursor.fetchall()]
+            logger.info(f"👥 تعداد مشترکان اخبار: {len(subscribers)}")
+            return subscribers
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت لیست مشترکان: {e}")
+            return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
     def close(self):
         """بستن pool اتصالات"""
         if hasattr(self, 'connection_pool'):

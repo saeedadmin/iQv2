@@ -1128,7 +1128,7 @@ async def news_subscription_callback(update: Update, context: ContextTypes.DEFAU
     # تایید callback query
     await query.answer()
     
-    if query.data == "news_sub_confirm":
+    if query.data == "news_sub_enable":
         # فعال کردن اشتراک
         success = db_manager.enable_news_subscription(user.id)
         
@@ -1145,35 +1145,49 @@ async def news_subscription_callback(update: Update, context: ContextTypes.DEFAU
 • 🌇 14:00 ظهر
 • 🌃 20:00 شب
 
-🔕 برای لغو اشتراک، از دکمه "🔕 لغو اشتراک اخبار" استفاده کنید.
+🔕 برای لغو اشتراک، از دکمه "📰 مدیریت اشتراک اخبار" استفاده کنید.
             """
-            
-            # برگشت به کیبورد بخش عمومی با دکمه لغو اشتراک
-            reply_markup = get_public_section_markup(is_subscribed=True)
             
             # حذف دکمه‌های inline و نمایش پیام تایید
             await query.edit_message_text(
                 text=confirmation_message,
                 parse_mode='Markdown'
             )
-            
-            # ارسال پیام جدید با کیبورد بروز شده
-            await context.bot.send_message(
-                chat_id=user.id,
-                text="🔗 بازگشت به بخش عمومی",
-                reply_markup=reply_markup
-            )
         else:
             await query.edit_message_text(
                 text="❌ خطا در فعال‌سازی اشتراک. لطفاً دوباره تلاش کنید."
             )
     
-    elif query.data == "news_sub_cancel":
-        # انصراف از فعال‌سازی اشتراک
-        bot_logger.log_user_action(user.id, "NEWS_SUBSCRIPTION_CANCELLED", "انصراف از فعال‌سازی اشتراک")
+    elif query.data == "news_sub_disable":
+        # غیرفعال کردن اشتراک
+        success = db_manager.disable_news_subscription(user.id)
+        
+        if success:
+            bot_logger.log_user_action(user.id, "NEWS_SUBSCRIPTION_DISABLED", "اشتراک اخبار لغو شد")
+            
+            success_message = """
+✅ **اشتراک اخبار لغو شد**
+
+دیگر اخبار خودکار برای شما ارسال نخواهد شد.
+
+شما می‌توانید هر زمان دوباره فعال کنید.
+            """
+            
+            await query.edit_message_text(
+                text=success_message,
+                parse_mode='Markdown'
+            )
+        else:
+            await query.edit_message_text(
+                text="❌ خطا در لغو اشتراک. لطفاً دوباره تلاش کنید."
+            )
+    
+    elif query.data == "news_sub_back":
+        # بازگشت
+        bot_logger.log_user_action(user.id, "NEWS_SUBSCRIPTION_BACK", "بازگشت از مدیریت اشتراک")
         
         await query.edit_message_text(
-            text="❌ **انصراف**\n\nفعال‌سازی اشتراک اخبار لغو شد. شما می‌توانید هر زمان دوباره تلاش کنید.",
+            text="🔙 بازگشت به بخش عمومی",
             parse_mode='Markdown'
         )
 
@@ -1455,9 +1469,6 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         # نمایش منوی بخش عمومی
         bot_logger.log_user_action(user.id, "PUBLIC_SECTION_ACCESS", "ورود به بخش عمومی")
         
-        # بررسی وضعیت اشتراک کاربر
-        is_subscribed = db_manager.is_news_subscribed(user.id)
-        
         message = """
 🔗 *بخش عمومی*
 
@@ -1465,13 +1476,13 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 🔍 *خدمات موجود:*
 • 📺 اخبار عمومی از منابع معتبر فارسی
-• 📰 دنبال کردن اخبار: دریافت خودکار اخبار روزانه
+• 📰 مدیریت اشتراک اخبار: دریافت خودکار اخبار روزانه
 
 لطفاً یکی از گزینه‌های زیر را انتخاب کنید:
         """
         
-        # نمایش کیبورد بر اساس وضعیت اشتراک
-        reply_markup = get_public_section_markup(is_subscribed=is_subscribed)
+        # نمایش کیبورد ساده
+        reply_markup = get_public_section_markup()
         
         await update.message.reply_text(
             message,
@@ -1480,13 +1491,13 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
     
-    elif message_text == "📰 دنبال کردن اخبار":
-        # فعال‌سازی اشتراک اخبار
-        bot_logger.log_user_action(user.id, "NEWS_SUBSCRIPTION_ENABLE", "درخواست فعال‌سازی اشتراک اخبار")
+    elif message_text == "📰 مدیریت اشتراک اخبار":
+        # مدیریت اشتراک اخبار
+        bot_logger.log_user_action(user.id, "NEWS_SUBSCRIPTION_MANAGE", "ورود به مدیریت اشتراک اخبار")
         
         # پیام توضیحی
         info_message = """
-📰 **دنبال کردن اخبار خودکار**
+📰 **مدیریت اشتراک اخبار خودکار**
 
 با فعال کردن این قابلیت، ربات هر روز **3 بار** به صورت خودکار سرتیتر اخبار روز را برای شما ارسال می‌کند:
 
@@ -1500,15 +1511,14 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 ✅ **رایگان** و **بدون محدودیت**
 
-⚠️ شما می‌توانید هر زمان از دکمه "🔕 لغو اشتراک" استفاده کنید.
-
-آیا مایل به فعال‌سازی هستید؟
+لطفاً یکی از گزینه‌های زیر را انتخاب کنید:
         """
         
-        # دکمه‌های تایید و انصراف
+        # دکمه‌های فعال/غیرفعال و بازگشت
         keyboard = [
-            [InlineKeyboardButton("✅ بله، فعال کن", callback_data="news_sub_confirm")],
-            [InlineKeyboardButton("❌ انصراف", callback_data="news_sub_cancel")]
+            [InlineKeyboardButton("✅ فعال‌سازی اشتراک", callback_data="news_sub_enable")],
+            [InlineKeyboardButton("❌ غیرفعال‌سازی اشتراک", callback_data="news_sub_disable")],
+            [InlineKeyboardButton("🔙 بازگشت", callback_data="news_sub_back")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -1517,37 +1527,6 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
-        return
-    
-    elif message_text == "🔕 لغو اشتراک اخبار":
-        # غیرفعال‌سازی اشتراک اخبار
-        bot_logger.log_user_action(user.id, "NEWS_SUBSCRIPTION_DISABLE", "درخواست لغو اشتراک اخبار")
-        
-        # غیرفعال کردن اشتراک
-        success = db_manager.disable_news_subscription(user.id)
-        
-        if success:
-            success_message = """
-✅ **اشتراک اخبار لغو شد**
-
-دیگر اخبار خودکار برای شما ارسال نخواهد شد.
-
-شما می‌توانید هر زمان دوباره فعال کنید.
-            """
-            
-            # برگشت به کیبورد عمومی با دکمه دنبال کردن
-            reply_markup = get_public_section_markup(is_subscribed=False)
-            
-            await update.message.reply_text(
-                success_message,
-                reply_markup=reply_markup,
-                parse_mode='Markdown'
-            )
-        else:
-            await update.message.reply_text(
-                "❌ خطا در لغو اشتراک. لطفاً دوباره تلاش کنید."
-            )
-        
         return
     
     elif message_text == "🤖 هوش مصنوعی":
