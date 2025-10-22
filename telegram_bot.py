@@ -2051,12 +2051,51 @@ async def cleanup_tracking_task():
         except Exception as e:
             logger.error(f"❌ خطا در cleanup_tracking_task: {e}")
 
+async def run_database_migrations():
+    """اجرای migrationهای دیتابیس در زمان شروع ربات"""
+    try:
+        logger.info("🔧 چک کردن migrationهای دیتابیس...")
+        
+        # Migration: اضافه کردن فیلد news_subscription_enabled
+        conn = db_manager.get_connection()
+        if conn:
+            cursor = conn.cursor()
+            
+            # بررسی وجود فیلد
+            cursor.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='users' AND column_name='news_subscription_enabled'
+            """)
+            
+            result = cursor.fetchone()
+            
+            if not result:
+                logger.info("🔧 اضافه کردن فیلد news_subscription_enabled...")
+                cursor.execute("""
+                    ALTER TABLE users 
+                    ADD COLUMN news_subscription_enabled INTEGER DEFAULT 0
+                """)
+                conn.commit()
+                logger.info("✅ فیلد news_subscription_enabled با موفقیت اضافه شد")
+            else:
+                logger.info("✅ فیلد news_subscription_enabled قبلاً وجود دارد")
+            
+            cursor.close()
+            db_manager.return_connection(conn)
+            
+    except Exception as e:
+        logger.error(f"❌ خطا در migration: {e}")
+
 async def main() -> None:
     """تابع اصلی برای راه‌اندازی ربات"""
     logger.info("🚀 شروع ربات تلگرام پیشرفته...")
     logger.info(f"🔑 BOT_TOKEN: {'SET' if BOT_TOKEN else 'NOT SET'}")
     logger.info(f"👤 ADMIN_USER_ID: {ADMIN_USER_ID}")
     logger.info(f"🌍 ENVIRONMENT: {ENVIRONMENT}")
+    
+    # اجرای migrationهای دیتابیس
+    await run_database_migrations()
     
     # لاگ شروع سیستم
     bot_logger.log_system_event("BOT_STARTED", f"ربات در زمان {datetime.datetime.now()} شروع شد")
