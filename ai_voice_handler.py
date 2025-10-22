@@ -138,7 +138,7 @@ class AIVoiceHandler:
             # ارسال درخواست به API
             response = requests.post(
                 f"{self.api_url}/tts",
-                json={"text": text},
+                params={"text": text},  # استفاده از query parameter
                 timeout=self.request_timeout
             )
             
