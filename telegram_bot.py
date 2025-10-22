@@ -2074,12 +2074,31 @@ async def run_database_migrations():
                 logger.info("🔧 اضافه کردن فیلد news_subscription_enabled...")
                 cursor.execute("""
                     ALTER TABLE users 
-                    ADD COLUMN news_subscription_enabled INTEGER DEFAULT 0
+                    ADD COLUMN news_subscription_enabled BOOLEAN DEFAULT FALSE
                 """)
                 conn.commit()
                 logger.info("✅ فیلد news_subscription_enabled با موفقیت اضافه شد")
             else:
-                logger.info("✅ فیلد news_subscription_enabled قبلاً وجود دارد")
+                # چک کردن نوع فیلد
+                cursor.execute("""
+                    SELECT data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name='users' AND column_name='news_subscription_enabled'
+                """)
+                data_type_result = cursor.fetchone()
+                
+                if data_type_result and data_type_result[0] == 'integer':
+                    logger.info("🔧 تغییر نوع فیلد news_subscription_enabled از INTEGER به BOOLEAN...")
+                    # تغییر نوع فیلد
+                    cursor.execute("""
+                        ALTER TABLE users 
+                        ALTER COLUMN news_subscription_enabled TYPE BOOLEAN 
+                        USING CASE WHEN news_subscription_enabled = 1 THEN TRUE ELSE FALSE END
+                    """)
+                    conn.commit()
+                    logger.info("✅ نوع فیلد با موفقیت تغییر یافت")
+                else:
+                    logger.info("✅ فیلد news_subscription_enabled قبلاً با نوع صحیح وجود دارد")
             
             cursor.close()
             db_manager.return_connection(conn)

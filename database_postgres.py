@@ -983,7 +983,7 @@ class PostgreSQLManager:
             cursor = conn.cursor()
             
             cursor.execute(
-                'UPDATE users SET news_subscription_enabled = 1 WHERE user_id = %s',
+                'UPDATE users SET news_subscription_enabled = TRUE WHERE user_id = %s',
                 (user_id,)
             )
             
@@ -1009,7 +1009,7 @@ class PostgreSQLManager:
             cursor = conn.cursor()
             
             cursor.execute(
-                'UPDATE users SET news_subscription_enabled = 0 WHERE user_id = %s',
+                'UPDATE users SET news_subscription_enabled = FALSE WHERE user_id = %s',
                 (user_id,)
             )
             
@@ -1040,7 +1040,7 @@ class PostgreSQLManager:
             )
             
             result = cursor.fetchone()
-            return result[0] == 1 if result else False
+            return result[0] if result else False
             
         except Exception as e:
             logger.error(f"❌ خطا در بررسی وضعیت اشتراک: {e}")
@@ -1058,7 +1058,7 @@ class PostgreSQLManager:
             cursor = conn.cursor()
             
             cursor.execute(
-                'SELECT user_id FROM users WHERE news_subscription_enabled = 1 AND is_blocked = 0'
+                'SELECT user_id FROM users WHERE news_subscription_enabled = TRUE AND is_blocked = FALSE'
             )
             
             subscribers = [row[0] for row in cursor.fetchall()]
