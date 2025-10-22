@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Persian STT/TTS API",
-    description="Free Persian Speech-to-Text and Text-to-Speech API using Whisper and Coqui TTS",
+    description="Free Persian Speech-to-Text and Text-to-Speech API using Whisper and Google TTS",
     version="1.0.0"
 )
 
