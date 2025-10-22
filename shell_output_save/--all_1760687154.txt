@@ -1,99 +1,0 @@
-WARNING: git-filter-branch has a glut of gotchas generating mangled history
-	 rewrites.  Hit Ctrl-C before proceeding to abort, then use an
-	 alternative filtering tool such as 'git filter-repo'
-	 (https://github.com/newren/git-filter-repo/) instead.  See the
-	 filter-branch manual page for more details; to squelch this warning,
-	 set FILTER_BRANCH_SQUELCH_WARNING=1.
-Proceeding with filter-branch...
-
-Rewrite b2987afdeaa80473eab78b53c26a313199b6c4bb (1/86) (0 seconds passed, remaining 0 predicted)    Rewrite 6f54a392e5b736af42e0cda0d85241f1e956d814 (2/86) (0 seconds passed, remaining 0 predicted)    Rewrite 2f25ac4c6bb0ea32ee676f530757a738b5293fa3 (3/86) (0 seconds passed, remaining 0 predicted)    Rewrite 9507b6e3a54aca7fb89b58b084db874d2331bb8f (4/86) (0 seconds passed, remaining 0 predicted)    Rewrite 1a2274547c64e3f9e887486174c904cc2d0fd598 (5/86) (0 seconds passed, remaining 0 predicted)    Rewrite ad29e4f43199a23b1c09e2fa6f09668eed8ae8b5 (6/86) (0 seconds passed, remaining 0 predicted)    Rewrite 643ea223482403fb966da9040c69b532c5db49a7 (7/86) (1 seconds passed, remaining 11 predicted)    Rewrite d015b5ea38c0e2ab39256f14c062180f2e761d28 (7/86) (1 seconds passed, remaining 11 predicted)    Rewrite 286fa723669e798355236ea0c7fffb21ed8553b3 (7/86) (1 seconds passed, remaining 11 predicted)    Rewrite d36fe9f29ad9733dd1ab5603fd3b6790ddb3564f (7/86) (1 seconds passed, remaining 11 predicted)    Rewrite f3e004065bfd9394e5f72c293f157dd37ffc22b4 (7/86) (1 seconds passed, remaining 11 predicted)    Rewrite 72cec4032bd97815ee62274692ba0fe011758deb (7/86) (1 seconds passed, remaining 11 predicted)    Rewrite 8a6e528472569a5eae62b34616061f9ac52dd3c8 (7/86) (1 seconds passed, remaining 11 predicted)    Rewrite 79a2a826bcd80cc262ce76e20eb04819006e0a7b (7/86) (1 seconds passed, remaining 11 predicted)    Rewrite 915ae7691f421b736a7439b44c86cae7853c7f1a (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 6341b0a562aec0a0bfb69791b3c1c56303e48d85 (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 11dde06dfecf480bbb7d510601c77d545a578d90 (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite a7bde0a22b484bb5f53d10c7dad893f11b430e78 (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite c069df85862ca20cf0a0d4025521cbaca4bbe314 (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 7ee2dc9d92383f99c0604ad6ced3d5e44d314e9e (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 99d716d5d8fee2caa640b84b604045eb4e1f1bcc (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 2e5409990152feab392cc7ecc19f5d84a60687cc (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite bca8379132c4dae93a060c4b9cdbdcc4522385c4 (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 79e8d0044a817703ec2e6e3cb048bdd2391f1b63 (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 4b062aca58e18cb2c24b08784ebef12ce5fd0fb7 (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 1912926d46d6524c87b33bbd06be8ddd0bd3f3fd (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 047b37efbcaca4d5efc8a8edf6facda5b10f09a8 (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 5a0c1eaad04e023e7776c6a7d76801b2493e68f1 (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 09cfccab2419da59de46fe70342cc3a871221c4e (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite 249a2c535604a585b67f2b090f1f7f5b43ccf39f (15/86) (1 seconds passed, remaining 4 predicted)    Rewrite ab36929930cdaaffa5380a54f5bf881994da0c80 (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite be5ab8a001626918c3efeaef3e3b0fcf57e6a735 (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite 66b41f95846e4776d89f09701f5294f1d9a412d9 (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite 1312d11359239ab642aef8491534e822eaf3da4a (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite 36ea87347167c4dea9f384e9be04aa1f4b6d8b9b (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite 6c0c66347d431d620122731708075477ea2813c2 (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite 0a398d5679833ba6c7770b143eb75f4efc678b21 (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite e16f7f666c3cd4eebfbde8ecb70c99337c1f2d0b (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite dedbc948f5e6be3fdaeb6a0e752a950b88b0a48d (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite 8ec00ff2c3e1161070385a5e19615e026b11ffe3 (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite 362d8e190eed3d31a1b4cdd766bab604550bf5ca (31/86) (3 seconds passed, remaining 5 predicted)    Rewrite 8e8e150e071a4cee21fd93576ef5da23f9b2e9d3 (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite f2fb73e61f9eb2789ccf5e57619c86dbb65f49c4 (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite 280bf518f91a864e5413cf2b5c046d5e45f2e23c (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite 78c56caa5985befd42ca6812393c811134482e63 (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite a573e58414d66d2262c4c49ad5ef047bf6c00a7c (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite 778cf10f478fb6df9df82e3d3fec944f155ecb71 (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite cf45bf9bd794028d9178b1077f275e94ab38fc7d (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite b48ca701d139ed3cd9cdfeb0deb720fc7f1cf516 (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite cd3fc9235e1dd6d44319863cef1bda866d8caf76 (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite 695e1b8542610904430237546b6f7579fe4c7100 (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite 188db39eec344912740f4cb60b67bf141cb0f3a0 (42/86) (4 seconds passed, remaining 4 predicted)    Rewrite be8f0ea30f455c90408f21216fb1b57994dbb13d (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite bff1258d76acd52ab79a2c5cd42b8a9117b9ad97 (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite a5f45d45322edeee5e00c3942eaff11270a724e0 (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite 1339049932fc8b93a785a4fde43b32045d6f1780 (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite fab02032c079effbc47b72803d01a9f5b89b1b15 (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite 3ea8d00ded4ae039d5bebec1ab78a7650b2b4fc7 (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite 51ac2aa06111f766a6a04c96f4ba1141e17f3455 (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite 3ae157e536022892a374590e44d0b1021d0ab51c (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite d08010fdbb08c2b8e734c0f9cd9783d48e69e3a3 (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite 4c1b6bd6f35e84c969e44b40c04ed0c1ffb82956 (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite c46c8e780e2abb8894b6a941c5ef65ad12c8803b (53/86) (5 seconds passed, remaining 3 predicted)    Rewrite 12718c7922a1a305038006cb240027789b0ae698 (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite 5c205a86e04112e84caeba3a121919a654724020 (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite acfe0be34ea63689c36cd0527a1bce6bad5a9ae0 (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite c8ba9ad591ba957ab049dec8c4e3e376dcaedb4f (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite 4d8ffb3bfa0ed5fae5ae44c13202556557b3d475 (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite dfc8efb917e82bf9f9e89da76a25fccdfc5bdf20 (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite c2afe980a8fdaf49add24b27b2fc9661ef115a56 (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite 2d30fcb31f238a6a96b15fad52737cfb77ce94ff (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite 98792a445f58fc45ba2da344f7874fa228be607c (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite a277037097e620ba7218ba71696c16652a6e7703 (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite 4eac2e3044fe892bace4f822a04b7f1596e52172 (64/86) (6 seconds passed, remaining 2 predicted)    Rewrite 7d2c71003708c274a441085d9b44d4eb225d3e3a (75/86) (7 seconds passed, remaining 1 predicted)    rm 'analyze_successful_run.py'
-rm 'test_i_scraper_shervin.py'
-Rewrite 49fc301105222ba8e62aea286352d161b8881127 (75/86) (7 seconds passed, remaining 1 predicted)    rm 'analyze_successful_run.py'
-rm 'final_status_check.py'
-rm 'test_i_scraper_shervin.py'
-Rewrite 877879fba3700a12f877948aa54d05d67d456da0 (75/86) (7 seconds passed, remaining 1 predicted)    rm 'analyze_successful_run.py'
-rm 'final_status_check.py'
-rm 'test_i_scraper_shervin.py'
-Rewrite e58ca7066a6e9a56906344e56d30c25d93e594a7 (75/86) (7 seconds passed, remaining 1 predicted)    rm 'analyze_successful_run.py'
-rm 'final_status_check.py'
-rm 'get_latest_signals.py'
-rm 'test_i_scraper_shervin.py'
-Rewrite 4cb29043aa541c66e8171bb10ae60c0ef36bea4c (75/86) (7 seconds passed, remaining 1 predicted)    rm 'analyze_successful_run.py'
-rm 'final_status_check.py'
-rm 'get_latest_signals.py'
-rm 'test_i_scraper_shervin.py'
-Rewrite 4d76df3371f2d7e6ee4e8c5af8bc8a5b4c5a0974 (75/86) (7 seconds passed, remaining 1 predicted)    rm 'analyze_successful_run.py'
-rm 'final_status_check.py'
-rm 'get_latest_signals.py'
-rm 'test_i_scraper_shervin.py'
-Rewrite 7df1d2a95687a5f869a1d5b6d5128cbe174ed4f7 (75/86) (7 seconds passed, remaining 1 predicted)    rm 'analyze_successful_run.py'
-rm 'final_status_check.py'
-rm 'get_latest_signals.py'
-rm 'test_i_scraper_shervin.py'
-Rewrite 3274ff7e991d84ef5d470fee157b344803e734bb (75/86) (7 seconds passed, remaining 1 predicted)    rm 'analyze_successful_run.py'
-rm 'final_status_check.py'
-rm 'get_latest_signals.py'
-rm 'test_i_scraper_shervin.py'
-Rewrite a41db4fd01e14df9ad26de303def5bf82ae3299d (75/86) (7 seconds passed, remaining 1 predicted)    rm 'analyze_successful_run.py'
-rm 'final_status_check.py'
-rm 'get_latest_signals.py'
-rm 'test_i_scraper_shervin.py'
-Rewrite 40bd3b5762e4b9e1b276358a969bf14efe33086f (75/86) (7 seconds passed, remaining 1 predicted)    Rewrite 361d677c0177a790004a320fc52e41a569d2a727 (75/86) (7 seconds passed, remaining 1 predicted)    Rewrite ce331dc69505038649d35236dae8192d3b555c5c (86/86) (9 seconds passed, remaining 0 predicted)    
-Ref 'refs/heads/main' was rewritten
-Ref 'refs/remotes/origin/main' was rewritten
-WARNING: Ref 'refs/tags/msg-322869984948394' is unchanged
-WARNING: Ref 'refs/tags/msg-322870023385180' is unchanged
-WARNING: Ref 'refs/tags/msg-322877507162249' is unchanged
-Ref 'refs/tags/msg-322883239882820' was rewritten
-Ref 'refs/tags/msg-322887880958022' was rewritten
-Ref 'refs/tags/msg-322888602542259' was rewritten
-Ref 'refs/tags/msg-323046161916199' was rewritten
-Ref 'refs/tags/msg-323051523952914' was rewritten
-Ref 'refs/tags/msg-323053751017593' was rewritten
-Ref 'refs/tags/msg-323059034402980' was rewritten
-Ref 'refs/tags/msg-323061867700410' was rewritten
-Ref 'refs/tags/msg-323063464489214' was rewritten
-Ref 'refs/tags/msg-323070293889107' was rewritten
-Ref 'refs/tags/msg-323073908400443' was rewritten
-Ref 'refs/tags/msg-323079156711599' was rewritten
-Ref 'refs/tags/msg-323088194875617' was rewritten
-Ref 'refs/tags/msg-323205515739449' was rewritten
-Ref 'refs/tags/msg-323210801819947' was rewritten
-Ref 'refs/tags/msg-323215903711347' was rewritten
-Ref 'refs/tags/msg-323223237689536' was rewritten
-Ref 'refs/tags/msg-323227533574358' was rewritten
-Ref 'refs/tags/msg-323230503891161' was rewritten
-Ref 'refs/tags/msg-323236181422183' was rewritten
-Ref 'refs/tags/msg-323240098492606' was rewritten
-Ref 'refs/tags/msg-323244778844297' was rewritten
-Ref 'refs/tags/msg-323246381441121' was rewritten
-Ref 'refs/tags/msg-323249679188086' was rewritten
-Ref 'refs/tags/msg-323251287613547' was rewritten
-Ref 'refs/tags/msg-323408635576614' was rewritten
-Ref 'refs/tags/msg-323413160890611' was rewritten
-Ref 'refs/tags/msg-323419925598336' was rewritten
-Ref 'refs/tags/msg-323437275615479' was rewritten
-Ref 'refs/tags/msg-323500874887398' was rewritten
-Ref 'refs/tags/msg-323506667372770' was rewritten
-Ref 'refs/tags/msg-323510616703262' was rewritten
-Ref 'refs/tags/msg-323531865555174' was rewritten
-Ref 'refs/tags/msg-323536256426189' was rewritten
-Ref 'refs/tags/msg-323545437610225' was rewritten
-Ref 'refs/tags/msg-323550826405999' was rewritten
-Ref 'refs/tags/msg-323939129852032' was rewritten
-Ref 'refs/tags/msg-323939444912423' was rewritten
-Ref 'refs/tags/msg-323940166050108' was rewritten
-Ref 'refs/tags/msg-323944473899084' was rewritten
-Ref 'refs/tags/msg-323951487467683' was rewritten
-Ref 'refs/tags/msg-323954595250288' was rewritten
-Ref 'refs/tags/msg-323972887040229' was rewritten
-Ref 'refs/tags/msg-323978030522592' was rewritten
-Ref 'refs/tags/msg-323984395850011' was rewritten
-Ref 'refs/tags/msg-324108827566314' was rewritten
-Ref 'refs/tags/msg-324117633966287' was rewritten
-Ref 'refs/tags/msg-324123161587977' was rewritten
-Ref 'refs/tags/msg-324128548139274' was rewritten
-Ref 'refs/tags/msg-324133311181010' was rewritten
-msg-322869984948394 -> msg-322869984948394 (6f54a392e5b736af42e0cda0d85241f1e956d814 -> 6f54a392e5b736af42e0cda0d85241f1e956d814)
-msg-322870023385180 -> msg-322870023385180 (6f54a392e5b736af42e0cda0d85241f1e956d814 -> 6f54a392e5b736af42e0cda0d85241f1e956d814)
-msg-322877507162249 -> msg-322877507162249 (2f25ac4c6bb0ea32ee676f530757a738b5293fa3 -> 2f25ac4c6bb0ea32ee676f530757a738b5293fa3)

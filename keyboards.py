@@ -24,6 +24,7 @@ public_section_keyboard = [
 # کیبورد بخش هوش مصنوعی
 ai_menu_keyboard = [
     [KeyboardButton("💬 چت با هوش مصنوعی")],
+    [KeyboardButton("🎤 متن به صدا"), KeyboardButton("📝 صدا به متن")],
     [KeyboardButton("📰 اخبار هوش مصنوعی")],
     [KeyboardButton("🔙 بازگشت به منوی اصلی")]
 ]

@@ -43,6 +43,7 @@ from keyboards import get_main_menu_markup, get_public_section_markup, get_ai_me
 from ai_news import get_ai_news
 from ai_chat_handler import GeminiChatHandler, AIChatStateManager
 from ai_image_generator import AIImageGenerator
+from ai_voice_handler import AIVoiceHandler
 # Signal scraper removed - will be re-implemented later
 
 # Optional imports - TradingView Analysis
@@ -89,6 +90,16 @@ public_menu = PublicMenuManager(db_manager)
 gemini_chat = GeminiChatHandler(db_manager=db_manager)
 ai_chat_state = AIChatStateManager(db_manager)
 ai_image_gen = AIImageGenerator()
+
+# Initialize AI Voice Handler (TTS/STT)
+try:
+    ai_voice_handler = AIVoiceHandler(db_manager=db_manager)
+    VOICE_HANDLER_AVAILABLE = True
+    logger.info("✅ AIVoiceHandler فعال شد")
+except Exception as e:
+    logger.warning(f"⚠️ AIVoiceHandler غیرفعال: {e}")
+    ai_voice_handler = None
+    VOICE_HANDLER_AVAILABLE = False
 
 # Initialize TradingView fetcher if available
 if TRADINGVIEW_AVAILABLE:
@@ -1272,6 +1283,109 @@ async def send_scheduled_news(context: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         logger.error(f"❌ خطای کلی در ارسال خودکار اخبار: {e}")
 
+# Handler برای voice messages
+async def voice_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """پردازش پیام‌های صوتی (Voice Messages)"""
+    user = update.effective_user
+    
+    # بررسی دسترسی
+    if not await check_user_access(user.id):
+        if db_manager.is_user_blocked(user.id):
+            await update.message.reply_text("🚫 شما از استفاده از این ربات محروم شده‌اید.")
+        else:
+            await update.message.reply_text("🔧 ربات در حال تعمیر است. لطفاً بعداً تلاش کنید.")
+        return
+    
+    # 🚨 چک اسپم - قبل از هر عملیاتی
+    is_spam = await check_spam_and_handle(update, context)
+    if is_spam:
+        return
+    
+    # به‌روزرسانی فعالیت کاربر
+    db_manager.update_user_activity(user.id)
+    
+    # بررسی اینکه آیا کاربر در حالت STT هست
+    if not context.user_data.get('awaiting_stt', False):
+        # کاربر باید اول دکمه "📝 صدا به متن" رو بزنه
+        await update.message.reply_text(
+            "📝 برای تبدیل صدا به متن، اول دکمه \"📝 صدا به متن\" را بزنید.",
+            reply_markup=get_ai_menu_markup()
+        )
+        return
+    
+    # کاربر در حالت STT هست
+    if not VOICE_HANDLER_AVAILABLE:
+        await update.message.reply_text(
+            "❌ سرویس صدا در حال حاضر غیرفعال است.",
+            reply_markup=get_ai_menu_markup()
+        )
+        context.user_data['awaiting_stt'] = False
+        return
+    
+    try:
+        is_admin = (user.id == ADMIN_USER_ID)
+        
+        # پاک کردن حالت
+        context.user_data['awaiting_stt'] = False
+        
+        # نمایش پیام در حال پردازش
+        loading_message = await update.message.reply_text("⏳ در حال تبدیل صدا به متن...")
+        
+        # دانلود فایل صوتی
+        voice = update.message.voice
+        voice_file = await context.bot.get_file(voice.file_id)
+        
+        # ذخیره در پوشه موقت
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        voice_filename = f"voice_{user.id}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.ogg"
+        voice_path = os.path.join(temp_dir, voice_filename)
+        
+        await voice_file.download_to_drive(voice_path)
+        
+        # تبدیل صدا به متن
+        result = ai_voice_handler.speech_to_text(voice_path, user.id, is_admin)
+        
+        # حذف فایل موقت
+        try:
+            os.remove(voice_path)
+        except:
+            pass
+        
+        # حذف پیام loading
+        await loading_message.delete()
+        
+        if result['success']:
+            # ارسال متن تبدیل شده
+            caption = f"✅ **صدای شما به متن تبدیل شد**\n\n"
+            caption += f"📝 **متن:**\n{result['text']}\n\n"
+            if not is_admin:
+                caption += f"📊 درخواست باقیمانده امروز: {result['remaining']}"
+            
+            await update.message.reply_text(
+                caption,
+                parse_mode='Markdown'
+            )
+            
+            bot_logger.log_user_action(user.id, "STT_SUCCESS", f"{len(result['text'])} کاراکتر")
+        else:
+            # خطا در تبدیل
+            await update.message.reply_text(
+                result['error'],
+                parse_mode='Markdown'
+            )
+            bot_logger.log_user_action(user.id, "STT_FAILED", result['error'])
+    
+    except Exception as e:
+        logger.error(f"❌ خطا در STT handler: {e}", exc_info=True)
+        try:
+            await loading_message.delete()
+        except:
+            pass
+        await update.message.reply_text(
+            "❌ متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید."
+        )
+
 # Handler برای پیام‌های متنی (echo)
 async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """راهنمایی برای پیام‌های ناشناخته"""
@@ -1717,6 +1831,160 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             logger.error(f"خطا در دریافت اخبار AI: {e}")
             await update.message.reply_text(
                 "❌ متاسفانه در دریافت اخبار خطایی رخ داد. لطفاً دوباره تلاش کنید."
+            )
+        
+        return
+    
+    elif message_text == "🎤 متن به صدا":
+        # TTS: Text to Speech
+        if not VOICE_HANDLER_AVAILABLE:
+            await update.message.reply_text(
+                "❌ سرویس صدا در حال حاضر غیرفعال است.",
+                reply_markup=get_ai_menu_markup()
+            )
+            return
+        
+        bot_logger.log_user_action(user.id, "TTS_REQUEST", "درخواست تبدیل متن به صدا")
+        
+        # دریافت آمار استفاده کاربر
+        is_admin = (user.id == ADMIN_USER_ID)
+        stats = ai_voice_handler.get_usage_stats(user.id)
+        
+        if is_admin:
+            stats_text = "👨‍💼 شما ادمین هستید و محدودیتی ندارید"
+        else:
+            stats_text = f"📊 **آمار امروز:** {stats['today']}/{stats['limit']} (باقیمانده: {stats['remaining']})"
+        
+        welcome_message = f"""
+🎤 **تبدیل متن به صدا**
+
+حالا متن مورد نظر خود را بفرستید 📝
+
+🔊 **قابلیت‌ها:**
+• پشتیبانی از زبان فارسی و انگلیسی
+• کیفیت بالای صدا
+• تبدیل فوری
+
+{stats_text}
+
+⚠️ **محدودیت‌ها (غیر ادمین):**
+• حداکثر {ai_voice_handler.max_characters} کاراکتر
+• {ai_voice_handler.max_requests_per_day} درخواست در روز
+
+🔙 برای بازگشت، دکمه "🔙 بازگشت به منوی اصلی" را بزنید
+        """
+        
+        await update.message.reply_text(
+            welcome_message,
+            parse_mode='Markdown',
+            reply_markup=get_ai_menu_markup()
+        )
+        
+        # ذخیره حالت TTS در context
+        context.user_data['awaiting_tts'] = True
+        return
+    
+    elif message_text == "📝 صدا به متن":
+        # STT: Speech to Text
+        if not VOICE_HANDLER_AVAILABLE:
+            await update.message.reply_text(
+                "❌ سرویس صدا در حال حاضر غیرفعال است.",
+                reply_markup=get_ai_menu_markup()
+            )
+            return
+        
+        bot_logger.log_user_action(user.id, "STT_REQUEST", "درخواست تبدیل صدا به متن")
+        
+        # دریافت آمار استفاده کاربر
+        is_admin = (user.id == ADMIN_USER_ID)
+        stats = ai_voice_handler.get_usage_stats(user.id)
+        
+        if is_admin:
+            stats_text = "👨‍💼 شما ادمین هستید و محدودیتی ندارید"
+        else:
+            stats_text = f"📊 **آمار امروز:** {stats['today']}/{stats['limit']} (باقیمانده: {stats['remaining']})"
+        
+        welcome_message = f"""
+📝 **تبدیل صدا به متن**
+
+حالا یک فایل صوتی بفرستید 🎙️
+
+🔊 **قابلیت‌ها:**
+• پشتیبانی از زبان فارسی و انگلیسی
+• تشخیص دقیق کلمات
+• تبدیل فوری
+
+{stats_text}
+
+⚠️ **محدودیت‌ها (غیر ادمین):**
+• {ai_voice_handler.max_requests_per_day} درخواست در روز
+
+🔙 برای بازگشت، دکمه "🔙 بازگشت به منوی اصلی" را بزنید
+        """
+        
+        await update.message.reply_text(
+            welcome_message,
+            parse_mode='Markdown',
+            reply_markup=get_ai_menu_markup()
+        )
+        
+        # ذخیره حالت STT در context
+        context.user_data['awaiting_stt'] = True
+        return
+    
+    # بررسی حالت TTS - اگر کاربر متن برای TTS فرستاده
+    if context.user_data.get('awaiting_tts', False):
+        try:
+            is_admin = (user.id == ADMIN_USER_ID)
+            
+            # پاک کردن حالت
+            context.user_data['awaiting_tts'] = False
+            
+            # نمایش پیام در حال پردازش
+            loading_message = await update.message.reply_text("⏳ در حال تبدیل متن به صدا...")
+            
+            # تبدیل متن به صدا
+            result = ai_voice_handler.text_to_speech(message_text, user.id, is_admin)
+            
+            # حذف پیام loading
+            await loading_message.delete()
+            
+            if result['success']:
+                # ارسال فایل صوتی
+                with open(result['audio_file'], 'rb') as audio:
+                    caption = f"✅ **متن شما به صدا تبدیل شد**\n\n"
+                    if not is_admin:
+                        caption += f"📊 درخواست باقیمانده امروز: {result['remaining']}"
+                    
+                    await update.message.reply_voice(
+                        voice=audio,
+                        caption=caption,
+                        parse_mode='Markdown'
+                    )
+                
+                # حذف فایل موقت
+                try:
+                    os.remove(result['audio_file'])
+                except:
+                    pass
+                
+                bot_logger.log_user_action(user.id, "TTS_SUCCESS", f"{len(message_text)} کاراکتر")
+            else:
+                # خطا در تبدیل
+                await update.message.reply_text(
+                    result['error'],
+                    parse_mode='Markdown'
+                )
+                bot_logger.log_user_action(user.id, "TTS_FAILED", result['error'])
+        
+        except Exception as e:
+            logger.error(f"❌ خطا در TTS handler: {e}", exc_info=True)
+            try:
+                await loading_message.delete()
+            except:
+                pass
+            await update.message.reply_text(
+                "❌ متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید."
             )
         
         return
@@ -2169,6 +2437,9 @@ async def main() -> None:
         fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
     )
     application.add_handler(tradingview_conv_handler)
+    
+    # Handler برای voice messages (STT)
+    application.add_handler(MessageHandler(filters.VOICE, voice_message_handler))
     
     # Handler برای پیام‌های ناشناخته (راهنمایی ساده)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, fallback_handler))
