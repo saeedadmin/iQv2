@@ -2,54 +2,45 @@
 # -*- coding: utf-8 -*-
 
 """
-ماژول مدیریت تبدیل صدا به متن و متن به صدا با ElevenLabs API
+ماژول مدیریت تبدیل صدا به متن و متن به صدا با Self-Hosted API
 نویسنده: MiniMax Agent
 
 قابلیت‌ها:
-- Text to Speech (TTS): تبدیل متن به صدا
-- Speech to Text (STT): تبدیل صدا به متن
+- Text to Speech (TTS): تبدیل متن به صدا با Coqui TTS
+- Speech to Text (STT): تبدیل صدا به متن با Whisper
 - Rate Limiting: محدودیت 10 درخواست در روز برای کاربران عادی
-- Character Limiting: محدودیت 50 کاراکتر برای کاربران عادی
-- پشتیبانی از زبان فارسی و انگلیسی
+- Character Limiting: محدودیت 200 کاراکتر برای کاربران عادی
+- پشتیبانی کامل از زبان فارسی
 """
 
 import logging
 import os
 import datetime
 import tempfile
+import requests
 from typing import Optional, Dict, Any
-from elevenlabs.client import ElevenLabs
 
 logger = logging.getLogger(__name__)
 
 class AIVoiceHandler:
     """مدیریت تبدیل صدا به متن و متن به صدا"""
     
-    def __init__(self, api_key: str = None, db_manager = None):
+    def __init__(self, api_url: str = None, db_manager = None):
         """مقداردهی handler صدا"""
-        self.api_key = api_key or os.getenv('ELEVENLABS_API_KEY')
-        if not self.api_key:
-            raise ValueError("ELEVENLABS_API_KEY is required")
-        
-        self.client = ElevenLabs(api_key=self.api_key)
+        self.api_url = api_url or os.getenv('VOICE_API_URL', 'https://saeedm777-stt.hf.space')
         self.db = db_manager
         
         # تنظیمات محدودیت
         self.max_requests_per_day = 10  # حداکثر درخواست روزانه برای کاربران عادی
-        self.max_characters = 50  # حداکثر تعداد کاراکتر برای کاربران عادی
+        self.max_characters = 200  # حداکثر تعداد کاراکتر برای کاربران عادی (افزایش یافته)
         
-        # تنظیمات صدا برای TTS
-        self.default_voice_id = "JBFqnCBsd6RMkjVDRZzb"  # صدای George
-        self.model_id = "eleven_multilingual_v2"  # مدل چندزبانه
-        self.output_format = "mp3_44100_128"
-        
-        # تنظیمات STT
-        self.stt_model_id = "scribe_v1"
+        # تنظیمات timeout برای درخواست‌ها
+        self.request_timeout = 60  # 60 ثانیه برای درخواست‌های طولانی
         
         # ذخیره استفاده روزانه کاربران
         self.user_daily_usage = {}  # {user_id: {'date': date, 'count': int}}
         
-        logger.info("✅ AIVoiceHandler با ElevenLabs API مقداردهی شد")
+        logger.info(f"✅ AIVoiceHandler با Self-Hosted API مقداردهی شد: {self.api_url}")
     
     def _check_daily_limit(self, user_id: int, is_admin: bool = False) -> Dict[str, Any]:
         """
@@ -141,25 +132,27 @@ class AIVoiceHandler:
                     'remaining': limit_check['remaining']
                 }
             
-            # تبدیل متن به صدا با ElevenLabs
+            # تبدیل متن به صدا با Self-Hosted API
             logger.info(f"🎤 تبدیل متن به صدا برای کاربر {user_id} ({len(text)} کاراکتر)")
             
-            audio = self.client.text_to_speech.convert(
-                text=text,
-                voice_id=self.default_voice_id,
-                model_id=self.model_id,
-                output_format=self.output_format
+            # ارسال درخواست به API
+            response = requests.post(
+                f"{self.api_url}/tts",
+                json={"text": text},
+                timeout=self.request_timeout
             )
+            
+            if response.status_code != 200:
+                raise Exception(f"API Error: {response.status_code} - {response.text}")
             
             # ذخیره فایل صوتی در پوشه موقت
             temp_dir = tempfile.gettempdir()
-            audio_filename = f"tts_{user_id}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
+            audio_filename = f"tts_{user_id}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
             audio_path = os.path.join(temp_dir, audio_filename)
             
             # نوشتن بایت‌های صوتی در فایل
             with open(audio_path, 'wb') as f:
-                for chunk in audio:
-                    f.write(chunk)
+                f.write(response.content)
             
             # افزایش شمارنده استفاده
             self._increment_usage(user_id, is_admin)
@@ -218,17 +211,27 @@ class AIVoiceHandler:
                     'remaining': limit_check['remaining']
                 }
             
-            # تبدیل صدا به متن با ElevenLabs
+            # تبدیل صدا به متن با Self-Hosted API
             logger.info(f"📝 تبدیل صدا به متن برای کاربر {user_id}")
             
+            # ارسال درخواست به API
             with open(audio_file_path, 'rb') as audio_file:
-                result = self.client.speech_to_text.convert(
-                    file=audio_file,
-                    model_id=self.stt_model_id
+                files = {'file': audio_file}
+                response = requests.post(
+                    f"{self.api_url}/stt",
+                    files=files,
+                    timeout=self.request_timeout
                 )
             
-            # استخراج متن از نتیجه
-            text = result.text if hasattr(result, 'text') else str(result)
+            if response.status_code != 200:
+                raise Exception(f"API Error: {response.status_code} - {response.text}")
+            
+            # استخراج متن از پاسخ JSON
+            result = response.json()
+            text = result.get('text', '')
+            
+            if not text:
+                raise Exception("متنی دریافت نشد")
             
             # افزایش شمارنده استفاده
             self._increment_usage(user_id, is_admin)
