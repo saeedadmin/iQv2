@@ -91,9 +91,7 @@ gemini_chat = GeminiChatHandler(db_manager=db_manager)
 ai_chat_state = AIChatStateManager(db_manager)
 ai_image_gen = AIImageGenerator()
 
-# Initialize AI Voice Handler (TTS/STT)
-try:
-# Voice handler removed - no longer needed
+# AI handlers initialized successfully
 
 # Initialize TradingView fetcher if available
 if TRADINGVIEW_AVAILABLE:
@@ -1277,8 +1275,7 @@ async def send_scheduled_news(context: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         logger.error(f"❌ خطای کلی در ارسال خودکار اخبار: {e}")
 
-# Handler برای voice messages
-# Voice message handler removed - no longer needed
+# Voice handlers removed - no longer needed
 
 # Handler برای پیام‌های متنی (echo)
 async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
