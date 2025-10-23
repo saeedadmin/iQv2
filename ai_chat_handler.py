@@ -48,7 +48,8 @@ class GeminiChatHandler:
         self.max_retries = 3  # حداکثر تعداد تلاش مجدد
         self.retry_delay_base = 2  # تأخیر پایه برای retry (ثانیه)
         
-        logger.info("✅ GeminiChatHandler با حافظه مکالمه مقداردهی شد")
+        # ثبت پیام فقط در دیباگ
+        logger.debug("✅ GeminiChatHandler با حافظه مکالمه مقداردهی شد")
     
     def check_rate_limit(self, user_id: int) -> Dict[str, Any]:
         """بررسی محدودیت تعداد پیام"""
@@ -428,7 +429,7 @@ class AIChatStateManager:
         """مقداردهی state manager"""
         self.db = db_manager
         self._init_chat_state_table()
-        logger.info("✅ AIChatStateManager مقداردهی شد")
+        logger.debug("✅ AIChatStateManager مقداردهی شد")
     
     def _init_chat_state_table(self):
         """ایجاد جدول state چت"""
@@ -455,7 +456,7 @@ class AIChatStateManager:
             ''')
             
             conn.commit()
-            logger.info("✅ جدول ai_chat_state ایجاد شد")
+            logger.debug("✅ جدول ai_chat_state ایجاد شد")
             
         except Exception as e:
             if conn:

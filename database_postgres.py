@@ -42,8 +42,13 @@ class PostgreSQLManager:
                 1, 10,  # min and max connections
                 **self.connection_params
             )
+            # بررسی اینکه آیا دیتابیس قبلاً مقداردهی شده یا نه
+            is_first_run = self.is_first_database_run()
             self.init_database()
-            logger.info("✅ PostgreSQL دیتابیس با موفقیت مقداردهی شد")
+            if is_first_run:
+                logger.info("✅ PostgreSQL دیتابیس با موفقیت مقداردهی شد")
+            else:
+                logger.debug("✅ PostgreSQL دیتابیس متصل شد")
         except Exception as e:
             logger.error(f"❌ خطا در اتصال به PostgreSQL: {e}")
             raise
@@ -201,7 +206,14 @@ class PostgreSQLManager:
                 logger.warning(f"⚠️ Migration warning: {migration_error}")
             
             conn.commit()
-            logger.info("✅ جداول دیتابیس ایجاد شدند")
+            
+            # فقط در صورتی که اولین بار باشد این پیام نمایش داده شود
+            if self.is_first_database_run():
+                logger.info("✅ جداول دیتابیس ایجاد شدند")
+                # علامت‌گذاری دیتابیس به عنوان مقداردهی شده
+                self.mark_database_initialized()
+            else:
+                logger.debug("🔄 جداول دیتابیس بررسی شدند")
             
         except Exception as e:
             if conn:
@@ -212,6 +224,75 @@ class PostgreSQLManager:
             if conn:
                 cursor.close()
                 self.return_connection(conn)
+
+    def is_first_database_run(self) -> bool:
+        """بررسی اینکه آیا این اولین بار اجرای دیتابیس است یا نه"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # بررسی وجود جدول system_info
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'system_info'
+                )
+            """)
+            
+            table_exists = cursor.fetchone()[0]
+            
+            if not table_exists:
+                cursor.close()
+                self.return_connection(conn)
+                return True  # اولین بار است
+                
+            # بررسی علامت‌گذاری اولیه
+            cursor.execute("""
+                SELECT value FROM system_info WHERE key = 'database_initialized'
+            """)
+            
+            result = cursor.fetchone()
+            cursor.close()
+            self.return_connection(conn)
+            
+            # اگر علامت‌گذاری وجود نداشته باشد، اولین بار است
+            return result is None
+            
+        except Exception as e:
+            logger.warning(f"⚠️ خطا در بررسی وضعیت اولیه دیتابیس: {e}")
+            return True  # در صورت خطا، فرض می‌کنیم اولین بار است
+
+    def mark_database_initialized(self):
+        """علامت‌گذاری دیتابیس به عنوان مقداردهی شده"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # ایجاد جدول system_info اگر وجود نداشته باشد
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS system_info (
+                    id SERIAL PRIMARY KEY,
+                    key TEXT UNIQUE NOT NULL,
+                    value TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # ثبت علامت‌گذاری
+            cursor.execute('''
+                INSERT INTO system_info (key, value)
+                VALUES ('database_initialized', 'true')
+                ON CONFLICT (key) DO UPDATE SET
+                    value = EXCLUDED.value,
+                    created_at = CURRENT_TIMESTAMP
+            ''')
+            
+            conn.commit()
+            cursor.close()
+            self.return_connection(conn)
+            
+        except Exception as e:
+            logger.warning(f"⚠️ خطا در علامت‌گذاری دیتابیس: {e}")
 
     def add_user(self, user_id: int, username: str = None, first_name: str = None, 
                  last_name: str = None, is_admin: bool = False) -> bool:

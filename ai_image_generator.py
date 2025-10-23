@@ -19,7 +19,7 @@ class AIImageGenerator:
     def __init__(self, api_key: str = None):
         """مقداردهی image generator"""
         self.api_key = api_key
-        logger.info("✅ AIImageGenerator مقداردهی شد (در حالت placeholder)")
+        logger.debug("✅ AIImageGenerator مقداردهی شد (در حالت placeholder)")
     
     def generate_image(self, prompt: str) -> Dict[str, Any]:
         """
