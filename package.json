@@ -8,7 +8,7 @@
     "dev": "npx n8n start --tunnel"
   },
   "dependencies": {
-    "n8n": "^1.0.0"
+    "n8n": "^0.234.0"
   },
   "engines": {
     "node": ">=20.0.0"
