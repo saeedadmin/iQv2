@@ -43,6 +43,7 @@ from keyboards import get_main_menu_markup, get_public_section_markup, get_ai_me
 from ai_news import get_ai_news
 from ai_chat_handler import GeminiChatHandler, AIChatStateManager
 from ai_image_generator import AIImageGenerator
+from ocr_handler import OCRHandler
 # Voice handler removed - no longer needed
 # Signal scraper removed - will be re-implemented later
 
@@ -90,6 +91,7 @@ public_menu = PublicMenuManager(db_manager)
 gemini_chat = GeminiChatHandler(db_manager=db_manager)
 ai_chat_state = AIChatStateManager(db_manager)
 ai_image_gen = AIImageGenerator()
+ocr_handler = OCRHandler()
 
 # AI handlers initialized successfully
 
@@ -1726,7 +1728,101 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         
         return
     
+    elif message_text == "📷 استخراج متن از عکس":
+        bot_logger.log_user_action(user.id, "OCR_REQUEST", "درخواست استخراج متن از عکس")
+        
+        # نمایش راهنمای OCR
+        await update.message.reply_text(
+            ocr_handler.get_usage_info(),
+            parse_mode='Markdown',
+            disable_web_page_preview=False
+        )
+        
+        # اضافه کردن reply keyboard با دکمه خروج
+        exit_keyboard = ReplyKeyboardMarkup(
+            [["🔙 بازگشت به منوی AI"]],
+            resize_keyboard=True
+        )
+        await update.message.reply_text(
+            "📷 لطفاً عکس مورد نظر را ارسال کنید یا روی دکمه زیر کلیک کنید:",
+            reply_markup=exit_keyboard
+        )
+        
+        return
+    
     # Voice functionality removed - no longer needed
+
+# چک کردن OCR request
+if message_text == "🔙 بازگشت به منوی AI":
+    await update.message.reply_text(
+        "🤖 **منوی هوش مصنوعی**",
+        parse_mode='Markdown',
+        reply_markup=get_ai_menu_markup()
+    )
+    return
+
+# OCR Handler for Image Processing
+async def ocr_image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """هندلر پردازش تصاویر برای OCR"""
+    user = update.effective_user
+    
+    # چک کردن دسترسی
+    if not await check_user_access(user.id):
+        if db_manager.is_user_blocked(user.id):
+            await update.message.reply_text("🚫 شما از استفاده از این ربات محروم شده‌اید.")
+        else:
+            await update.message.reply_text("🔧 ربات در حال تعمیر است. لطفاً بعداً تلاش کنید.")
+        return
+    
+    # چک اسپم
+    is_spam = await check_spam_and_handle(update, context)
+    if is_spam:
+        return
+    
+    # به‌روزرسانی فعالیت
+    db_manager.update_user_activity(user.id)
+    
+    # بررسی اینکه آیا تصویر است
+    if not update.message.photo:
+        await update.message.reply_text("❌ لطفاً یک تصویر ارسال کنید.")
+        return
+    
+    try:
+        # نمایش پیام loading
+        loading_message = await update.message.reply_text("🔄 در حال پردازش تصویر...")
+        
+        # دریافت بهترین کیفیت تصویر
+        photo = update.message.photo[-1]
+        
+        # دانلود تصویر
+        file = await context.bot.get_file(photo.file_id)
+        image_bytes = await file.download_as_bytearray()
+        image_data = bytes(image_bytes)
+        
+        # پردازش OCR
+        result = ocr_handler.extract_text_from_image(image_data)
+        
+        # حذف پیام loading
+        await loading_message.delete()
+        
+        # نمایش نتیجه
+        formatted_result = ocr_handler.format_ocr_result(result)
+        await update.message.reply_text(
+            formatted_result,
+            parse_mode='Markdown'
+        )
+        
+        # لاگ کردن عملیات
+        bot_logger.log_user_action(user.id, "OCR_PROCESSED", "تصویر پردازش شد")
+        
+    except Exception as e:
+        await loading_message.delete()
+        logger.error(f"خطا در پردازش OCR: {e}")
+        await update.message.reply_text(
+            "❌ متاسفانه در پردازش تصویر خطایی رخ داد. لطفاً دوباره تلاش کنید."
+        )
+    
+    return
     
     # چک کردن اینکه آیا کاربر در حالت چت با AI است
     if ai_chat_state.is_in_chat(user.id):
@@ -2181,6 +2277,9 @@ async def main() -> None:
     
     # Handler برای پیام‌های ناشناخته (راهنمایی ساده)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, fallback_handler))
+    
+    # OCR Image Handler
+    application.add_handler(MessageHandler(filters.PHOTO, ocr_image_handler))
     
     # Handler برای خطاها
     application.add_error_handler(error_handler)
