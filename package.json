@@ -1,0 +1,16 @@
+{
+  "name": "iqv2-n8n-bot",
+  "version": "1.0.0",
+  "description": "n8n deployment for iQv2 Telegram Bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx n8n start",
+    "dev": "npx n8n start --tunnel"
+  },
+  "dependencies": {
+    "n8n": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
