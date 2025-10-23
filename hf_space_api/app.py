@@ -7,7 +7,8 @@ import tempfile
 import os
 from pathlib import Path
 import logging
-from gtts import gTTS
+import edge_tts
+import asyncio
 import uvicorn
 
 # Setup logging
@@ -42,7 +43,7 @@ async def load_models():
         # Use small model for good balance between speed and accuracy
         whisper_model = whisper.load_model("small")
         logger.info("✅ Whisper model loaded successfully")
-        logger.info("✅ gTTS ready for Persian text-to-speech")
+        logger.info("✅ Edge TTS ready for Persian text-to-speech (Microsoft Azure)")
         
     except Exception as e:
         logger.error(f"❌ Error loading models: {e}")
@@ -115,7 +116,7 @@ async def speech_to_text(audio: UploadFile = File(...)):
 @app.post("/tts")
 async def text_to_speech(text: str):
     """
-    Convert Persian text to speech using Google TTS (gTTS)
+    Convert Persian text to speech using Microsoft Edge TTS
     
     Parameters:
     - text: Persian text to convert
@@ -134,9 +135,10 @@ async def text_to_speech(text: str):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
             output_path = temp_file.name
         
-        # Generate speech using gTTS
-        tts = gTTS(text=text, lang='fa', slow=False)
-        tts.save(output_path)
+        # Generate speech using Edge TTS
+        # Using Persian (Farsi) voice from Microsoft Azure
+        communicate = edge_tts.Communicate(text, "fa-IR-DilaraNeural")
+        await communicate.save(output_path)
         
         logger.info(f"✅ Speech generated successfully")
         
