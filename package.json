@@ -4,13 +4,13 @@
   "description": "n8n deployment for iQv2 Telegram Bot",
   "main": "index.js",
   "scripts": {
-    "start": "npx n8n start",
+    "start": "n8n start",
     "dev": "npx n8n start --tunnel"
   },
   "dependencies": {
     "n8n": "^1.0.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }
