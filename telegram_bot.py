@@ -1753,13 +1753,13 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     # Voice functionality removed - no longer needed
 
 # چک کردن OCR request
-if message_text == "🔙 بازگشت به منوی AI":
-    await update.message.reply_text(
-        "🤖 **منوی هوش مصنوعی**",
-        parse_mode='Markdown',
-        reply_markup=get_ai_menu_markup()
-    )
-    return
+    if message_text == "🔙 بازگشت به منوی AI":
+        await update.message.reply_text(
+            "🤖 **منوی هوش مصنوعی**",
+            parse_mode='Markdown',
+            reply_markup=get_ai_menu_markup()
+        )
+        return
 
 # OCR Handler for Image Processing
 async def ocr_image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1823,115 +1823,6 @@ async def ocr_image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         )
     
     return
-    
-    # چک کردن اینکه آیا کاربر در حالت چت با AI است
-    if ai_chat_state.is_in_chat(user.id):
-        # کاربر در حالت چت است - پیام را به AI بفرست
-        try:
-            # نمایش پیام "در حال پردازش"
-            typing_message = await update.message.reply_text("⏳ در حال فکر کردن...")
-            
-            # ارسال پیام به Gemini با تاریخچه
-            result = gemini_chat.send_message_with_history(user.id, message_text)
-            
-            # حذف پیام typing
-            await typing_message.delete()
-            
-            if result['success']:
-                # فرمت کردن پاسخ برای تلگرام (با تشخیص و فرمت کد)
-                formatted_response = gemini_chat.format_response_for_telegram(result['response'])
-                
-                # محدود کردن طول پیام (تلگرام حداکثر 4096 کاراکتر)
-                if len(formatted_response) > 4000:
-                    # تقسیم پیام به چند قسمت
-                    parts = [formatted_response[i:i+4000] for i in range(0, len(formatted_response), 4000)]
-                    for part in parts:
-                        await update.message.reply_text(
-                            part,
-                            parse_mode='HTML'
-                        )
-                else:
-                    await update.message.reply_text(
-                        formatted_response,
-                        parse_mode='HTML'
-                    )
-                
-                # افزایش شمارنده پیام‌ها
-                ai_chat_state.increment_message_count(user.id)
-                
-                # لاگ کردن چت
-                bot_logger.log_user_action(
-                    user.id, 
-                    "AI_CHAT_MESSAGE", 
-                    f"Tokens: {result['tokens_used']}"
-                )
-                
-            else:
-                # خطا رخ داده - بررسی نوع خطا
-                error_type = result.get('error_type', 'unknown')
-                error_msg = result.get('error', 'خطای نامشخص')
-                
-                if error_type == 'rate_limit':
-                    # خطای rate limit
-                    wait_time = int(error_msg.split(':')[1])
-                    await update.message.reply_text(
-                        f"⏱️ **تعداد پیام بیش از حد مجاز**\n\n"
-                        f"لطفاً {wait_time} ثانیه صبر کنید و دوباره تلاش کنید.\n\n"
-                        f"🛡️ **محدودیت:** {gemini_chat.rate_limit_messages} پیام در {gemini_chat.rate_limit_seconds} ثانیه",
-                        parse_mode='Markdown'
-                    )
-                    
-                elif error_type == 'server_overload':
-                    # سرور Google overload است (503, 500, 504)
-                    status_code = error_msg.split(':')[1] if ':' in error_msg else 'نامشخص'
-                    await update.message.reply_text(
-                        f"⚠️ **سرور هوش مصنوعی مشغول است**\n\n"
-                        f"سرور Google Gemini در حال حاضر بار زیادی دارد.\n"
-                        f"این مشکل معمولاً موقتی است.\n\n"
-                        f"🔄 **چه کار کنید:**\n"
-                        f"• چند دقیقه صبر کنید و دوباره امتحان کنید\n"
-                        f"• یا دکمه 🚪 خروج از چت را بزنید و دوباره وارد شوید\n\n"
-                        f"_کد خطا: {status_code}_",
-                        parse_mode='Markdown'
-                    )
-                    
-                elif error_type == 'timeout':
-                    # زمان درخواست تمام شد
-                    await update.message.reply_text(
-                        f"⏱️ **زمان پاسخ‌دهی تمام شد**\n\n"
-                        f"پاسخ هوش مصنوعی بیش از حد طولانی شد.\n"
-                        f"این می‌تواند به دلیل بار سنگین سرور باشد.\n\n"
-                        f"🔄 لطفاً دوباره تلاش کنید."
-                    )
-                    
-                elif error_type == 'network_error':
-                    # خطای شبکه
-                    await update.message.reply_text(
-                        f"🌐 **خطای ارتباط با سرور**\n\n"
-                        f"مشکلی در ارتباط با سرور Google Gemini وجود دارد.\n\n"
-                        f"🔄 لطفاً چند لحظه صبر کنید و دوباره تلاش کنید."
-                    )
-                    
-                else:
-                    # سایر خطاها
-                    await update.message.reply_text(
-                        f"❌ **متأسفانه خطایی رخ داد**\n\n"
-                        f"نوع خطا: {error_type}\n"
-                        f"پیام: {error_msg}\n\n"
-                        f"🔄 لطفاً دوباره تلاش کنید."
-                    )
-                
-        except Exception as e:
-            logger.error(f"❌ خطا در پردازش چت AI: {e}")
-            try:
-                await typing_message.delete()
-            except:
-                pass
-            await update.message.reply_text(
-                "❌ متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید."
-            )
-        
-        return
     
     # برای پیام‌های ناشناخته، جواب نده
     # فقط فعالیت کاربر به‌روزرسانی شده و لاگ ثبت می‌شود
