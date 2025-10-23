@@ -177,11 +177,11 @@ class OCRHandler:
             files = {'file': ('image.png', image_data, 'image/png')}
             data = {
                 'apikey': self.ocr_space_api_key,
-                'language': 'eng',  # فقط انگلیسی برای اطمینان
+                'language': 'auto',  # تشخیص خودکار زبان
                 'isOverlayRequired': False,
-                'detectOrientation': True,
                 'scale': True,
-                'OCREngine': 2,
+                'detectOrientation': True,
+                'OCREngine': 2,  # موتور 2 برای زبان‌های بیشتر
                 'isTable': False,
                 'detectCheckbox': False
             }
@@ -214,7 +214,7 @@ class OCRHandler:
                                 'confidence': confidence,
                                 'processing_time': processing_time,
                                 'method': 'ocr_space',
-                                'languages': 'en+fa'
+                                'languages': 'auto'  # تشخیص خودکار زبان
                             }
                 
                 # اگر متن خالی یا خطا
