@@ -6,7 +6,7 @@
 3. در منوی سمت چپ روی **Community Nodes** کلیک کنید
 4. در کادر **Package Name** این رو وارد کنید:
    ```
-   @telepermium/teleport-radio-nodes
+   @telepilotco/n8n-nodes-telepilot
    ```
 5. روی **Install** کلیک کنید
 
