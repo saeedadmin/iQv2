@@ -8,9 +8,9 @@
     "dev": "npx n8n start --tunnel"
   },
   "dependencies": {
-    "n8n": "^0.234.0"
+    "n8n": "^1.117.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

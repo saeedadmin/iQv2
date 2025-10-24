@@ -1,5 +1,5 @@
 # Dockerfile for n8n on Render
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Install dependencies
 RUN apk add --no-cache python3 make g++
