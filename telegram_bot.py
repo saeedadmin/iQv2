@@ -1307,6 +1307,87 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     message_text = update.message.text
     user_data = db_manager.get_user(user.id)
     
+    # 🚨 بررسی حالت چت با AI - اگر کاربر در چت است، پیام را به AI بفرستید
+    if ai_chat_state.is_in_chat(user.id) and message_text != "❌ خروج از چت":
+        bot_logger.log_user_action(user.id, "AI_CHAT_MESSAGE", f"پیام در چت: {message_text[:50]}...")
+        
+        # نمایش پیام "در حال تایپ..."
+        typing_message = await update.message.reply_text("🤖 در حال پردازش پیام شما...")
+        
+        try:
+            # ارسال پیام به AI
+            result = await asyncio.to_thread(
+                gemini_chat.send_message_with_history,
+                user.id,
+                message_text
+            )
+            
+            # حذف پیام "در حال تایپ..."
+            await typing_message.delete()
+            
+            if result['success']:
+                # فرمت پاسخ برای تلگرام
+                formatted_response = gemini_chat.format_response_for_telegram(result['response'])
+                
+                # ارسال پاسخ AI
+                await update.message.reply_text(
+                    formatted_response,
+                    parse_mode='HTML',
+                    disable_web_page_preview=True
+                )
+                
+                bot_logger.log_user_action(user.id, "AI_CHAT_RESPONSE_SUCCESS", f"پاسخ موفق - توکن‌ها: {result['tokens_used']}")
+                
+                # افزایش شمارنده پیام
+                ai_chat_state.increment_message_count(user.id)
+                
+            else:
+                # مدیریت خطاهای مختلف
+                error_type = result.get('error_type', 'unknown')
+                error_msg = result.get('error', '')
+                
+                if error_type == 'rate_limit':
+                    wait_time = int(error_msg.split(':')[1]) if ':' in error_msg else 60
+                    await update.message.reply_text(
+                        f"⏱️ محدودیت تعداد پیام! لطفاً {wait_time} ثانیه صبر کنید."
+                    )
+                elif error_type == 'server_overload':
+                    await update.message.reply_text(
+                        "⚠️ سرور AI در حال حاضر شلوغ است. لطفاً چند دقیقه بعد تلاش کنید."
+                    )
+                elif error_type == 'timeout':
+                    await update.message.reply_text(
+                        "⏱️ زمان پاسخ به پایان رسید. لطفاً دوباره تلاش کنید."
+                    )
+                elif error_type == 'network_error':
+                    await update.message.reply_text(
+                        "🌐 مشکل در اتصال به اینترنت. لطفاً اتصال خود را بررسی کنید."
+                    )
+                elif error_type == 'client_error':
+                    await update.message.reply_text(
+                        "❌ خطا در درخواست. لطفاً پیام خود را ساده‌تر کنید."
+                    )
+                else:
+                    await update.message.reply_text(
+                        f"❌ خطای غیرمنتظره: {error_msg}"
+                    )
+                
+                bot_logger.log_user_action(user.id, "AI_CHAT_RESPONSE_ERROR", f"خطا: {error_type}")
+        
+        except Exception as e:
+            # حذف پیام "در حال تایپ..." در صورت خطا
+            try:
+                await typing_message.delete()
+            except:
+                pass
+            
+            logger.error(f"❌ خطا در پردازش پیام چت AI: {e}")
+            await update.message.reply_text(
+                "❌ متاسفانه در پردازش پیام شما خطایی رخ داد. لطفاً دوباره تلاش کنید."
+            )
+        
+        return
+    
     # بررسی دکمه‌های کیبورد
     if message_text == "💰 ارزهای دیجیتال":
         # نمایش منوی ارزهای دیجیتال
