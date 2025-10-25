@@ -354,86 +354,139 @@ class PublicMenuManager:
         return message
     
     def format_crypto_message(self, data: Dict[str, Any]) -> str:
-        """فرمت کردن پیام قیمت‌های ارز"""
+        """فرمت کردن پیام قیمت‌های ارز - نسخه بدون مشکل کاراکتر"""
         if data.get('error'):
             return f"❌ خطا در دریافت اطلاعات:\n{data['error']}"
         
-        # تبدیل دلار به تومان (اگر موجود باشد)
-        usd_to_irr = data.get('usd_irr', 70000)  # fallback rate
+        # تبدیل دلار به تومان
+        usd_to_irr = data.get('usd_irr', 70000)
         if usd_to_irr == 0:
             usd_to_irr = 70000
         
-        message = "💰 *قیمت‌های لحظه‌ای ارز*\n\n"
+        # آماده سازی متغیرهای پیام
+        message_parts = []
+        
+        # هدر اصلی
+        message_parts.append("💰 قیمتهای لحظه ای ارز")
+        message_parts.append("")
         
         # بیت کوین
         btc = data.get('bitcoin', {})
         if btc.get('price_usd'):
-            btc_irr = btc['price_usd'] * usd_to_irr
+            btc_price = int(btc['price_usd'])
+            btc_irr = int(btc['price_usd'] * usd_to_irr)
             btc_change = btc.get('change_24h', 0)
-            change_icon = "🔺" if btc_change > 0 else "🔻" if btc_change < 0 else "➖"
-            message += f"🟠 *بیت کوین (BTC):*\n"
-            message += f"💵 ${btc['price_usd']:,.0f}\n"
-            message += f"💰 {btc_irr:,.0f} تومان\n"
-            message += f"{change_icon} {btc_change:+.2f}% (24 ساعت)\n\n"
+            
+            if btc_change > 0:
+                change_icon = "🔺"
+                change_text = f"+{btc_change:.2f}"
+            elif btc_change < 0:
+                change_icon = "🔻"
+                change_text = f"{btc_change:.2f}"
+            else:
+                change_icon = "➖"
+                change_text = "0.00"
+            
+            message_parts.append("🟠 بیت کوین (BTC):")
+            message_parts.append(f"💵 ${btc_price:,}")
+            message_parts.append(f"💰 {btc_irr:,} تومان")
+            message_parts.append(f"{change_icon} {change_text}% (24 ساعت)")
+            message_parts.append("")
         
         # اتریوم
         eth = data.get('ethereum', {})
         if eth.get('price_usd'):
-            eth_irr = eth['price_usd'] * usd_to_irr
+            eth_price = int(eth['price_usd'])
+            eth_irr = int(eth['price_usd'] * usd_to_irr)
             eth_change = eth.get('change_24h', 0)
-            change_icon = "🔺" if eth_change > 0 else "🔻" if eth_change < 0 else "➖"
-            message += f"🔵 *اتریوم (ETH):*\n"
-            message += f"💵 ${eth['price_usd']:,.0f}\n"
-            message += f"💰 {eth_irr:,.0f} تومان\n"
-            message += f"{change_icon} {eth_change:+.2f}% (24 ساعت)\n\n"
+            
+            if eth_change > 0:
+                change_icon = "🔺"
+                change_text = f"+{eth_change:.2f}"
+            elif eth_change < 0:
+                change_icon = "🔻"
+                change_text = f"{eth_change:.2f}"
+            else:
+                change_icon = "➖"
+                change_text = "0.00"
+            
+            message_parts.append("🔵 اتریوم (ETH):")
+            message_parts.append(f"💵 ${eth_price:,}")
+            message_parts.append(f"💰 {eth_irr:,} تومان")
+            message_parts.append(f"{change_icon} {change_text}% (24 ساعت)")
+            message_parts.append("")
         
         # بیشترین صعود
         gainer = data.get('top_gainer', {})
         if gainer.get('symbol'):
-            gainer_price_irr = gainer.get('price_usd', 0) * usd_to_irr
-            message += f"🚀 *بیشترین صعود:*\n"
-            message += f"🔥 {gainer['symbol']} ({gainer.get('name', 'N/A')})\n"
-            message += f"💵 ${gainer.get('price_usd', 0):,.4f}\n"
-            message += f"💰 {gainer_price_irr:,.0f} تومان\n"
-            message += f"🔺 {gainer.get('change_24h', 0):+.2f}%\n\n"
+            gainer_price = gainer.get('price_usd', 0)
+            gainer_irr = int(gainer_price * usd_to_irr)
+            gainer_change = gainer.get('change_24h', 0)
+            
+            message_parts.append("🚀 بیشترین صعود:")
+            message_parts.append(f"🔥 {gainer['symbol']} ({gainer.get('name', 'N/A')})")
+            message_parts.append(f"💵 ${gainer_price:.4f}")
+            message_parts.append(f"💰 {gainer_irr:,} تومان")
+            message_parts.append(f"🔺 +{gainer_change:.2f}%")
+            message_parts.append("")
         
         # بیشترین نزول
         loser = data.get('top_loser', {})
         if loser.get('symbol'):
-            loser_price_irr = loser.get('price_usd', 0) * usd_to_irr
-            message += f"📉 *بیشترین نزول:*\n"
-            message += f"💥 {loser['symbol']} ({loser.get('name', 'N/A')})\n"
-            message += f"💵 ${loser.get('price_usd', 0):,.4f}\n"
-            message += f"💰 {loser_price_irr:,.0f} تومان\n"
-            message += f"🔻 {loser.get('change_24h', 0):+.2f}%\n\n"
+            loser_price = loser.get('price_usd', 0)
+            loser_irr = int(loser_price * usd_to_irr)
+            loser_change = loser.get('change_24h', 0)
+            
+            message_parts.append("📉 بیشترین نزول:")
+            message_parts.append(f"💥 {loser['symbol']} ({loser.get('name', 'N/A')})")
+            message_parts.append(f"💵 ${loser_price:.4f}")
+            message_parts.append(f"💰 {loser_irr:,} تومان")
+            message_parts.append(f"🔻 {loser_change:.2f}%")
+            message_parts.append("")
         
         # خط جداکننده
-        message += "━━━━━━━━━━━━━━━━━━\n\n"
+        message_parts.append("━━━━━━━━━━━━━━━━━━")
+        message_parts.append("")
         
         # تتر
-        if data.get('tether_irr') and data['tether_irr'] > 0:
-            usdt_change = data.get('tether_change_24h', 0)
-            change_icon = "🔺" if usdt_change > 0 else "🔻" if usdt_change < 0 else "➖"
-            message += f"🟢 *تتر (USDT):*\n"
-            message += f"💰 {data['tether_irr']:,.0f} تومان\n"
-            if usdt_change != 0:
-                message += f"{change_icon} {usdt_change:+.2f}% (24 ساعت)\n\n"
+        tether_price = data.get('tether_irr', 0)
+        if tether_price > 0:
+            tether_change = data.get('tether_change_24h', 0)
+            
+            if tether_change > 0:
+                change_icon = "🔺"
+                change_text = f"+{tether_change:.2f}"
+            elif tether_change < 0:
+                change_icon = "🔻"
+                change_text = f"{tether_change:.2f}"
             else:
-                message += "\n"
+                change_icon = "➖"
+                change_text = "0.00"
+            
+            message_parts.append("🟢 تتر (USDT):")
+            message_parts.append(f"💰 {tether_price:,} تومان")
+            if tether_change != 0:
+                message_parts.append(f"{change_icon} {change_text}% (24 ساعت)")
+            message_parts.append("")
         else:
-            message += f"🟢 *تتر (USDT):* ❌ ناموجود\n\n"
+            message_parts.append("🟢 تتر (USDT): ❌ ناموجود")
+            message_parts.append("")
         
         # دلار
-        if data.get('usd_irr') and data['usd_irr'] > 0:
-            message += f"💵 *دلار آمریکا (USD):*\n"
-            message += f"💰 {data['usd_irr']:,.0f} تومان\n\n"
+        usd_price = data.get('usd_irr', 0)
+        if usd_price > 0:
+            message_parts.append("💵 دلار آمریکا (USD):")
+            message_parts.append(f"💰 {usd_price:,} تومان")
+            message_parts.append("")
         else:
-            message += f"💵 *دلار آمریکا (USD):* ❌ ناموجود\n\n"
+            message_parts.append("💵 دلار آمریکا (USD): ❌ ناموجود")
+            message_parts.append("")
         
-        message += f"🕐 *آخرین بروزرسانی:* همین الان\n"
-        message += f"📊 *منبع:* CoinGecko, تترلند, CodeBazan"
+        # فوتر
+        message_parts.append("🕐 آخرین بروزرسانی: همین الان")
+        message_parts.append("📊 منبع: CoinGecko, تترلند, CodeBazan")
         
-        return message
+        return "\n".join(message_parts)
     
     async def show_main_menu(self, query):
         """نمایش منوی اصلی"""
@@ -511,8 +564,7 @@ class PublicMenuManager:
             
             await query.edit_message_text(
                 message,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='Markdown'
+                reply_markup=InlineKeyboardMarkup(keyboard)
             )
             
         except Exception as e:
