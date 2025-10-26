@@ -11,8 +11,11 @@ import platform
 import os
 import asyncio
 import datetime
+import logging
 from typing import Dict, List
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+
+logger = logging.getLogger(__name__)
 from telegram.ext import ContextTypes, CallbackQueryHandler
 from database import DatabaseManager, DatabaseLogger
 from logger_system import bot_logger
@@ -58,6 +61,7 @@ class AdminPanel:
                 InlineKeyboardButton("📊 لاگ سیستم", callback_data="sys_system_logs")
             ],
             [
+                InlineKeyboardButton("💾 Backup", callback_data="sys_backup"),
                 InlineKeyboardButton("🏠 منوی اصلی", callback_data="admin_main")
             ]
         ]
@@ -316,6 +320,9 @@ class AdminPanel:
             
             elif data == "sys_system_logs":
                 await self.show_system_logs(query)
+            
+            elif data == "sys_backup":
+                await self.handle_backup(query)
             
             elif data == "users_stats":
                 await self.show_users_stats(query)
@@ -662,6 +669,47 @@ class AdminPanel:
             reply_markup=back_keyboard,
             parse_mode='Markdown'
         )
+    
+    async def handle_backup(self, query):
+        """مدیریت backup و restore دیتابیس"""
+        try:
+            # انجام backup
+            backup_success = self.db.backup_to_file()
+            
+            if backup_success:
+                message = "✅ Backup دیتابیس با موفقیت ایجاد شد!"
+                # اضافه کردن آمار backup
+                stats = self.db.get_user_stats()
+                message += f"\n\n📊 آمار دیتابیس:\n"
+                message += f"👥 کل کاربران: {stats['total']}\n"
+                message += f"✅ کاربران فعال: {stats['active']}\n"
+                message += f"🔒 کاربران بلاک شده: {stats['blocked']}\n"
+                message += f"📝 کل پیام‌ها: {stats['total_messages']}\n"
+            else:
+                message = "❌ خطا در ایج backup دیتابیس!"
+            
+            # کیبورد backup
+            keyboard = [
+                [
+                    InlineKeyboardButton("💾 Backup جدید", callback_data="sys_backup"),
+                    InlineKeyboardButton("🔄 Refresh", callback_data="sys_backup")
+                ],
+                [
+                    InlineKeyboardButton("🏠 منوی اصلی", callback_data="admin_main")
+                ]
+            ]
+            
+            await query.edit_message_text(
+                text=message,
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            
+        except Exception as e:
+            logger.error(f"خطا در handle_backup: {e}")
+            await query.edit_message_text(
+                text=f"❌ خطا در backup: {e}",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔄 تلاش مجدد", callback_data="sys_backup")]])
+            )
     
     async def show_users_stats(self, query):
         """نمایش آمار تفصیلی کاربران"""
