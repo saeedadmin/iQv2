@@ -1430,7 +1430,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             message = public_menu.format_crypto_message(crypto_data)
             
             # ویرایش پیام با نتایج
-            await loading_message.edit_text(message, parse_mode='Markdown')
+            await loading_message.edit_text(message)
             
         except Exception as e:
             error_message = f"❌ خطا در دریافت قیمت‌ها:\n{str(e)}"
@@ -1450,7 +1450,6 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             # ویرایش پیام با نتایج
             await loading_message.edit_text(
                 message,
-                parse_mode='Markdown',
                 disable_web_page_preview=True
             )
             
