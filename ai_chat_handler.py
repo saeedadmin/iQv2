@@ -437,14 +437,13 @@ class AIChatStateManager:
             with self.db.get_connection() as conn:
                 cursor = conn.cursor()
                 
-                # ایجاد جدول state چت
+                # ایجاد جدول state چت (SQLite-compatible)
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS ai_chat_state (
-                        user_id BIGINT PRIMARY KEY,
-                        is_in_chat BOOLEAN DEFAULT FALSE,
+                        user_id INTEGER PRIMARY KEY,
+                        is_in_chat INTEGER DEFAULT 0,
                         last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        message_count INTEGER DEFAULT 0,
-                        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+                        message_count INTEGER DEFAULT 0
                     )
                 ''')
                 
@@ -466,14 +465,10 @@ class AIChatStateManager:
             with self.db.get_connection() as conn:
                 cursor = conn.cursor()
                 
-                # PostgreSQL syntax
+                # SQLite-compatible syntax
                 cursor.execute('''
-                    INSERT INTO ai_chat_state (user_id, is_in_chat, message_count)
-                    VALUES (%s, TRUE, 0)
-                    ON CONFLICT (user_id) DO UPDATE SET
-                        is_in_chat = TRUE,
-                        last_message_time = CURRENT_TIMESTAMP,
-                        message_count = 0
+                    INSERT OR REPLACE INTO ai_chat_state (user_id, is_in_chat, last_message_time, message_count)
+                    VALUES (?, TRUE, CURRENT_TIMESTAMP, 0)
                 ''', (user_id,))
                 
                 conn.commit()
@@ -494,7 +489,7 @@ class AIChatStateManager:
                     UPDATE ai_chat_state
                     SET is_in_chat = FALSE,
                         last_message_time = CURRENT_TIMESTAMP
-                    WHERE user_id = %s
+                    WHERE user_id = ?
                 ''', (user_id,))
                 
                 conn.commit()
@@ -517,7 +512,7 @@ class AIChatStateManager:
                 cursor = conn.cursor()
                 
                 cursor.execute(
-                    'SELECT is_in_chat FROM ai_chat_state WHERE user_id = %s',
+                    'SELECT is_in_chat FROM ai_chat_state WHERE user_id = ?',
                     (user_id,)
                 )
                 result = cursor.fetchone()
@@ -538,7 +533,7 @@ class AIChatStateManager:
                     UPDATE ai_chat_state
                     SET message_count = message_count + 1,
                         last_message_time = CURRENT_TIMESTAMP
-                    WHERE user_id = %s
+                    WHERE user_id = ?
                 ''', (user_id,))
                 
                 conn.commit()
@@ -555,7 +550,7 @@ class AIChatStateManager:
                 cursor = conn.cursor()
                 
                 cursor.execute(
-                    'SELECT message_count, last_message_time FROM ai_chat_state WHERE user_id = %s',
+                    'SELECT message_count, last_message_time FROM ai_chat_state WHERE user_id = ?',
                     (user_id,)
                 )
                 result = cursor.fetchone()
