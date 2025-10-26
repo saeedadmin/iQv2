@@ -30,12 +30,12 @@ class DatabaseManager:
         """مقداردهی مدیر دیتابیس"""
         
         # در محیط production، اول سعی کن از دیتابیس فایل استفاده کن
-        # در Koyeb، /tmp directory قابل نوشتن است
+        # در Koyeb، /workspace directory persistent است و بین deployments حفظ می‌شود
         if os.getenv('ENVIRONMENT', 'production') == 'production':
-            # استفاده از /tmp برای persistent storage در Koyeb
+            # استفاده از /workspace برای persistent storage در Koyeb
             # فقط از نام فایل استفاده کن، مسیر کامل را مسیر نده
-            if not db_path.startswith('/tmp/'):
-                self.db_path = f"/tmp/{os.path.basename(db_path)}"
+            if not db_path.startswith('/workspace/'):
+                self.db_path = f"/workspace/{os.path.basename(db_path)}"
             else:
                 self.db_path = db_path
             try:
@@ -111,7 +111,7 @@ class DatabaseManager:
             if self.db_path != ":memory:":
                 backup_path = f"{self.db_path}.backup"
             else:
-                backup_path = "/tmp/bot_database_backup.db"
+                backup_path = "/workspace/bot_database_backup.db"
                 
         try:
             with self.get_connection() as source_conn:
@@ -132,7 +132,7 @@ class DatabaseManager:
             if self.db_path != ":memory:":
                 backup_path = f"{self.db_path}.backup"
             else:
-                backup_path = "/tmp/bot_database_backup.db"
+                backup_path = "/workspace/bot_database_backup.db"
                 
         if not os.path.exists(backup_path):
             logger.warning(f"⚠️ فایل backup یافت نشد: {backup_path}")
