@@ -397,53 +397,6 @@ class PublicMenuManager:
             eth_irr = int(eth['price_usd'] * usd_to_irr)
             eth_change = eth.get('change_24h', 0)
             
-        
-        # بیشترین صعود
-        
-    def format_crypto_message(self, data: Dict[str, Any]) -> str:
-        """فرمت کردن پیام قیمت‌های ارز - نسخه فوق‌العاده امن"""
-        if data.get('error'):
-            return f"خطا در دریافت اطلاعات: {data['error']}"
-        
-        # تبدیل دلار به تومان
-        usd_to_irr = data.get('usd_irr', 70000)
-        if usd_to_irr == 0:
-            usd_to_irr = 70000
-        
-        # آماده سازی پیام ایمن
-        safe_lines = []
-        
-        # هدر ساده
-        safe_lines.append("قیمتهای لحظه ای ارز")
-        safe_lines.append("")
-        
-        # بیت کوین
-        btc = data.get('bitcoin', {})
-        if btc.get('price_usd'):
-            btc_price = int(btc['price_usd'])
-            btc_irr = int(btc['price_usd'] * usd_to_irr)
-            btc_change = btc.get('change_24h', 0)
-            
-            if btc_change > 0:
-                change_text = "صعود"
-            elif btc_change < 0:
-                change_text = "نزول"
-            else:
-                change_text = "بدون تغییر"
-            
-            safe_lines.append("بیت کوین (BTC):")
-            safe_lines.append(f"قیمت: {btc_price} دلار")
-            safe_lines.append(f"تومان: {btc_irr:,}")
-            safe_lines.append(f"وضعیت 24ساعته: {change_text} {abs(btc_change):.2f} درصد")
-            safe_lines.append("")
-        
-        # اتریوم
-        eth = data.get('ethereum', {})
-        if eth.get('price_usd'):
-            eth_price = int(eth['price_usd'])
-            eth_irr = int(eth['price_usd'] * usd_to_irr)
-            eth_change = eth.get('change_24h', 0)
-            
             if eth_change > 0:
                 change_text = "صعود"
             elif eth_change < 0:
@@ -456,7 +409,6 @@ class PublicMenuManager:
             safe_lines.append(f"تومان: {eth_irr:,}")
             safe_lines.append(f"وضعیت 24ساعته: {change_text} {abs(eth_change):.2f} درصد")
             safe_lines.append("")
-        
         
         # بیشترین صعود
         gainer = data.get('top_gainer', {})
