@@ -44,6 +44,7 @@ from ai_news import get_ai_news
 from ai_chat_handler import GeminiChatHandler, AIChatStateManager
 from ai_image_generator import AIImageGenerator
 from ocr_handler import OCRHandler
+from tradingview_analysis import TradingViewFetcher
 # Voice handler removed - no longer needed
 # Signal scraper removed - will be re-implemented later
 
@@ -84,10 +85,13 @@ ai_chat_state = AIChatStateManager(db_manager)
 ai_image_gen = AIImageGenerator()
 ocr_handler = OCRHandler()
 
+# Initialize TradingView Analysis
+tradingview_fetcher = TradingViewFetcher()
+
 # AI handlers initialized successfully
 
 # متغیرهای مکالمه
-(BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION) = range(3)
+(BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION, TRADINGVIEW_ANALYSIS) = range(4)
 
 # بررسی دسترسی کاربر
 async def check_user_access(user_id: int) -> bool:
@@ -908,21 +912,86 @@ async def tradingview_analysis_start(update: Update, context: ContextTypes.DEFAU
     message = """
 📈 تحلیل TradingView
 
-❌ این ویژگی فعلاً در دسترس نیست.
+لطفاً نماد ارز دیجیتال مورد نظر را وارد کنید:
 
-به زودی فعال می‌شود! 🚀
+🔸 مثال: BTC, ETH, SOL, ADA, BNB, XRP, DOGE, LINK, LTC, DOT, AVAX
+
+💡 برای دریافت تحلیل جامع، نماد ارز را به انگلیسی تایپ کنید.
     """
     
     await update.message.reply_text(message)
-    return ConversationHandler.END
+    return TRADINGVIEW_ANALYSIS
 
 async def tradingview_analysis_process(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """پردازش درخواست تحلیل TradingView"""
-    await update.message.reply_text("❌ تحلیل TradingView فعلاً در دسترس نیست.")
-    return ConversationHandler.END
-                
-                # بررسی نوع تحلیل (دو تحلیل یا یکی)
-                if 'popular_analysis' in analysis_data and 'recent_analysis' in analysis_data:
+    user_input = update.message.text.strip().upper()
+    
+    # لیست نمادهای پشتیبانی شده
+    supported_symbols = ['BTC', 'ETH', 'SOL', 'ADA', 'BNB', 'XRP', 'DOGE', 'LINK', 'LTC', 'DOT', 'AVAX']
+    
+    if user_input not in supported_symbols:
+        await update.message.reply_text(
+            f"❌ نماد '{user_input}' پشتیبانی نمی‌شود.\n\n"
+            f"🔸 نمادهای پشتیبانی شده: {', '.join(supported_symbols)}"
+        )
+        return TRADINGVIEW_ANALYSIS
+    
+    try:
+        # ارسال پیام loading
+        loading_message = await update.message.reply_text("🔄 در حال دریافت تحلیل...")
+        
+        # دریافت تحلیل از TradingView
+        analysis_data = await tradingview_fetcher.fetch_analysis(user_input.lower())
+        
+        # بررسی نوع تحلیل (دو تحلیل یا یکی)
+        if 'popular_analysis' in analysis_data and 'recent_analysis' in analysis_data:
+            # فرمت کردن پیام‌های جداگانه برای هر تحلیل
+            crypto_emojis = {
+                'btc': '₿', 'eth': '🔷', 'sol': '⚡', 'ada': '₳', 'bnb': '🟡',
+                'xrp': '🔷', 'doge': '🐕', 'link': '🔗', 'ltc': 'Ł', 'dot': '●', 'avax': '🔺'
+            }
+            crypto_emoji = crypto_emojis.get(analysis_data['crypto'].lower(), '💰')
+            
+            # پیام جدیدترین تحلیل
+            recent = analysis_data['recent_analysis']
+            recent_message = f"""🕐 *جدیدترین تحلیل {analysis_data['symbol']}*
+
+{crypto_emoji} *عنوان:* {recent['title']}
+
+📄 *توضیحات:*
+{recent['description'][:400]}{'...' if len(recent['description']) > 400 else ''}
+
+👤 *نویسنده:* {recent['author']}"""
+
+            # پیام محبوب‌ترین تحلیل  
+            popular = analysis_data['popular_analysis']
+            popular_message = f"""🔥 *محبوب‌ترین تحلیل {analysis_data['symbol']}*
+
+{crypto_emoji} *عنوان:* {popular['title']}
+
+📄 *توضیحات:*
+{popular['description'][:400]}{'...' if len(popular['description']) > 400 else ''}
+
+👤 *نویسنده:* {popular['author']}"""
+
+            # ارسال پیام‌های تحلیل
+            await loading_message.edit_text(recent_message)
+            await update.message.reply_text(popular_message)
+            
+        else:
+            # اگر فقط یک تحلیل موجود باشد
+            analysis_text = f"""📊 تحلیل {analysis_data['symbol']}
+
+{analysis_data.get('description', 'تحلیل موجود نیست')}"""
+            await loading_message.edit_text(analysis_text)
+        
+        return ConversationHandler.END
+        
+    except Exception as e:
+        # خطا در دریافت تحلیل (پیام خطا از tradingview_fetcher می‌آید)
+        error_message = f"❌ خطا در دریافت تحلیل TradingView:\n{str(e)}"
+        await update.message.reply_text(error_message)
+        return ConversationHandler.END
                     # فرمت کردن پیام‌های جداگانه برای هر تحلیل
                     crypto_emojis = {
                         'btc': '₿', 'eth': '🔷', 'sol': '⚡', 'ada': '₳', 'bnb': '🟡',
@@ -2175,7 +2244,18 @@ async def main() -> None:
     application.add_handler(broadcast_conv_handler)
     
     # ConversationHandler برای تحلیل TradingView
-    # TradingView handler removed - feature disabled
+    tradingview_conv_handler = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.TEXT & filters.Regex("📈 تحلیل TradingView"), tradingview_analysis_start),
+        ],
+        states={
+            TRADINGVIEW_ANALYSIS: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, tradingview_analysis_process)
+            ],
+        },
+        fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
+    )
+    application.add_handler(tradingview_conv_handler)
     
     # Voice handler removed - no longer needed
     
