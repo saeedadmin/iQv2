@@ -354,21 +354,21 @@ class PublicMenuManager:
         return message
     
     def format_crypto_message(self, data: Dict[str, Any]) -> str:
-        """فرمت کردن پیام قیمت‌های ارز - نسخه بدون مشکل کاراکتر"""
+        """فرمت کردن پیام قیمت‌های ارز - نسخه فوق‌العاده امن"""
         if data.get('error'):
-            return f"❌ خطا در دریافت اطلاعات:\n{data['error']}"
+            return f"خطا در دریافت اطلاعات: {data['error']}"
         
         # تبدیل دلار به تومان
         usd_to_irr = data.get('usd_irr', 70000)
         if usd_to_irr == 0:
             usd_to_irr = 70000
         
-        # آماده سازی متغیرهای پیام
-        message_parts = []
+        # آماده سازی پیام ایمن
+        safe_lines = []
         
-        # هدر اصلی
-        message_parts.append("💰 قیمتهای لحظه ای ارز")
-        message_parts.append("")
+        # هدر ساده
+        safe_lines.append("قیمتهای لحظه ای ارز")
+        safe_lines.append("")
         
         # بیت کوین
         btc = data.get('bitcoin', {})
@@ -378,20 +378,17 @@ class PublicMenuManager:
             btc_change = btc.get('change_24h', 0)
             
             if btc_change > 0:
-                change_icon = "🔺"
-                change_text = f"+{btc_change:.2f}"
+                change_text = "صعود"
             elif btc_change < 0:
-                change_icon = "🔻"
-                change_text = f"{btc_change:.2f}"
+                change_text = "نزول"
             else:
-                change_icon = "➖"
-                change_text = "0.00"
+                change_text = "بدون تغییر"
             
-            message_parts.append("🟠 بیت کوین (BTC):")
-            message_parts.append(f"💵 ${btc_price:,}")
-            message_parts.append(f"💰 {btc_irr:,} تومان")
-            message_parts.append(f"{change_icon} {change_text}% (24 ساعت)")
-            message_parts.append("")
+            safe_lines.append("بیت کوین (BTC):")
+            safe_lines.append(f"قیمت: {btc_price} دلار")
+            safe_lines.append(f"تومان: {btc_irr:,}")
+            safe_lines.append(f"وضعیت 24ساعته: {change_text} {abs(btc_change):.2f} درصد")
+            safe_lines.append("")
         
         # اتریوم
         eth = data.get('ethereum', {})
@@ -400,91 +397,8 @@ class PublicMenuManager:
             eth_irr = int(eth['price_usd'] * usd_to_irr)
             eth_change = eth.get('change_24h', 0)
             
-            if eth_change > 0:
-                change_icon = "🔺"
-                change_text = f"+{eth_change:.2f}"
-            elif eth_change < 0:
-                change_icon = "🔻"
-                change_text = f"{eth_change:.2f}"
-            else:
-                change_icon = "➖"
-                change_text = "0.00"
-            
-            message_parts.append("🔵 اتریوم (ETH):")
-            message_parts.append(f"💵 ${eth_price:,}")
-            message_parts.append(f"💰 {eth_irr:,} تومان")
-            message_parts.append(f"{change_icon} {change_text}% (24 ساعت)")
-            message_parts.append("")
         
         # بیشترین صعود
-        gainer = data.get('top_gainer', {})
-        if gainer.get('symbol'):
-            gainer_price = gainer.get('price_usd', 0)
-            gainer_irr = int(gainer_price * usd_to_irr)
-            gainer_change = gainer.get('change_24h', 0)
-            
-            message_parts.append("🚀 بیشترین صعود:")
-            message_parts.append(f"🔥 {gainer['symbol']} ({gainer.get('name', 'N/A')})")
-            message_parts.append(f"💵 ${gainer_price:.4f}")
-            message_parts.append(f"💰 {gainer_irr:,} تومان")
-            message_parts.append(f"🔺 +{gainer_change:.2f}%")
-            message_parts.append("")
-        
-        # بیشترین نزول
-        loser = data.get('top_loser', {})
-        if loser.get('symbol'):
-            loser_price = loser.get('price_usd', 0)
-            loser_irr = int(loser_price * usd_to_irr)
-            loser_change = loser.get('change_24h', 0)
-            
-            message_parts.append("📉 بیشترین نزول:")
-            message_parts.append(f"💥 {loser['symbol']} ({loser.get('name', 'N/A')})")
-            message_parts.append(f"💵 ${loser_price:.4f}")
-            message_parts.append(f"💰 {loser_irr:,} تومان")
-            message_parts.append(f"🔻 {loser_change:.2f}%")
-            message_parts.append("")
-        
-        # خط جداکننده
-        message_parts.append("━━━━━━━━━━━━━━━━━━")
-        message_parts.append("")
-        
-        # تتر
-        tether_price = data.get('tether_irr', 0)
-        if tether_price > 0:
-            tether_change = data.get('tether_change_24h', 0)
-            
-            if tether_change > 0:
-                change_icon = "🔺"
-                change_text = f"+{tether_change:.2f}"
-            elif tether_change < 0:
-                change_icon = "🔻"
-                change_text = f"{tether_change:.2f}"
-            else:
-                change_icon = "➖"
-                change_text = "0.00"
-            
-            message_parts.append("🟢 تتر (USDT):")
-            message_parts.append(f"💰 {tether_price:,} تومان")
-            if tether_change != 0:
-                message_parts.append(f"{change_icon} {change_text}% (24 ساعت)")
-            message_parts.append("")
-        else:
-            message_parts.append("🟢 تتر (USDT): ❌ ناموجود")
-            message_parts.append("")
-        
-        # دلار
-        usd_price = data.get('usd_irr', 0)
-        if usd_price > 0:
-            message_parts.append("💵 دلار آمریکا (USD):")
-            message_parts.append(f"💰 {usd_price:,} تومان")
-            message_parts.append("")
-        else:
-            message_parts.append("💵 دلار آمریکا (USD): ❌ ناموجود")
-            message_parts.append("")
-        
-        # فوتر
-        message_parts.append("🕐 آخرین بروزرسانی: همین الان")
-        message_parts.append("📊 منبع: CoinGecko, تترلند, CodeBazan")
         
     def format_crypto_message(self, data: Dict[str, Any]) -> str:
         """فرمت کردن پیام قیمت‌های ارز - نسخه فوق‌العاده امن"""
@@ -543,12 +457,69 @@ class PublicMenuManager:
             safe_lines.append(f"وضعیت 24ساعته: {change_text} {abs(eth_change):.2f} درصد")
             safe_lines.append("")
         
+        
         # بیشترین صعود
         gainer = data.get('top_gainer', {})
         if gainer.get('symbol'):
             gainer_price = gainer.get('price_usd', 0)
             gainer_irr = int(gainer_price * usd_to_irr)
             gainer_change = gainer.get('change_24h', 0)
+            
+            safe_lines.append("بیشترین صعود:")
+            safe_lines.append(f"{gainer['symbol']} ({gainer.get('name', 'N/A')})")
+            safe_lines.append(f"قیمت: {gainer_price:.4f} دلار")
+            safe_lines.append(f"تومان: {gainer_irr:,}")
+            safe_lines.append(f"صعود: {gainer_change:.2f} درصد")
+            safe_lines.append("")
+        
+        # بیشترین نزول
+        loser = data.get('top_loser', {})
+        if loser.get('symbol'):
+            loser_price = loser.get('price_usd', 0)
+            loser_irr = int(loser_price * usd_to_irr)
+            loser_change = loser.get('change_24h', 0)
+            
+            safe_lines.append("بیشترین نزول:")
+            safe_lines.append(f"{loser['symbol']} ({loser.get('name', 'N/A')})")
+            safe_lines.append(f"قیمت: {loser_price:.4f} دلار")
+            safe_lines.append(f"تومان: {loser_irr:,}")
+            safe_lines.append(f"نزول: {abs(loser_change):.2f} درصد")
+            safe_lines.append("")
+        
+        # تتر
+        tether_price = data.get('tether_irr', 0)
+        if tether_price > 0:
+            tether_change = data.get('tether_change_24h', 0)
+            if tether_change > 0:
+                change_text = f"صعود {tether_change:.2f} درصد"
+            elif tether_change < 0:
+                change_text = f"نزول {abs(tether_change):.2f} درصد"
+            else:
+                change_text = "بدون تغییر"
+            
+            safe_lines.append("تتر (USDT):")
+            safe_lines.append(f"تومان: {tether_price:,}")
+            safe_lines.append(f"وضعیت 24ساعته: {change_text}")
+            safe_lines.append("")
+        else:
+            safe_lines.append("تتر (USDT): ناموجود")
+            safe_lines.append("")
+        
+        # دلار
+        usd_price = data.get('usd_irr', 0)
+        if usd_price > 0:
+            safe_lines.append("دلار آمریکا (USD):")
+            safe_lines.append(f"تومان: {usd_price:,}")
+            safe_lines.append("")
+        else:
+            safe_lines.append("دلار آمریکا (USD): ناموجود")
+            safe_lines.append("")
+        
+        # فوتر
+        safe_lines.append("بروزرسانی: همین الان")
+        safe_lines.append("منبع: CoinGecko, تترلند, CodeBazan")
+        
+        return "\n".join(safe_lines)
             
             safe_lines.append("بیشترین صعود:")
             safe_lines.append(f"{gainer['symbol']} ({gainer.get('name', 'N/A')})")
