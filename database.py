@@ -45,7 +45,11 @@ class DatabaseManager:
     
     def get_connection(self):
         """ایجاد اتصال به دیتابیس"""
-        conn = sqlite3.connect(self.db_path)
+        if self.db_path == ":memory:":
+            # برای in-memory database، از URI مشترک استفاده کنیم
+            conn = sqlite3.connect("file::memory:?cache=shared")
+        else:
+            conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row  # برای دسترسی به نتایج به صورت dictionary
         return conn
     
