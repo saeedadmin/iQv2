@@ -520,60 +520,6 @@ class PublicMenuManager:
         safe_lines.append("منبع: CoinGecko, تترلند, CodeBazan")
         
         return "\n".join(safe_lines)
-            
-            safe_lines.append("بیشترین صعود:")
-            safe_lines.append(f"{gainer['symbol']} ({gainer.get('name', 'N/A')})")
-            safe_lines.append(f"قیمت: {gainer_price:.4f} دلار")
-            safe_lines.append(f"تومان: {gainer_irr:,}")
-            safe_lines.append(f"صعود: {gainer_change:.2f} درصد")
-            safe_lines.append("")
-        
-        # بیشترین نزول
-        loser = data.get('top_loser', {})
-        if loser.get('symbol'):
-            loser_price = loser.get('price_usd', 0)
-            loser_irr = int(loser_price * usd_to_irr)
-            loser_change = loser.get('change_24h', 0)
-            
-            safe_lines.append("بیشترین نزول:")
-            safe_lines.append(f"{loser['symbol']} ({loser.get('name', 'N/A')})")
-            safe_lines.append(f"قیمت: {loser_price:.4f} دلار")
-            safe_lines.append(f"تومان: {loser_irr:,}")
-            safe_lines.append(f"نزول: {abs(loser_change):.2f} درصد")
-            safe_lines.append("")
-        
-        # تتر
-        tether_price = data.get('tether_irr', 0)
-        if tether_price > 0:
-            tether_change = data.get('tether_change_24h', 0)
-            if tether_change > 0:
-                change_text = f"صعود {tether_change:.2f} درصد"
-            elif tether_change < 0:
-                change_text = f"نزول {abs(tether_change):.2f} درصد"
-            else:
-                change_text = "بدون تغییر"
-            
-            safe_lines.append("تتر (USDT):")
-            safe_lines.append(f"تومان: {tether_price:,}")
-            safe_lines.append(f"وضعیت 24ساعته: {change_text}")
-            safe_lines.append("")
-        else:
-            safe_lines.append("تتر (USDT): ناموجود")
-            safe_lines.append("")
-        
-        # دلار
-        usd_price = data.get('usd_irr', 0)
-        if usd_price > 0:
-            safe_lines.append("دلار آمریکا (USD):")
-            safe_lines.append(f"تومان: {usd_price:,}")
-            safe_lines.append("")
-        else:
-            safe_lines.append("دلار آمریکا (USD): ناموجود")
-            safe_lines.append("")
-        
-        # فوتر
-        safe_lines.append("بروزرسانی: همین الان")
-        safe_lines.append("منبع: CoinGecko, تترلند, CodeBazan")
         
         return "\n".join(safe_lines)
     
