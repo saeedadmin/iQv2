@@ -2026,51 +2026,26 @@ async def run_database_migrations():
         logger.info("🔧 چک کردن migrationهای دیتابیس...")
         
         # Migration: اضافه کردن فیلد news_subscription_enabled
-        conn = db_manager.get_connection()
-        if conn:
-            cursor = conn.cursor()
-            
-            # بررسی وجود فیلد
-            cursor.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name='users' AND column_name='news_subscription_enabled'
-            """)
-            
-            result = cursor.fetchone()
-            
-            if not result:
+        # در SQLite، ما فقط سعی می‌کنیم ستون را اضافه کنیم
+        # اگر از قبل وجود داشته باشد، خطا می‌دهد که ما آن را نادیده می‌گیریم
+        try:
+            with db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
                 logger.info("🔧 اضافه کردن فیلد news_subscription_enabled...")
                 cursor.execute("""
                     ALTER TABLE users 
-                    ADD COLUMN news_subscription_enabled BOOLEAN DEFAULT FALSE
+                    ADD COLUMN news_subscription_enabled INTEGER DEFAULT 0
                 """)
                 conn.commit()
                 logger.info("✅ فیلد news_subscription_enabled با موفقیت اضافه شد")
-            else:
-                # چک کردن نوع فیلد
-                cursor.execute("""
-                    SELECT data_type 
-                    FROM information_schema.columns 
-                    WHERE table_name='users' AND column_name='news_subscription_enabled'
-                """)
-                data_type_result = cursor.fetchone()
                 
-                if data_type_result and data_type_result[0] == 'integer':
-                    logger.info("🔧 تغییر نوع فیلد news_subscription_enabled از INTEGER به BOOLEAN...")
-                    # تغییر نوع فیلد
-                    cursor.execute("""
-                        ALTER TABLE users 
-                        ALTER COLUMN news_subscription_enabled TYPE BOOLEAN 
-                        USING CASE WHEN news_subscription_enabled = 1 THEN TRUE ELSE FALSE END
-                    """)
-                    conn.commit()
-                    logger.info("✅ نوع فیلد با موفقیت تغییر یافت")
-                else:
-                    logger.info("✅ فیلد news_subscription_enabled قبلاً با نوع صحیح وجود دارد")
-            
-            cursor.close()
-            db_manager.return_connection(conn)
+        except Exception as column_error:
+            # اگر ستون از قبل وجود داشته باشد، خطا می‌دهد که طبیعی است
+            if "duplicate column name" in str(column_error).lower():
+                logger.info("✅ فیلد news_subscription_enabled قبلاً وجود دارد")
+            else:
+                raise column_error
             
     except Exception as e:
         logger.error(f"❌ خطا در migration: {e}")

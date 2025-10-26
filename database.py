@@ -54,6 +54,7 @@ class DatabaseManager:
                         first_name TEXT,
                         last_name TEXT,
                         is_blocked INTEGER DEFAULT 0,
+                        block_until TIMESTAMP NULL,
                         is_admin INTEGER DEFAULT 0,
                         join_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -61,6 +62,13 @@ class DatabaseManager:
                         news_subscription_enabled INTEGER DEFAULT 0
                     )
                 ''')
+                
+                # اضافه کردن ستون block_until اگر وجود نداشته باشد
+                try:
+                    cursor.execute('SELECT block_until FROM users LIMIT 1')
+                except:
+                    cursor.execute('ALTER TABLE users ADD COLUMN block_until TIMESTAMP NULL')
+                    logger.info("✅ ستون block_until به جدول users اضافه شد")
                 
                 # جدول لاگ‌ها
                 cursor.execute('''
@@ -355,6 +363,104 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"خطا در دریافت لیست مشترکان اخبار: {e}")
             return []
+    
+    def get_recent_message_count(self, user_id: int, time_window: int) -> int:
+        """دریافت تعداد پیام‌های اخیر کاربر در بازه زمانی مشخص"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                # برای سادگی، از message_count استفاده می‌کنیم
+                # در پیاده‌سازی کامل، نیاز به جدول پیام‌ها داریم
+                cursor.execute(
+                    'SELECT message_count FROM users WHERE user_id = ?',
+                    (user_id,)
+                )
+                result = cursor.fetchone()
+                return result['message_count'] if result else 0
+        except Exception as e:
+            logger.error(f"خطا در دریافت تعداد پیام‌های اخیر: {e}")
+            return 0
+    
+    def block_user_for_spam(self, user_id: int) -> Dict[str, Any]:
+        """بلاک کردن کاربر به علت اسپم با مدت زمان مشخص"""
+        try:
+            # محاسبه زمان بلاک بر اساس سطح اسپم
+            from datetime import datetime, timedelta
+            
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # دریافت تعداد پیام‌های اخیر برای تعیین سطح اسپم
+                cursor.execute(
+                    'SELECT message_count FROM users WHERE user_id = ?',
+                    (user_id,)
+                )
+                result = cursor.fetchone()
+                message_count = result['message_count'] if result else 0
+                
+                # تعیین مدت زمان بلاک بر اساس تعداد پیام‌ها
+                if message_count > 50:
+                    # اسپم شدید - 1 روز
+                    block_duration = 1
+                    warning_level = "شدید"
+                elif message_count > 30:
+                    # اسپم متوسط - 12 ساعت
+                    block_duration = 0.5  # 12 ساعت
+                    warning_level = "متوسط"
+                else:
+                    # اسپم خفیف - 1 ساعت
+                    block_duration = 1/24  # 1 ساعت
+                    warning_level = "خفیف"
+                
+                block_until = datetime.now() + timedelta(hours=block_duration*24)
+                
+                cursor.execute('''
+                    UPDATE users 
+                    SET is_blocked = 1, block_until = ?
+                    WHERE user_id = ?
+                ''', (block_until, user_id))
+                
+                conn.commit()
+                logger.info(f"کاربر {user_id} به علت اسپم تا {block_until} بلاک شد")
+                
+                return {
+                    'success': True,
+                    'warning_level': warning_level,
+                    'block_until': block_until
+                }
+                
+        except Exception as e:
+            logger.error(f"خطا در بلاک کردن کاربر به علت اسپم: {e}")
+            return {'success': False, 'warning_level': 'unknown'}
+    
+    def auto_unblock_expired_users(self) -> int:
+        """آنبلاک خودکار کاربرانی که زمان بلاکشان تمام شده"""
+        try:
+            from datetime import datetime
+            
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # آنبلاک کاربرانی که زمان بلاکشان تمام شده
+                cursor.execute('''
+                    UPDATE users 
+                    SET is_blocked = 0, block_until = NULL
+                    WHERE is_blocked = 1 
+                    AND block_until IS NOT NULL 
+                    AND block_until < ?
+                ''', (datetime.now(),))
+                
+                unblocked_count = cursor.rowcount
+                conn.commit()
+                
+                if unblocked_count > 0:
+                    logger.info(f"✅ {unblocked_count} کاربر به صورت خودکار آنبلاک شدند")
+                
+                return unblocked_count
+                
+        except Exception as e:
+            logger.error(f"خطا در آنبلاک خودکار کاربران: {e}")
+            return 0
 
 # نمونه سیستم لاگ سفارشی
 class DatabaseLogger:
