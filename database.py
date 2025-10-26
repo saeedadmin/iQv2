@@ -15,6 +15,16 @@ from typing import Optional, List, Tuple, Dict, Any
 
 logger = logging.getLogger(__name__)
 
+# Singleton pattern برای جلوگیری از ایجاد چندین instance
+_db_manager_instance = None
+
+def get_database_manager():
+    """دریافت singleton instance از DatabaseManager"""
+    global _db_manager_instance
+    if _db_manager_instance is None:
+        _db_manager_instance = DatabaseManager()
+    return _db_manager_instance
+
 class DatabaseManager:
     def __init__(self, db_path: str = "bot_database.db"):
         """مقداردهی مدیر دیتابیس"""
@@ -103,8 +113,16 @@ class DatabaseManager:
                 conn.commit()
                 logger.info("دیتابیس با موفقیت مقداردهی شد")
                 
+                # تست کن که جدول users واقعاً وجود داشته باشد
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+                if cursor.fetchone():
+                    logger.info("✅ جدول users تأیید شد")
+                else:
+                    logger.error("❌ جدول users یافت نشد!")
+                    
         except Exception as e:
             logger.error(f"خطا در مقداردهی دیتابیس: {e}")
+            raise e  # Re-raise to make the error visible
     
     def add_user(self, user_id: int, username: str = None, first_name: str = None, 
                  last_name: str = None, is_admin: bool = False) -> bool:

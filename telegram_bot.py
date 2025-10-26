@@ -32,9 +32,9 @@ load_dotenv()
 # Choose database based on environment
 DATABASE_URL = os.getenv('DATABASE_URL')
 if DATABASE_URL and DATABASE_URL.startswith('postgresql'):
-    from database import DatabaseManager, DatabaseLogger
+    from database import DatabaseManager, DatabaseLogger, get_database_manager
 else:
-    from database import DatabaseManager, DatabaseLogger
+    from database import DatabaseManager, DatabaseLogger, get_database_manager
 
 from admin_panel import AdminPanel
 from public_menu import PublicMenuManager
@@ -69,11 +69,11 @@ if not BOT_TOKEN:
 ADMIN_USER_ID = int(os.getenv('ADMIN_USER_ID', 327459477))
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'production')
 
-# مقداردهی سیستم‌های اصلی
+# مقداردهی سیستم‌های اصلی - استفاده از singleton برای جلوگیری از ایجاد چندین دیتابیس
 if DATABASE_URL and DATABASE_URL.startswith('postgresql'):
-    db_manager = DatabaseManager(DATABASE_URL)
+    db_manager = get_database_manager()
 else:
-    db_manager = DatabaseManager()
+    db_manager = get_database_manager()
 
 db_logger = DatabaseLogger(db_manager)
 admin_panel = AdminPanel(db_manager, ADMIN_USER_ID)
@@ -2034,16 +2034,38 @@ async def run_database_migrations():
         with db_manager.get_connection() as conn:
             cursor = conn.cursor()
             
-            # ابتدا چک کن که جدول users وجود داشته باشد
-            try:
-                cursor.execute("PRAGMA table_info(users)")
-                user_table_exists = cursor.fetchone() is not None
-            except:
-                user_table_exists = False
+            # چک کن که دیتابیس اصلاً کار می‌کند
+            cursor.execute("SELECT sqlite_version()")
+            sqlite_version = cursor.fetchone()[0]
+            logger.info(f"🔍 SQLite version: {sqlite_version}")
+            
+            # چک کن که جدول users وجود داشته باشد
+            cursor.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name='users'
+            """)
+            user_table_exists = cursor.fetchone() is not None
             
             if not user_table_exists:
-                logger.error("❌ جدول users وجود ندارد! این نباید اتفاق بیفتد.")
-                return
+                logger.error("❌ جدول users وجود ندارد! دیتابیس ممکن است درست initialize نشده باشد.")
+                # تلاش مجدد برای initialize کردن
+                logger.info("🔄 تلاش مجدد برای مقداردهی دیتابیس...")
+                db_manager.init_database()
+                
+                # دوباره چک کن
+                cursor.execute("""
+                    SELECT name FROM sqlite_master 
+                    WHERE type='table' AND name='users'
+                """)
+                user_table_exists = cursor.fetchone() is not None
+                
+                if not user_table_exists:
+                    logger.error("❌ ناموفق در ایجاد جدول users")
+                    return
+                else:
+                    logger.info("✅ جدول users با موفقیت ایجاد شد")
+            else:
+                logger.info("✅ جدول users وجود دارد")
             
             # چک کن که ستون news_subscription_enabled وجود داشته باشد
             cursor.execute("PRAGMA table_info(users)")
@@ -2060,8 +2082,15 @@ async def run_database_migrations():
             else:
                 logger.info("✅ فیلد news_subscription_enabled قبلاً وجود دارد")
             
+            # تست نهایی
+            cursor.execute("SELECT COUNT(*) FROM users")
+            count = cursor.fetchone()[0]
+            logger.info(f"✅ Migration کامل شد - {count} کاربر در دیتابیس")
+            
     except Exception as e:
         logger.error(f"❌ خطا در migration: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 async def main() -> None:
     """تابع اصلی برای راه‌اندازی ربات"""
