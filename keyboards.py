@@ -28,6 +28,13 @@ ai_menu_keyboard = [
     [KeyboardButton("🔙 بازگشت به منوی اصلی")]
 ]
 
+# کیبورد بخش ارزهای دیجیتال
+crypto_menu_keyboard = [
+    [KeyboardButton("📈 تحلیل TradingView")],
+    [KeyboardButton("😨 شاخص ترس و طمع"), KeyboardButton("💎 قیمت‌گذاری ارزها")],
+    [KeyboardButton("🔙 بازگشت به منوی اصلی")]
+]
+
 # کیبورد حالت چت با AI (فقط دکمه خروج)
 ai_chat_mode_keyboard = [
     [KeyboardButton("❌ خروج از چت")]
@@ -48,3 +55,7 @@ def get_ai_menu_markup():
 def get_ai_chat_mode_markup():
     """بازگرداندن کیبورد حالت چت با AI"""
     return ReplyKeyboardMarkup(ai_chat_mode_keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+def get_crypto_menu_markup():
+    """بازگرداندن کیبورد بخش ارزهای دیجیتال"""
+    return ReplyKeyboardMarkup(crypto_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)

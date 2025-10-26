@@ -39,7 +39,7 @@ else:
 from admin_panel import AdminPanel
 from public_menu import PublicMenuManager
 from logger_system import bot_logger
-from keyboards import get_main_menu_markup, get_public_section_markup, get_ai_menu_markup, get_ai_chat_mode_markup
+from keyboards import get_main_menu_markup, get_public_section_markup, get_ai_menu_markup, get_ai_chat_mode_markup, get_crypto_menu_markup
 from ai_news import get_ai_news
 from ai_chat_handler import GeminiChatHandler, AIChatStateManager
 from ai_image_generator import AIImageGenerator
@@ -1291,22 +1291,18 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 💰 *بخش ارزهای دیجیتال*
 
 🔍 *خدمات موجود:*
-• 📈 قیمت‌های لحظه‌ای ارزهای اصلی
-• 📊 بررسی تغییرات 24 ساعته
-• 💰 قیمت تتر و دلار به تومان
-• 🚀 بیشترین صعود و نزول بازار
+• 📈 تحلیل‌های TradingView برای ارزهای مختلف
+• 📊 قیمت‌های لحظه‌ای ارزهای اصلی
+• 😨 شاخص ترس و طمع بازار
+• 💰 قیمت‌گذاری لحظه‌ای
 • 📰 آخرین اخبار کریپتو از منابع معتبر
 
 
 از دکمه‌های زیر برای دسترسی به خدمات استفاده کنید:
         """
         
-        # کیبورد منوی ارزهای دیجیتال
-        crypto_keyboard = [
-            [KeyboardButton("📊 قیمت‌های لحظه‌ای"), KeyboardButton("📰 اخبار کریپتو")],
-            [KeyboardButton("😨 شاخص ترس و طمع"), KeyboardButton("🔙 بازگشت به منوی اصلی")]
-        ]
-        reply_markup = ReplyKeyboardMarkup(crypto_keyboard, resize_keyboard=True, one_time_keyboard=False)
+        # استفاده از کیبورد جدید با دکمه تحلیل TradingView
+        reply_markup = get_crypto_menu_markup()
         
         await update.message.reply_text(
             message,
