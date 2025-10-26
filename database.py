@@ -232,6 +232,18 @@ class DatabaseManager:
                     )
                 ''')
                 
+                # جدول تاریخچه چت
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS chat_history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+                        message_text TEXT NOT NULL,
+                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+                    )
+                ''')
+                
                 # تنظیمات پیش‌فرض
                 cursor.execute('''
                     INSERT OR IGNORE INTO bot_settings (key, value) VALUES 
@@ -609,6 +621,75 @@ class DatabaseManager:
                 
         except Exception as e:
             logger.error(f"خطا در آنبلاک خودکار کاربران: {e}")
+            return 0
+    
+    def get_chat_history(self, user_id: int, limit: int = 10) -> List[Dict]:
+        """دریافت تاریخچه چت کاربر"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT role, message_text
+                    FROM chat_history 
+                    WHERE user_id = ?
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                ''', (user_id, limit))
+                
+                results = cursor.fetchall()
+                history = []
+                for row in reversed(results):  # ترتیب از قدیمی به جدید
+                    history.append({
+                        'role': row[0],
+                        'message_text': row[1]
+                    })
+                
+                logger.info(f"📚 {len(history)} پیام از تاریخچه کاربر {user_id} بازیابی شد")
+                return history
+                
+        except Exception as e:
+            logger.error(f"خطا در دریافت تاریخچه چت کاربر {user_id}: {e}")
+            return []
+    
+    def save_chat_message(self, user_id: int, role: str, message_text: str) -> bool:
+        """ذخیره پیام چت کاربر"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO chat_history (user_id, role, message_text, timestamp)
+                    VALUES (?, ?, ?, ?)
+                ''', (user_id, role, message_text, datetime.now()))
+                conn.commit()
+                
+                logger.debug(f"💬 پیام چت کاربر {user_id} ذخیره شد")
+                return True
+                
+        except Exception as e:
+            logger.error(f"خطا در ذخیره پیام چت کاربر {user_id}: {e}")
+            return False
+    
+    def cleanup_old_chat_history(self, days: int = 30) -> int:
+        """پاک کردن تاریخچه قدیمی چت"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cutoff_date = datetime.now() - datetime.timedelta(days=days)
+                cursor.execute('''
+                    DELETE FROM chat_history 
+                    WHERE timestamp < ?
+                ''', (cutoff_date,))
+                
+                deleted_count = cursor.rowcount
+                conn.commit()
+                
+                if deleted_count > 0:
+                    logger.info(f"🧹 {deleted_count} پیام قدیمی از تاریخچه چت پاک شد")
+                
+                return deleted_count
+                
+        except Exception as e:
+            logger.error(f"خطا در پاک کردن تاریخچه چت: {e}")
             return 0
 
 # نمونه سیستم لاگ سفارشی

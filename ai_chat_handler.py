@@ -324,8 +324,8 @@ class GeminiChatHandler:
                 
                 # ذخیره پیام کاربر و پاسخ AI در تاریخچه
                 if self.db:
-                    self.db.add_chat_message(user_id, 'user', user_message)
-                    self.db.add_chat_message(user_id, 'model', ai_text)
+                    self.db.save_chat_message(user_id, 'user', user_message)
+                    self.db.save_chat_message(user_id, 'assistant', ai_text)
                 
                 return {
                     'success': True,
