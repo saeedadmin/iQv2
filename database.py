@@ -251,6 +251,17 @@ class DatabaseManager:
                     )
                 ''')
                 
+                # جدول tracking پیام‌ها برای anti-spam
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS message_tracking (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        message_type TEXT NOT NULL DEFAULT 'text',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+                    )
+                ''')
+                
                 # تنظیمات پیش‌فرض
                 cursor.execute('''
                     INSERT OR IGNORE INTO bot_settings (key, value) VALUES 
@@ -698,6 +709,34 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"خطا در پاک کردن تاریخچه چت: {e}")
             return 0
+
+    def track_user_message(self, user_id: int, message_type: str = 'text') -> bool:
+        """ثبت پیام کاربر برای anti-spam tracking"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO message_tracking (user_id, message_type, created_at)
+                    VALUES (?, ?, ?)
+                ''', (user_id, message_type, datetime.datetime.now()))
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"خطا در ثبت پیام کاربر {user_id}: {e}")
+            return False
+
+    def clear_chat_history(self, user_id: int) -> bool:
+        """پاک کردن تاریخچه چت کاربر"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM chat_history WHERE user_id = ?', (user_id,))
+                conn.commit()
+                logger.info(f"🧹 تاریخچه چت کاربر {user_id} پاک شد")
+                return True
+        except Exception as e:
+            logger.error(f"خطا در پاک کردن تاریخچه چت کاربر {user_id}: {e}")
+            return False
 
 # نمونه سیستم لاگ سفارشی
 class DatabaseLogger:
