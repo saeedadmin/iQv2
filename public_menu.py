@@ -520,8 +520,6 @@ class PublicMenuManager:
         safe_lines.append("منبع: CoinGecko, تترلند, CodeBazan")
         
         return "\n".join(safe_lines)
-        
-        return "\n".join(safe_lines)
     
     async def show_main_menu(self, query):
         """نمایش منوی اصلی"""
