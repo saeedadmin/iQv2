@@ -943,47 +943,82 @@ async def tradingview_analysis_process(update: Update, context: ContextTypes.DEF
         # دریافت تحلیل از TradingView
         analysis_data = await tradingview_fetcher.fetch_analysis(user_input.lower())
         
-        # بررسی نوع تحلیل (دو تحلیل یا یکی)
+        # بررسی نوع تحلیل (دو تحلیل یکی)
         if 'popular_analysis' in analysis_data and 'recent_analysis' in analysis_data:
             # فرمت کردن پیام‌های جداگانه برای هر تحلیل
-            crypto_emojis = {
-                'btc': '₿', 'eth': '🔷', 'sol': '⚡', 'ada': '₳', 'bnb': '🟡',
-                'xrp': '🔷', 'doge': '🐕', 'link': '🔗', 'ltc': 'Ł', 'dot': '●', 'avax': '🔺'
-            }
-            crypto_emoji = crypto_emojis.get(analysis_data['crypto'].lower(), '💰')
+            crypto_emoji = analysis_data.get('crypto_emoji', '💰')
             
-            # پیام جدیدترین تحلیل
+            # پیام جدیدترین تحلیل با عکس
             recent = analysis_data['recent_analysis']
-            recent_message = f"""🕐 *جدیدترین تحلیل {analysis_data['symbol']}*
+            recent_text = f"""🕐 *جدیدترین تحلیل {analysis_data['symbol']}*
 
 {crypto_emoji} *عنوان:* {recent['title']}
 
 📄 *توضیحات:*
-{recent['description'][:400]}{'...' if len(recent['description']) > 400 else ''}
+{recent['description'][:300]}{'...' if len(recent['description']) > 300 else ''}
 
-👤 *نویسنده:* {recent['author']}"""
+👤 *نویسنده:* {recent['author']}
+⏰ *زمان:* {recent['timestamp']}
 
-            # پیام محبوب‌ترین تحلیل  
+🔗 [چارت زنده TradingView]({recent['chart_url']})"""
+
+            # پیام محبوب‌ترین تحلیل با عکس
             popular = analysis_data['popular_analysis']
-            popular_message = f"""🔥 *محبوب‌ترین تحلیل {analysis_data['symbol']}*
+            popular_text = f"""🔥 *محبوب‌ترین تحلیل {analysis_data['symbol']}*
 
 {crypto_emoji} *عنوان:* {popular['title']}
 
 📄 *توضیحات:*
-{popular['description'][:400]}{'...' if len(popular['description']) > 400 else ''}
+{popular['description'][:300]}{'...' if len(popular['description']) > 300 else ''}
 
-👤 *نویسنده:* {popular['author']}"""
+👤 *نویسنده:* {popular['author']}
+⏰ *زمان:* {popular['timestamp']}
 
-            # ارسال پیام‌های تحلیل
-            await loading_message.edit_text(recent_message)
-            await update.message.reply_text(popular_message)
-            
+🔗 [چارت زنده TradingView]({popular['chart_url']})"""
+
+            # ارسال عکس‌های تحلیل با کپشن
+            try:
+                # ارسال عکس جدیدترین تحلیل
+                if recent.get('image_url'):
+                    await update.message.reply_photo(
+                        photo=recent['image_url'],
+                        caption=recent_text,
+                        parse_mode='Markdown'
+                    )
+                    logger.info(f"Sent image for recent analysis: {user_input}")
+                else:
+                    # اگر عکس موجود نیست، متن بفرست
+                    await loading_message.edit_text(recent_text, parse_mode='Markdown')
+                    logger.info(f"Sent text for recent analysis (no image): {user_input}")
+                
+                # ارسال عکس محبوب‌ترین تحلیل
+                if popular.get('image_url'):
+                    await update.message.reply_photo(
+                        photo=popular['image_url'],
+                        caption=popular_text,
+                        parse_mode='Markdown'
+                    )
+                    logger.info(f"Sent image for popular analysis: {user_input}")
+                else:
+                    # اگر عکس موجود نیست، متن بفرست
+                    await update.message.reply_text(popular_text, parse_mode='Markdown')
+                    logger.info(f"Sent text for popular analysis (no image): {user_input}")
+                
+            except Exception as image_error:
+                # اگر ارسال عکس خطا داد، فقط متن بفرست
+                logger.warning(f"خطا در ارسال عکس: {image_error}")
+                await loading_message.edit_text(f"✅ تحلیل {analysis_data['symbol']} دریافت شد\n\n{recent_text}", parse_mode='Markdown')
+                await update.message.reply_text(popular_text, parse_mode='Markdown')
+                logger.info(f"Fallback to text-only format for {user_input}")
+                
         else:
             # اگر فقط یک تحلیل موجود باشد
             analysis_text = f"""📊 تحلیل {analysis_data['symbol']}
 
-{analysis_data.get('description', 'تحلیل موجود نیست')}"""
-            await loading_message.edit_text(analysis_text)
+{analysis_data.get('description', 'تحلیل موجود نیست')}
+
+🔗 [چارت TradingView]({analysis_data.get('chart_url', 'https://www.tradingview.com')})"""
+            await loading_message.edit_text(analysis_text, parse_mode='Markdown')
         
         return ConversationHandler.END
         

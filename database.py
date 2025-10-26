@@ -46,10 +46,23 @@ class DatabaseManager:
                 os.remove(test_path)
                 logger.info(f"💾 استفاده از دیتابیس فایل persistent: {self.db_path}")
             except (PermissionError, OSError) as e:
-                # اگر نتوان فایل ایجاد کرد، از حافظه استفاده کن
+                # اگر نتوان فایل ایجاد کرد، دوباره امتحان کن با نام جدید
                 logger.warning(f"⚠️ نمی‌توان فایل دیتابیس ایجاد کرد: {e}")
-                logger.warning("🔄 استفاده از in-memory database")
-                self.db_path = ":memory:"
+                logger.warning("🔄 امتحان کردن با نام backup...")
+                backup_path = f"/workspace/bot_database_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                self.db_path = backup_path
+                try:
+                    # تست نوشتن فایل backup
+                    with open(backup_path + ".test", 'w') as f:
+                        f.write('test')
+                    os.remove(backup_path + ".test")
+                    logger.info(f"✅ دیتابیس persistent ذخیره شد در: {self.db_path}")
+                except (PermissionError, OSError) as backup_error:
+                    # اگر backup هم مشکل داشت، مستقیم در /workspace امتحان کن
+                    logger.warning(f"⚠️ Backup path هم کار نکرد: {backup_error}")
+                    fallback_path = "/workspace/bot_database.db"
+                    self.db_path = fallback_path
+                    logger.warning(f"🔄 استفاده از fallback path: {fallback_path}")
         else:
             # در محیط development
             if not db_path.startswith('/'):
@@ -64,9 +77,22 @@ class DatabaseManager:
                 os.remove(test_path)
                 logger.info(f"💾 استفاده از دیتابیس فایل local: {self.db_path}")
             except (PermissionError, OSError):
-                # اگر نتوان فایل ایجاد کرد، از حافظه استفاده کن
-                logger.warning("⚠️ نمی‌توان فایل دیتابیس local ایجاد کرد، استفاده از in-memory")
-                self.db_path = ":memory:"
+                # در development، اگر فایل local کار نکرد، دوباره امتحان کن
+                logger.warning("⚠️ نمی‌توان فایل دیتابیس local ایجاد کرد، امتحان دوباره...")
+                local_backup_path = f"bot_database_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                self.db_path = local_backup_path
+                try:
+                    # تست نوشتن فایل backup
+                    with open(local_backup_path + ".test", 'w') as f:
+                        f.write('test')
+                    os.remove(local_backup_path + ".test")
+                    logger.info(f"✅ دیتابیس local persistent ذخیره شد در: {self.db_path}")
+                except (PermissionError, OSError) as backup_error:
+                    # اگر backup هم مشکل داشت، به workspace root برگرد
+                    logger.warning(f"⚠️ Local backup هم کار نکرد: {backup_error}")
+                    workspace_path = f"/workspace/{db_path}"
+                    self.db_path = workspace_path
+                    logger.warning(f"🔄 استفاده از workspace path: {workspace_path}")
             
         self.init_database()
         
@@ -87,7 +113,9 @@ class DatabaseManager:
     def _ensure_persistent_storage(self):
         """اطمینان از persistence دیتابیس در محیط container"""
         if self.db_path == ":memory:":
-            return
+            logger.warning("🔄 درحال تبدیل in-memory database به فایل...")
+            self.db_path = "/workspace/bot_database.db"
+            logger.info(f"🔄 تغییر مسیر دیتابیس به: {self.db_path}")
             
         try:
             # تست نوشتن و خواندن از دیتابیس
@@ -101,9 +129,11 @@ class DatabaseManager:
             
         except Exception as e:
             logger.error(f"❌ خطا در تست persistence دیتابیس: {e}")
-            # fallback به in-memory
-            self.db_path = ":memory:"
-            logger.warning("🔄 Fallback به in-memory database")
+            logger.error("🔄 خطای جدی در persistence - نیاز به بررسی manual")
+            # سعی می‌کنیم با نام دیگر ایجاد کنیم
+            alt_path = f"/workspace/bot_db_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+            logger.warning(f"🔄 امتحان با نام جدید: {alt_path}")
+            self.db_path = alt_path
     
     def backup_to_file(self, backup_path: str = None) -> bool:
         """Backup دیتابیس به فایل"""
