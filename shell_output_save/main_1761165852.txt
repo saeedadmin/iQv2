@@ -1,33 +1,0 @@
-Enumerating objects: 36, done.
-Counting objects:   2% (1/36)Counting objects:   5% (2/36)Counting objects:   8% (3/36)Counting objects:  11% (4/36)Counting objects:  13% (5/36)Counting objects:  16% (6/36)Counting objects:  19% (7/36)Counting objects:  22% (8/36)Counting objects:  25% (9/36)Counting objects:  27% (10/36)Counting objects:  30% (11/36)Counting objects:  33% (12/36)Counting objects:  36% (13/36)Counting objects:  38% (14/36)Counting objects:  41% (15/36)Counting objects:  44% (16/36)Counting objects:  47% (17/36)Counting objects:  50% (18/36)Counting objects:  52% (19/36)Counting objects:  55% (20/36)Counting objects:  58% (21/36)Counting objects:  61% (22/36)Counting objects:  63% (23/36)Counting objects:  66% (24/36)Counting objects:  69% (25/36)Counting objects:  72% (26/36)Counting objects:  75% (27/36)Counting objects:  77% (28/36)Counting objects:  80% (29/36)Counting objects:  83% (30/36)Counting objects:  86% (31/36)Counting objects:  88% (32/36)Counting objects:  91% (33/36)Counting objects:  94% (34/36)Counting objects:  97% (35/36)Counting objects: 100% (36/36)Counting objects: 100% (36/36), done.
-Delta compression using up to 16 threads
-Compressing objects:   3% (1/31)Compressing objects:   6% (2/31)Compressing objects:   9% (3/31)Compressing objects:  12% (4/31)Compressing objects:  16% (5/31)Compressing objects:  19% (6/31)Compressing objects:  22% (7/31)Compressing objects:  25% (8/31)Compressing objects:  29% (9/31)Compressing objects:  32% (10/31)Compressing objects:  35% (11/31)Compressing objects:  38% (12/31)Compressing objects:  41% (13/31)Compressing objects:  45% (14/31)Compressing objects:  48% (15/31)Compressing objects:  51% (16/31)Compressing objects:  54% (17/31)Compressing objects:  58% (18/31)Compressing objects:  61% (19/31)Compressing objects:  64% (20/31)Compressing objects:  67% (21/31)Compressing objects:  70% (22/31)Compressing objects:  74% (23/31)Compressing objects:  77% (24/31)Compressing objects:  80% (25/31)Compressing objects:  83% (26/31)Compressing objects:  87% (27/31)Compressing objects:  90% (28/31)Compressing objects:  93% (29/31)Compressing objects:  96% (30/31)Compressing objects: 100% (31/31)Compressing objects: 100% (31/31), done.
-Writing objects:   3% (1/32)Writing objects:   6% (2/32)Writing objects:   9% (3/32)Writing objects:  12% (4/32)Writing objects:  15% (5/32)Writing objects:  18% (6/32)Writing objects:  21% (7/32)Writing objects:  25% (8/32)Writing objects:  28% (9/32)Writing objects:  31% (10/32)Writing objects:  34% (11/32)Writing objects:  37% (12/32)Writing objects:  40% (13/32)Writing objects:  43% (14/32)Writing objects:  46% (15/32)Writing objects:  50% (16/32)Writing objects:  53% (17/32)Writing objects:  56% (18/32)Writing objects:  59% (19/32)Writing objects:  62% (20/32)Writing objects:  65% (21/32)Writing objects:  68% (22/32)Writing objects:  71% (23/32)Writing objects:  75% (24/32)Writing objects:  78% (25/32)Writing objects:  81% (26/32)Writing objects:  84% (27/32)Writing objects:  87% (28/32)Writing objects:  90% (29/32)Writing objects:  93% (30/32)Writing objects:  96% (31/32)Writing objects: 100% (32/32)Writing objects: 100% (32/32), 9.44 KiB | 51.00 KiB/s, done.
-Total 32 (delta 9), reused 0 (delta 0), pack-reused 0
-remote: Resolving deltas:   0% (0/9)        remote: Resolving deltas:  11% (1/9)        remote: Resolving deltas:  22% (2/9)        remote: Resolving deltas:  33% (3/9)        remote: Resolving deltas:  44% (4/9)        remote: Resolving deltas:  55% (5/9)        remote: Resolving deltas:  66% (6/9)        remote: Resolving deltas:  77% (7/9)        remote: Resolving deltas:  88% (8/9)        remote: Resolving deltas: 100% (9/9)        remote: Resolving deltas: 100% (9/9), completed with 3 local objects.        
-remote: error: GH013: Repository rule violations found for refs/heads/main.        
-remote: 
-remote: - GITHUB PUSH PROTECTION        
-remote:   —————————————————————————————————————————        
-remote:     Resolve the following violations before pushing again        
-remote: 
-remote:     - Push cannot contain secrets        
-remote: 
-remote:             
-remote:      (?) Learn how to resolve a blocked push        
-remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push        
-remote:             
-remote:             
-remote:       —— Hugging Face User Access Token ————————————————————        
-remote:        locations:        
-remote:          - commit: 047e65982500afcfcd75bd4467969b95bf977724        
-remote:            path: upload_to_hf.py:5        
-remote:             
-remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
-remote:        https://github.com/saeedadmin/iQv2/security/secret-scanning/unblock-secret/34RA8cb3FNgEpCJ0FqrIjh580kb        
-remote:             
-remote: 
-remote: 
-To https://github.com/saeedadmin/iQv2.git
- ! [remote rejected] main -> main (push declined due to repository rule violations)
-error: failed to push some refs to 'https://github.com/saeedadmin/iQv2.git'
