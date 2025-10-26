@@ -28,20 +28,44 @@ def get_database_manager():
 class DatabaseManager:
     def __init__(self, db_path: str = "bot_database.db"):
         """مقداردهی مدیر دیتابیس"""
-        # در محیط production، اگر نتوان فایل ایجاد کرد، از حافظه استفاده کن
-        try:
-            # تست کن که آیا می‌توان فایل ایجاد کرد
-            test_path = f"{db_path}.test"
-            with open(test_path, 'w') as f:
-                f.write('test')
-            os.remove(test_path)
+        
+        # در محیط production، اول سعی کن از دیتابیس فایل استفاده کن
+        # در Koyeb، /tmp directory قابل نوشتن است
+        if os.getenv('ENVIRONMENT', 'production') == 'production':
+            # استفاده از /tmp برای persistent storage در Koyeb
+            self.db_path = f"/tmp/{db_path}"
+            try:
+                # تست کن که آیا می‌توان فایل ایجاد کرد
+                test_path = f"{self.db_path}.test"
+                with open(test_path, 'w') as f:
+                    f.write('test')
+                os.remove(test_path)
+                logger.info(f"💾 استفاده از دیتابیس فایل persistent: {self.db_path}")
+            except (PermissionError, OSError) as e:
+                # اگر نتوان فایل ایجاد کرد، از حافظه استفاده کن
+                logger.warning(f"⚠️ نمی‌توان فایل دیتابیس ایجاد کرد: {e}")
+                logger.warning("🔄 استفاده از in-memory database")
+                self.db_path = ":memory:"
+        else:
+            # در محیط development
             self.db_path = db_path
-        except (PermissionError, OSError):
-            # اگر نتوان فایل ایجاد کرد، از دیتابیس حافظه‌ای استفاده کن
-            logger.warning("Cannot create database file, using in-memory database")
-            self.db_path = ":memory:"
+            try:
+                # تست کن که آیا می‌توان فایل ایجاد کرد
+                test_path = f"{db_path}.test"
+                with open(test_path, 'w') as f:
+                    f.write('test')
+                os.remove(test_path)
+                logger.info(f"💾 استفاده از دیتابیس فایل local: {self.db_path}")
+            except (PermissionError, OSError):
+                # اگر نتوان فایل ایجاد کرد، از حافظه استفاده کن
+                logger.warning("⚠️ نمی‌توان فایل دیتابیس local ایجاد کرد، استفاده از in-memory")
+                self.db_path = ":memory:"
             
         self.init_database()
+        
+        # اگر دیتابیس فایل باشد، اطمینان از persistence
+        if self.db_path != ":memory:":
+            self._ensure_persistent_storage()
     
     def get_connection(self):
         """ایجاد اتصال به دیتابیس"""
@@ -52,6 +76,109 @@ class DatabaseManager:
             conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row  # برای دسترسی به نتایج به صورت dictionary
         return conn
+    
+    def _ensure_persistent_storage(self):
+        """اطمینان از persistence دیتابیس در محیط container"""
+        if self.db_path == ":memory:":
+            return
+            
+        try:
+            # تست نوشتن و خواندن از دیتابیس
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("CREATE TABLE IF NOT EXISTS storage_test (id INTEGER PRIMARY KEY)")
+                cursor.execute("INSERT OR IGNORE INTO storage_test (id) VALUES (1)")
+                conn.commit()
+                
+            logger.info(f"✅ دیتابیس persistent ذخیره شده در: {self.db_path}")
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در تست persistence دیتابیس: {e}")
+            # fallback به in-memory
+            self.db_path = ":memory:"
+            logger.warning("🔄 Fallback به in-memory database")
+    
+    def backup_to_file(self, backup_path: str = None) -> bool:
+        """Backup دیتابیس به فایل"""
+        if backup_path is None:
+            if self.db_path != ":memory:":
+                backup_path = f"{self.db_path}.backup"
+            else:
+                backup_path = "/tmp/bot_database_backup.db"
+                
+        try:
+            with self.get_connection() as source_conn:
+                # ایجاد backup با SQLite backup API
+                with sqlite3.connect(backup_path) as backup_conn:
+                    source_conn.backup(backup_conn)
+                    
+            logger.info(f"✅ Backup دیتابیس ایجاد شد: {backup_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در backup: {e}")
+            return False
+    
+    def restore_from_file(self, backup_path: str = None) -> bool:
+        """بازگردانی دیتابیس از backup"""
+        if backup_path is None:
+            if self.db_path != ":memory:":
+                backup_path = f"{self.db_path}.backup"
+            else:
+                backup_path = "/tmp/bot_database_backup.db"
+                
+        if not os.path.exists(backup_path):
+            logger.warning(f"⚠️ فایل backup یافت نشد: {backup_path}")
+            return False
+            
+        try:
+            # خواندن backup و ایجاد دیتابیس جدید
+            if self.db_path != ":memory:":
+                # اگر دیتابیس فایل بود، backup را کپی کن
+                import shutil
+                shutil.copy2(backup_path, self.db_path)
+                logger.info(f"✅ دیتابیس از backup بازگردانی شد: {backup_path}")
+            else:
+                # اگر in-memory بود، داده‌ها را import کن
+                with sqlite3.connect(backup_path) as backup_conn:
+                    with self.get_connection() as current_conn:
+                        backup_conn.backup(current_conn)
+                logger.info(f"✅ داده‌ها از backup به in-memory منتقل شد")
+            
+            # دیتابیس را دوباره initialize کن
+            self.init_database()
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در restore: {e}")
+            return False
+    
+    def cleanup_old_message_tracking(self, hours: int = 24) -> int:
+        """پاک‌سازی رکوردهای قدیمی tracking (در صورت وجود)"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # اگر جدول message_tracking وجود داشته باشد، پاک کن
+                cursor.execute("""
+                    DELETE FROM message_tracking 
+                    WHERE created_at < datetime('now', '-{} hours')
+                """.format(hours))
+                
+                deleted_count = cursor.rowcount
+                conn.commit()
+                
+                if deleted_count > 0:
+                    logger.info(f"🗑️ {deleted_count} رکورد قدیمی message tracking پاک شد")
+                
+                return deleted_count
+                
+        except Exception as e:
+            # اگر جدول وجود نداشته باشد، خطا نده
+            if "no such table" in str(e).lower():
+                return 0
+            logger.error(f"خطا در پاک‌سازی message tracking: {e}")
+            return 0
     
     def init_database(self):
         """ایجاد جداول اولیه دیتابیس"""

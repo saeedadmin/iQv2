@@ -2026,6 +2026,23 @@ async def cleanup_tracking_task():
         except Exception as e:
             logger.error(f"❌ خطا در cleanup_tracking_task: {e}")
 
+async def backup_task():
+    """تسک پس‌زمینه برای backup خودکار دیتابیس"""
+    # تأخیر اولیه برای اطمینان از آماده بودن دیتابیس
+    await asyncio.sleep(60)
+    
+    while True:
+        try:
+            # هر 6 ساعت یکبار backup بگیر
+            await asyncio.sleep(21600)  # 6 hours
+            
+            # ایجاد backup
+            if db_manager.backup_to_file():
+                bot_logger.log_system_event("BACKUP_SUCCESS", "Backup دیتابیس با موفقیت ایجاد شد")
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در backup_task: {e}")
+
 async def run_database_migrations():
     """اجرای migrationهای دیتابیس در زمان شروع ربات"""
     try:
@@ -2103,8 +2120,17 @@ async def main() -> None:
     logger.info("⏳ آماده‌سازی دیتابیس...")
     await asyncio.sleep(1)
     
+    # بازگردانی backup در صورت وجود
+    logger.info("🔄 بررسی backup files...")
+    if db_manager.restore_from_file():
+        logger.info("✅ دیتابیس از backup بازگردانی شد")
+    
     # اجرای migrationهای دیتابیس
     await run_database_migrations()
+    
+    # ایجاد backup جدید
+    logger.info("💾 ایجاد backup جدید...")
+    db_manager.backup_to_file()
     
     # لاگ شروع سیستم
     bot_logger.log_system_event("BOT_STARTED", f"ربات در زمان {datetime.datetime.now()} شروع شد")
@@ -2318,6 +2344,7 @@ async def main() -> None:
     logger.info("🧹 شروع Background Tasks...")
     asyncio.create_task(auto_unblock_task())
     asyncio.create_task(cleanup_tracking_task())
+    asyncio.create_task(backup_task())
     logger.info("✅ Background Tasks فعال شدند (auto-unblock, cleanup)")
     
     # 📆 راه‌اندازی Scheduler برای ارسال خودکار اخبار
