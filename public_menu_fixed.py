@@ -291,7 +291,7 @@ class PublicMenuManager:
             return []
     
     def format_crypto_news_message(self, news_list: List[Dict[str, str]]) -> str:
-        """فرمت کردن پیام اخبار کریپتو"""
+        """فرمت کردن پیام اخبار کریپتو - نسخه ایمن بدون Markdown"""
         if not news_list:
             return "❌ خطا در دریافت اخبار. لطفاً بعداً امتحان کنید."
         
@@ -322,7 +322,7 @@ class PublicMenuManager:
         return message
     
     def format_ai_news_message(self, news_list: List[Dict[str, str]]) -> str:
-        """فرمت کردن پیام اخبار هوش مصنوعی"""
+        """فرمت کردن پیام اخبار هوش مصنوعی - نسخه ایمن بدون Markdown"""
         if not news_list:
             return "❌ خطا در دریافت اخبار. لطفاً بعداً امتحان کنید."
         
