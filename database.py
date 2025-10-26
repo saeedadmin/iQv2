@@ -602,15 +602,31 @@ class DatabaseManager:
                 conn.commit()
                 logger.info(f"کاربر {user_id} به علت اسپم تا {block_until} بلاک شد")
                 
+                # تبدیل block_duration به string قابل خواندن برای نمایش
+                if block_duration >= 1:
+                    duration_str = f"{int(block_duration)} روز"
+                elif block_duration >= 0.5:
+                    duration_str = "12 ساعت"
+                else:
+                    duration_str = "1 ساعت"
+                
                 return {
                     'success': True,
                     'warning_level': warning_level,
-                    'block_until': block_until
+                    'block_duration': duration_str,
+                    'block_until': block_until,
+                    'is_permanent': False  # فعلاً همه بلاک‌ها موقت هستند
                 }
                 
         except Exception as e:
             logger.error(f"خطا در بلاک کردن کاربر به علت اسپم: {e}")
-            return {'success': False, 'warning_level': 'unknown'}
+            return {
+                'success': False, 
+                'warning_level': 'unknown',
+                'block_duration': 'نامشخص',
+                'block_until': None,
+                'is_permanent': False
+            }
     
     def auto_unblock_expired_users(self) -> int:
         """آنبلاک خودکار کاربرانی که زمان بلاکشان تمام شده"""

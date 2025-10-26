@@ -676,17 +676,22 @@ class AdminPanel:
             # انجام backup
             backup_success = self.db.backup_to_file()
             
+            import datetime
+            
             if backup_success:
-                message = "✅ Backup دیتابیس با موفقیت ایجاد شد!"
+                message = f"✅ Backup دیتابیس با موفقیت ایجاد شد!\n"
+                message += f"⏰ زمان: {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}\n\n"
+                
                 # اضافه کردن آمار backup
                 stats = self.db.get_user_stats()
-                message += f"\n\n📊 آمار دیتابیس:\n"
+                message += f"📊 آمار دیتابیس:\n"
                 message += f"👥 کل کاربران: {stats['total']}\n"
                 message += f"✅ کاربران فعال: {stats['active']}\n"
                 message += f"🔒 کاربران بلاک شده: {stats['blocked']}\n"
                 message += f"📝 کل پیام‌ها: {stats['total_messages']}\n"
             else:
-                message = "❌ خطا در ایج backup دیتابیس!"
+                message = f"❌ خطا در ایج backup دیتابیس!\n"
+                message += f"⏰ زمان: {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}\n"
             
             # کیبورد backup
             keyboard = [
