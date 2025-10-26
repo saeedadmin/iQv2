@@ -433,178 +433,140 @@ class AIChatStateManager:
     
     def _init_chat_state_table(self):
         """ایجاد جدول state چت"""
-        conn = None
         try:
-            conn = self.db.get_connection()
-            cursor = conn.cursor()
-            
-            # ایجاد جدول state چت
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS ai_chat_state (
-                    user_id BIGINT PRIMARY KEY,
-                    is_in_chat BOOLEAN DEFAULT FALSE,
-                    last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    message_count INTEGER DEFAULT 0,
-                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-                )
-            ''')
-            
-            # ایجاد index برای بهبود performance
-            cursor.execute('''
-                CREATE INDEX IF NOT EXISTS idx_ai_chat_state_user
-                ON ai_chat_state(user_id, is_in_chat)
-            ''')
-            
-            conn.commit()
-            logger.debug("✅ جدول ai_chat_state ایجاد شد")
-            
+            with self.db.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # ایجاد جدول state چت
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS ai_chat_state (
+                        user_id BIGINT PRIMARY KEY,
+                        is_in_chat BOOLEAN DEFAULT FALSE,
+                        last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        message_count INTEGER DEFAULT 0,
+                        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+                    )
+                ''')
+                
+                # ایجاد index برای بهبود performance
+                cursor.execute('''
+                    CREATE INDEX IF NOT EXISTS idx_ai_chat_state_user
+                    ON ai_chat_state(user_id, is_in_chat)
+                ''')
+                
+                conn.commit()
+                logger.debug("✅ جدول ai_chat_state ایجاد شد")
+                
         except Exception as e:
-            if conn:
-                conn.rollback()
             logger.error(f"❌ خطا در ایجاد جدول chat state: {e}")
-        finally:
-            if conn:
-                cursor.close()
-                self.db.return_connection(conn)
     
     def start_chat(self, user_id: int) -> bool:
         """شروع چت برای کاربر"""
-        conn = None
         try:
-            conn = self.db.get_connection()
-            cursor = conn.cursor()
-            
-            # PostgreSQL syntax
-            cursor.execute('''
-                INSERT INTO ai_chat_state (user_id, is_in_chat, message_count)
-                VALUES (%s, TRUE, 0)
-                ON CONFLICT (user_id) DO UPDATE SET
-                    is_in_chat = TRUE,
-                    last_message_time = CURRENT_TIMESTAMP,
-                    message_count = 0
-            ''', (user_id,))
-            
-            conn.commit()
-            logger.info(f"✅ چت AI برای کاربر {user_id} شروع شد")
-            return True
-            
+            with self.db.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # PostgreSQL syntax
+                cursor.execute('''
+                    INSERT INTO ai_chat_state (user_id, is_in_chat, message_count)
+                    VALUES (%s, TRUE, 0)
+                    ON CONFLICT (user_id) DO UPDATE SET
+                        is_in_chat = TRUE,
+                        last_message_time = CURRENT_TIMESTAMP,
+                        message_count = 0
+                ''', (user_id,))
+                
+                conn.commit()
+                logger.info(f"✅ چت AI برای کاربر {user_id} شروع شد")
+                return True
+                
         except Exception as e:
-            if conn:
-                conn.rollback()
             logger.error(f"❌ خطا در شروع چت: {e}")
             return False
-        finally:
-            if conn:
-                cursor.close()
-                self.db.return_connection(conn)
     
     def end_chat(self, user_id: int) -> bool:
         """پایان چت برای کاربر و پاک کردن تاریخچه"""
-        conn = None
         try:
-            conn = self.db.get_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                UPDATE ai_chat_state
-                SET is_in_chat = FALSE,
-                    last_message_time = CURRENT_TIMESTAMP
-                WHERE user_id = %s
-            ''', (user_id,))
-            
-            conn.commit()
-            
-            # پاک کردن تاریخچه چت
-            if self.db:
-                self.db.clear_chat_history(user_id)
-            
-            logger.info(f"✅ چت AI برای کاربر {user_id} پایان یافت و تاریخچه پاک شد")
-            return True
-            
+            with self.db.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    UPDATE ai_chat_state
+                    SET is_in_chat = FALSE,
+                        last_message_time = CURRENT_TIMESTAMP
+                    WHERE user_id = %s
+                ''', (user_id,))
+                
+                conn.commit()
+                
+                # پاک کردن تاریخچه چت
+                if self.db:
+                    self.db.clear_chat_history(user_id)
+                
+                logger.info(f"✅ چت AI برای کاربر {user_id} پایان یافت و تاریخچه پاک شد")
+                return True
+                
         except Exception as e:
-            if conn:
-                conn.rollback()
             logger.error(f"❌ خطا در پایان چت: {e}")
             return False
-        finally:
-            if conn:
-                cursor.close()
-                self.db.return_connection(conn)
     
     def is_in_chat(self, user_id: int) -> bool:
         """بررسی اینکه آیا کاربر در حالت چت است یا خیر"""
-        conn = None
         try:
-            conn = self.db.get_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute(
-                'SELECT is_in_chat FROM ai_chat_state WHERE user_id = %s',
-                (user_id,)
-            )
-            result = cursor.fetchone()
-            
-            return result[0] if result else False
-            
+            with self.db.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute(
+                    'SELECT is_in_chat FROM ai_chat_state WHERE user_id = %s',
+                    (user_id,)
+                )
+                result = cursor.fetchone()
+                
+                return result[0] if result else False
+                
         except Exception as e:
             logger.error(f"❌ خطا در بررسی state چت: {e}")
             return False
-        finally:
-            if conn:
-                cursor.close()
-                self.db.return_connection(conn)
     
     def increment_message_count(self, user_id: int) -> bool:
         """افزایش شمارنده پیام‌های کاربر در چت"""
-        conn = None
         try:
-            conn = self.db.get_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                UPDATE ai_chat_state
-                SET message_count = message_count + 1,
-                    last_message_time = CURRENT_TIMESTAMP
-                WHERE user_id = %s
-            ''', (user_id,))
-            
-            conn.commit()
-            return True
-            
+            with self.db.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    UPDATE ai_chat_state
+                    SET message_count = message_count + 1,
+                        last_message_time = CURRENT_TIMESTAMP
+                    WHERE user_id = %s
+                ''', (user_id,))
+                
+                conn.commit()
+                return True
+                
         except Exception as e:
-            if conn:
-                conn.rollback()
             logger.error(f"❌ خطا در آپدیت message count: {e}")
             return False
-        finally:
-            if conn:
-                cursor.close()
-                self.db.return_connection(conn)
     
     def get_chat_stats(self, user_id: int) -> Dict[str, Any]:
         """دریافت آمار چت کاربر"""
-        conn = None
         try:
-            conn = self.db.get_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute(
-                'SELECT message_count, last_message_time FROM ai_chat_state WHERE user_id = %s',
-                (user_id,)
-            )
-            result = cursor.fetchone()
-            
-            if result:
-                return {
-                    'message_count': result[0],
-                    'last_message_time': result[1]
-                }
-            return {'message_count': 0, 'last_message_time': None}
-            
+            with self.db.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute(
+                    'SELECT message_count, last_message_time FROM ai_chat_state WHERE user_id = %s',
+                    (user_id,)
+                )
+                result = cursor.fetchone()
+                
+                if result:
+                    return {
+                        'message_count': result[0],
+                        'last_message_time': result[1]
+                    }
+                return {'message_count': 0, 'last_message_time': None}
+                
         except Exception as e:
             logger.error(f"❌ خطا در دریافت آمار چت: {e}")
             return {'message_count': 0, 'last_message_time': None}
-        finally:
-            if conn:
-                cursor.close()
-                self.db.return_connection(conn)
