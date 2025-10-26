@@ -14,8 +14,8 @@ import datetime
 from typing import Dict, List
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, CallbackQueryHandler
-from database import DatabaseManager, DatabaseLogger
-from logger_system import bot_logger
+from database.database import DatabaseManager, DatabaseLogger
+from core.logger_system import bot_logger
 
 class AdminPanel:
     def __init__(self, db_manager: DatabaseManager, admin_user_id: int):
