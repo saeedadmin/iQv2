@@ -1,0 +1,42 @@
+{
+  "name": "iqv2-n8n-bot",
+  "version": "1.0.0",
+  "description": "N8N integration for Telegram Bot with AI capabilities",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "n8n start",
+    "build": "echo 'No build step required'",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "lint": "eslint nodes packages --ext .ts,.js --fix",
+    "lintfix": "eslint nodes packages --ext .ts,.js --fix",
+    "prettier": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "prettier:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "find-deadrefs": "git reflog --date=iso --format=%(refname:short) %(creatordate:iso) %(objectname) | sort -r9 | head -n 50 | git name-rev --stdin"
+  },
+  "keywords": [
+    "n8n",
+    "workflow",
+    "telegram",
+    "ai",
+    "automation"
+  ],
+  "author": "MiniMax Agent",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/iqv2-n8n-bot.git"
+  },
+  "dependencies": {
+    "n8n": "^1.0.0",
+    "n8n-nodes-base": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "eslint": "^8.0.0",
+    "eslint-plugin-n8n-nodes-base": "^1.11.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  }
+}
