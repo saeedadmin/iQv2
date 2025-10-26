@@ -33,7 +33,11 @@ class DatabaseManager:
         # در Koyeb، /tmp directory قابل نوشتن است
         if os.getenv('ENVIRONMENT', 'production') == 'production':
             # استفاده از /tmp برای persistent storage در Koyeb
-            self.db_path = f"/tmp/{db_path}"
+            # فقط از نام فایل استفاده کن، مسیر کامل را مسیر نده
+            if not db_path.startswith('/tmp/'):
+                self.db_path = f"/tmp/{os.path.basename(db_path)}"
+            else:
+                self.db_path = db_path
             try:
                 # تست کن که آیا می‌توان فایل ایجاد کرد
                 test_path = f"{self.db_path}.test"
@@ -48,10 +52,13 @@ class DatabaseManager:
                 self.db_path = ":memory:"
         else:
             # در محیط development
-            self.db_path = db_path
+            if not db_path.startswith('/'):
+                self.db_path = db_path
+            else:
+                self.db_path = db_path
             try:
                 # تست کن که آیا می‌توان فایل ایجاد کرد
-                test_path = f"{db_path}.test"
+                test_path = f"{self.db_path}.test"
                 with open(test_path, 'w') as f:
                     f.write('test')
                 os.remove(test_path)
@@ -659,7 +666,7 @@ class DatabaseManager:
                 cursor.execute('''
                     INSERT INTO chat_history (user_id, role, message_text, timestamp)
                     VALUES (?, ?, ?, ?)
-                ''', (user_id, role, message_text, datetime.now()))
+                ''', (user_id, role, message_text, datetime.datetime.now()))
                 conn.commit()
                 
                 logger.debug(f"💬 پیام چت کاربر {user_id} ذخیره شد")
@@ -674,7 +681,7 @@ class DatabaseManager:
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
-                cutoff_date = datetime.now() - datetime.timedelta(days=days)
+                cutoff_date = datetime.datetime.now() - datetime.timedelta(days=days)
                 cursor.execute('''
                     DELETE FROM chat_history 
                     WHERE timestamp < ?
