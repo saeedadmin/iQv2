@@ -47,15 +47,6 @@ from ocr_handler import OCRHandler
 # Voice handler removed - no longer needed
 # Signal scraper removed - will be re-implemented later
 
-# Optional imports - TradingView Analysis
-try:
-    from tradingview_analysis import TradingViewAnalysisFetcher
-    TRADINGVIEW_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"TradingView Analysis غیرفعال: {e}")
-    TradingViewAnalysisFetcher = None
-    TRADINGVIEW_AVAILABLE = False
-
 # تنظیمات logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", 
@@ -95,14 +86,8 @@ ocr_handler = OCRHandler()
 
 # AI handlers initialized successfully
 
-# Initialize TradingView fetcher if available
-if TRADINGVIEW_AVAILABLE:
-    tradingview_fetcher = TradingViewAnalysisFetcher()
-else:
-    tradingview_fetcher = None
-
 # متغیرهای مکالمه
-(BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION, TRADINGVIEW_ANALYSIS) = range(4)
+(BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION) = range(3)
 
 # بررسی دسترسی کاربر
 async def check_user_access(user_id: int) -> bool:
@@ -677,16 +662,16 @@ def format_crypto_news_message(news_list):
     if not news_list:
         return "❌ خطا در دریافت اخبار کریپتو. لطفاً بعداً امتحان کنید."
     
-    message = "📈 *آخرین اخبار کریپتو (CoinDesk)*\n\n"
+    message = "📈 آخرین اخبار کریپتو (CoinDesk)\n\n"
     
     for i, news in enumerate(news_list, 1):
         title = news['title'][:80] + '...' if len(news['title']) > 80 else news['title']
         description = news.get('description', '')[:100] + '...' if len(news.get('description', '')) > 100 else news.get('description', '')
         
-        message += f"📰 *{i}. {title}*\n"
+        message += f"📰 {i}. {title}\n"
         if description:
             message += f"   {description}\n"
-        message += f"   🔗 [ادامه مطلب]({news['link']})\n\n"
+        message += f"   🔗 لینک: {news['link']}\n\n"
     
     message += "🔄 منبع: CoinDesk\n"
     message += "⏰ آخرین به‌روزرسانی: همین الان"
@@ -920,65 +905,21 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 # Handler برای شروع فرآیند تحلیل TradingView
 async def tradingview_analysis_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """شروع فرآیند تحلیل TradingView"""
-    help_message = """
-📈 *تحلیل کامیونیتی TradingView*
+    message = """
+📈 تحلیل TradingView
 
-آخرین تحلیل‌های کاربران حرفه‌ای TradingView را دریافت کنید!
+❌ این ویژگی فعلاً در دسترس نیست.
 
-✅ *فرمت مورد قبول:*
-• فقط جفت ارز با USDT به صورت حروف کوچک
-• مثال: `btcusdt`, `ethusdt`, `solusdt`
-
-📝 *مثال‌های صحیح:*
-• btcusdt (بیت کوین)
-• ethusdt (اتریوم) 
-• solusdt (سولانا)
-• adausdt (کاردانو)
-• bnbusdt (بایننس کوین)
-• xrpusdt (ریپل)
-• dogeusdt (دوج کوین)
-• linkusdt (چین لینک)
-• ltcusdt (لایت کوین)
-• dotusdt (پولکادات)
-• avaxusdt (اولانچ)
-
-⚠️ *نکته مهم:* فقط حروف کوچک، بدون فاصله یا نشانه
-💡 *راهنما:* جفت ارز مورد نظر خود را تایپ کنید
-
-برای لغو /cancel بفرستید
+به زودی فعال می‌شود! 🚀
     """
     
-    await update.message.reply_text(help_message, parse_mode='Markdown')
-    return TRADINGVIEW_ANALYSIS
+    await update.message.reply_text(message)
+    return ConversationHandler.END
 
 async def tradingview_analysis_process(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """پردازش درخواست تحلیل TradingView"""
-    user = update.effective_user
-    message_text = update.message.text
-    
-    if message_text.startswith('/cancel'):
-        await update.message.reply_text("❌ تحلیل TradingView لغو شد.")
-        return ConversationHandler.END
-    
-    # اعتبارسنجی فرمت ورودی
-    crypto_pair_pattern = r'^[a-z]+usdt$'
-    message_clean = message_text.lower().strip()
-    
-    # اول بررسی کن که آیا فرمت درست است
-    if re.match(crypto_pair_pattern, message_clean) and len(message_clean) >= 6:
-        # نمایش پیام در حال بارگذاری
-        loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین تحلیل کامیونیتی از TradingView...\n\nلطفاً چند ثانیه صبر کنید.")
-        
-        try:
-            # دریافت تحلیل از TradingView
-            analysis_data = await tradingview_fetcher.fetch_latest_analysis(message_clean)
-            
-            if analysis_data.get('success'):
-                # فرمت کردن پیام
-                analysis_message = tradingview_fetcher.format_analysis_message(analysis_data)
-                
-                # ارسال پیام تحلیل
-                await loading_message.delete()
+    await update.message.reply_text("❌ تحلیل TradingView فعلاً در دسترس نیست.")
+    return ConversationHandler.END
                 
                 # بررسی نوع تحلیل (دو تحلیل یا یکی)
                 if 'popular_analysis' in analysis_data and 'recent_analysis' in analysis_data:
@@ -1408,7 +1349,6 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         # کیبورد منوی ارزهای دیجیتال
         crypto_keyboard = [
             [KeyboardButton("📊 قیمت‌های لحظه‌ای"), KeyboardButton("📰 اخبار کریپتو")],
-            [KeyboardButton("📈 تحلیل TradingView")],
             [KeyboardButton("😨 شاخص ترس و طمع"), KeyboardButton("🔙 بازگشت به منوی اصلی")]
         ]
         reply_markup = ReplyKeyboardMarkup(crypto_keyboard, resize_keyboard=True, one_time_keyboard=False)
@@ -2235,14 +2175,7 @@ async def main() -> None:
     application.add_handler(broadcast_conv_handler)
     
     # ConversationHandler برای تحلیل TradingView
-    tradingview_conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("^📈 تحلیل TradingView$"), tradingview_analysis_start)],
-        states={
-            TRADINGVIEW_ANALYSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND, tradingview_analysis_process)],
-        },
-        fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
-    )
-    application.add_handler(tradingview_conv_handler)
+    # TradingView handler removed - feature disabled
     
     # Voice handler removed - no longer needed
     
