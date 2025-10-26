@@ -209,8 +209,8 @@ class TradingViewFetcher:
                 'author': f'Community Expert - {crypto_info["name"]}',
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
                 'image_url': None,
-                'chart_url': f"https://www.tradingview.com/chart/?symbol=BITSTAMP:{crypto_info['view_symbol'] if 'view_symbol' in crypto_info else f'{crypto_info[\"name\"].upper()}USD'}",
-                'view_symbol': crypto_info.get('view_symbol', f'{crypto_info["name"].upper()}USD')
+                'chart_url': f"https://www.tradingview.com/chart/?symbol=BITSTAMP:{crypto_info['view_symbol'] if 'view_symbol' in crypto_info else f'{crypto_info['name'].upper()}USD'}",
+                'view_symbol': crypto_info.get('view_symbol', f'{crypto_info['name'].upper()}USD')
             }
         else:  # recent
             return {
@@ -230,8 +230,8 @@ class TradingViewFetcher:
                 'author': f'Market Analyst - {crypto_info["name"]}',
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
                 'image_url': None,
-                'chart_url': f"https://www.tradingview.com/chart/?symbol=BITSTAMP:{crypto_info['view_symbol'] if 'view_symbol' in crypto_info else f'{crypto_info[\"name\"].upper()}USD'}",
-                'view_symbol': crypto_info.get('view_symbol', f'{crypto_info["name"].upper()}USD')
+                'chart_url': f"https://www.tradingview.com/chart/?symbol=BITSTAMP:{crypto_info['view_symbol'] if 'view_symbol' in crypto_info else f'{crypto_info['name'].upper()}USD'}",
+                'view_symbol': crypto_info.get('view_symbol', f'{crypto_info['name'].upper()}USD')
             }
     
     async def fetch_popular_analysis(self, symbol: str) -> Optional[Dict[str, Any]]:
