@@ -32,7 +32,7 @@ load_dotenv()
 # Choose database based on environment
 DATABASE_URL = os.getenv('DATABASE_URL')
 if DATABASE_URL and DATABASE_URL.startswith('postgresql'):
-    from database_postgres import PostgreSQLManager as DatabaseManager, DatabaseLogger
+    from database import DatabaseManager, DatabaseLogger
 else:
     from database import DatabaseManager, DatabaseLogger
 
