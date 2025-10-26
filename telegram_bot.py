@@ -1990,6 +1990,9 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 # Background Tasks برای Anti-Spam System
 async def auto_unblock_task():
     """تسک پس‌زمینه برای آنبلاک خودکار کاربرها"""
+    # تأخیر اولیه برای اطمینان از آماده بودن دیتابیس
+    await asyncio.sleep(5)
+    
     while True:
         try:
             # هر 1 دقیقه چک کن
@@ -2009,6 +2012,9 @@ async def auto_unblock_task():
 
 async def cleanup_tracking_task():
     """تسک پس‌زمینه برای پاک‌سازی رکوردهای قدیمی tracking"""
+    # تأخیر اولیه برای اطمینان از آماده بودن دیتابیس
+    await asyncio.sleep(10)
+    
     while True:
         try:
             # هر 1 ساعت یکبار پاک‌سازی کن
@@ -2025,13 +2031,25 @@ async def run_database_migrations():
     try:
         logger.info("🔧 چک کردن migrationهای دیتابیس...")
         
-        # Migration: اضافه کردن فیلد news_subscription_enabled
-        # در SQLite، ما فقط سعی می‌کنیم ستون را اضافه کنیم
-        # اگر از قبل وجود داشته باشد، خطا می‌دهد که ما آن را نادیده می‌گیریم
-        try:
-            with db_manager.get_connection() as conn:
-                cursor = conn.cursor()
-                
+        with db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # ابتدا چک کن که جدول users وجود داشته باشد
+            try:
+                cursor.execute("PRAGMA table_info(users)")
+                user_table_exists = cursor.fetchone() is not None
+            except:
+                user_table_exists = False
+            
+            if not user_table_exists:
+                logger.error("❌ جدول users وجود ندارد! این نباید اتفاق بیفتد.")
+                return
+            
+            # چک کن که ستون news_subscription_enabled وجود داشته باشد
+            cursor.execute("PRAGMA table_info(users)")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            if 'news_subscription_enabled' not in columns:
                 logger.info("🔧 اضافه کردن فیلد news_subscription_enabled...")
                 cursor.execute("""
                     ALTER TABLE users 
@@ -2039,13 +2057,8 @@ async def run_database_migrations():
                 """)
                 conn.commit()
                 logger.info("✅ فیلد news_subscription_enabled با موفقیت اضافه شد")
-                
-        except Exception as column_error:
-            # اگر ستون از قبل وجود داشته باشد، خطا می‌دهد که طبیعی است
-            if "duplicate column name" in str(column_error).lower():
-                logger.info("✅ فیلد news_subscription_enabled قبلاً وجود دارد")
             else:
-                raise column_error
+                logger.info("✅ فیلد news_subscription_enabled قبلاً وجود دارد")
             
     except Exception as e:
         logger.error(f"❌ خطا در migration: {e}")
@@ -2056,6 +2069,10 @@ async def main() -> None:
     logger.info(f"🔑 BOT_TOKEN: {'SET' if BOT_TOKEN else 'NOT SET'}")
     logger.info(f"👤 ADMIN_USER_ID: {ADMIN_USER_ID}")
     logger.info(f"🌍 ENVIRONMENT: {ENVIRONMENT}")
+    
+    # تأخیر کوتاه برای اطمینان از مقداردهی کامل دیتابیس
+    logger.info("⏳ آماده‌سازی دیتابیس...")
+    await asyncio.sleep(1)
     
     # اجرای migrationهای دیتابیس
     await run_database_migrations()
