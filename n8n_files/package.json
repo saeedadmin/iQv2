@@ -30,7 +30,8 @@
   },
   "dependencies": {
     "n8n": "^1.0.0",
-    "n8n-nodes-base": "^1.0.0"
+    "n8n-nodes-base": "^1.0.0",
+    "ngrok": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
