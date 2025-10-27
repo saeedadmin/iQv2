@@ -8,16 +8,16 @@ RUN apk add --no-cache python3 make g++
 WORKDIR /usr/src/app
 
 # Copy N8N package files
-COPY n8n_files/package*.json n8n_files/
+COPY package*.json ./
 
-# Install dependencies from n8n_files directory
-RUN cd n8n_files && npm install --production
+# Install dependencies
+RUN npm install --production
 
 # Copy N8N application code
-COPY n8n_files/ ./n8n_files/
+COPY . ./
 
-# Set working directory to n8n_files for the startup command
-WORKDIR /usr/src/app/n8n_files
+# Set working directory for the startup command
+WORKDIR /usr/src/app
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
