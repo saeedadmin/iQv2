@@ -4,7 +4,7 @@
   "description": "N8N integration for Telegram Bot with AI capabilities",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "n8n start",
     "dev": "n8n start"
   },
   "keywords": [

@@ -3,40 +3,33 @@
  * Starts the N8N workflow automation server
  */
 
-const N8N = require('n8n');
+console.log('🚀 Starting N8N server...');
+console.log(`📊 N8N Configuration:`);
+console.log(`   - Host: ${process.env.N8N_HOST || '0.0.0.0'}`);
+console.log(`   - Port: ${process.env.N8N_PORT || '8443'}`);
+console.log(`   - Protocol: ${process.env.N8N_PROTOCOL || 'https'}`);
 
-async function start() {
-  try {
-    console.log('🚀 Starting N8N server...');
-    console.log(`📊 N8N Configuration:`);
-    console.log(`   - Host: ${process.env.N8N_HOST || '0.0.0.0'}`);
-    console.log(`   - Port: ${process.env.N8N_PORT || '8443'}`);
-    console.log(`   - Protocol: ${process.env.N8N_PROTOCOL || 'https'}`);
-    console.log(`   - Database: PostgreSQL`);
+// Set environment variables
+process.env.N8N_HOST = process.env.N8N_HOST || '0.0.0.0';
+process.env.N8N_PORT = process.env.N8N_PORT || '8443';
+process.env.N8N_PROTOCOL = process.env.N8N_PROTOCOL || 'https';
+process.env.N8N_EDITOR_BASE_URL = process.env.N8N_EDITOR_BASE_URL || 'https://iqv2.onrender.com';
 
-    // Initialize N8N
-    const n8n = new N8N();
-
-    // Start the server
-    await n8n.start();
-    console.log('✅ N8N server started successfully!');
-    console.log(`🌐 Access N8N at: https://iqv2.onrender.com`);
-  } catch (error) {
-    console.error('❌ Failed to start N8N:', error);
-    process.exit(1);
-  }
-}
-
-// Handle graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('🛑 Received SIGTERM, shutting down gracefully...');
-  process.exit(0);
+// Start N8N using spawn for better process management
+const { spawn } = require('child_process');
+const n8nProcess = spawn('n8n', ['start'], { 
+  stdio: 'inherit',
+  env: process.env
 });
 
-process.on('SIGINT', async () => {
-  console.log('🛑 Received SIGINT, shutting down gracefully...');
-  process.exit(0);
+n8nProcess.on('error', (error) => {
+  console.error('❌ Failed to start N8N process:', error);
+  process.exit(1);
 });
 
-// Start the server
-start();
+n8nProcess.on('exit', (code) => {
+  console.log(`N8N process exited with code ${code}`);
+  process.exit(code);
+});
+
+console.log('✅ N8N server is starting...');
