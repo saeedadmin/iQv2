@@ -230,7 +230,7 @@
 
 # Gatsby files
 **/.cache/
-**/public
+# **/public  # Commented out - was blocking handlers/public/
 
 # Vue.js
 **/dist/

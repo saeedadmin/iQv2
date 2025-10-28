@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from typing import Dict, Any, Optional, List
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
-from logger_system import bot_logger
+from core.logger_system import bot_logger
 import html
 from datetime import datetime
 
