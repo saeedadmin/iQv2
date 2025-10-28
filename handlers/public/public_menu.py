@@ -199,24 +199,40 @@ class PublicMenuManager:
                         # در صورت خرابی یک منبع، ادامه دهیم
                         continue
             
-            # ترجمه عنوان و توضیحات به فارسی
-            for news_item in all_news:
-                try:
-                    # ترجمه عنوان
-                    if news_item.get('title'):
-                        news_item['title_fa'] = await self.gemini.translate_text_to_persian(news_item['title'])
+            if not all_news:
+                return []
+            
+            # جمع‌آوری عنوان‌ها و توضیحات برای ترجمه گروهی
+            titles = [news_item.get('title', '') for news_item in all_news]
+            descriptions = [news_item.get('description', '') for news_item in all_news]
+            
+            try:
+                # ترجمه گروهی عنوان‌ها در یک درخواست
+                bot_logger.log_info("BULK_TRANSLATION", f"شروع ترجمه گروهی {len(titles)} عنوان")
+                translated_titles = await self.gemini.translate_multiple_texts(titles)
+                
+                # ترجمه گروهی توضیحات در یک درخواست
+                bot_logger.log_info("BULK_TRANSLATION", f"شروع ترجمه گروهی {len(descriptions)} توضیحات")
+                translated_descriptions = await self.gemini.translate_multiple_texts(descriptions)
+                
+                # اختصاص ترجمه‌ها به اخبار
+                for i, news_item in enumerate(all_news):
+                    if i < len(translated_titles):
+                        news_item['title_fa'] = translated_titles[i]
                     else:
                         news_item['title_fa'] = news_item.get('title', '')
                     
-                    # ترجمه توضیحات
-                    if news_item.get('description'):
-                        news_item['description_fa'] = await self.gemini.translate_text_to_persian(news_item['description'])
+                    if i < len(translated_descriptions):
+                        news_item['description_fa'] = translated_descriptions[i]
                     else:
                         news_item['description_fa'] = news_item.get('description', '')
-                    
-                except Exception as e:
-                    # در صورت خطا در ترجمه، متن اصلی را نگه داریم
-                    bot_logger.log_error("TRANSLATION_ERROR", f"خطا در ترجمه خبر: {str(e)}")
+                
+                bot_logger.log_info("BULK_TRANSLATION_SUCCESS", f"ترجمه گروهی با موفقیت انجام شد")
+                
+            except Exception as e:
+                # در صورت خطا در ترجمه گروهی، متن اصلی را نگه داریم
+                bot_logger.log_error("BULK_TRANSLATION_ERROR", f"خطا در ترجمه گروهی: {str(e)}")
+                for news_item in all_news:
                     news_item['title_fa'] = news_item.get('title', '')
                     news_item['description_fa'] = news_item.get('description', '')
             

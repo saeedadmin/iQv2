@@ -460,6 +460,87 @@ class GeminiChatHandler:
             logger.error(f"❌ خطا در ترجمه متن: {e}")
             return text
 
+    async def translate_multiple_texts(self, texts: List[str], max_length: int = 500) -> List[str]:
+        """ترجمه چندین متن انگلیسی به فارسی در یک درخواست واحد"""
+        if not texts:
+            return []
+        
+        try:
+            # آماده‌سازی متن‌ها برای ترجمه
+            texts_to_translate = []
+            for text in texts:
+                if text and len(text.strip()) > 0:
+                    texts_to_translate.append(text[:max_length])
+                else:
+                    texts_to_translate.append(text)
+            
+            # ساخت prompt برای ترجمه گروهی
+            translation_prompt = "Translate the following English texts to Persian (Farsi). Keep the order and format exactly as provided. Return only the Persian translations, one per line:\n\n"
+            
+            for i, text in enumerate(texts_to_translate, 1):
+                if text and len(text.strip()) > 0:
+                    translation_prompt += f"{i}. {text}\n\n"
+                else:
+                    translation_prompt += f"{i}.\n\n"
+            
+            payload = {
+                "contents": [{
+                    "parts": [{
+                        "text": translation_prompt
+                    }]
+                }],
+                "generationConfig": {
+                    "temperature": 0.3,
+                    "maxOutputTokens": 4096
+                }
+            }
+            
+            # ارسال درخواست واحد
+            result = await asyncio.to_thread(self._make_api_request, payload)
+            
+            if result['success']:
+                response_data = result['response'].json()
+                if 'candidates' in response_data and len(response_data['candidates']) > 0:
+                    persian_response = response_data['candidates'][0]['content']['parts'][0]['text']
+                    
+                    # پارس کردن پاسخ
+                    persian_translations = []
+                    lines = persian_response.strip().split('\n')
+                    
+                    current_translation = ""
+                    for line in lines:
+                        line = line.strip()
+                        if line.startswith(f"{len(persian_translations) + 1}."):
+                            # شروع ترجمه جدید
+                            if current_translation:
+                                persian_translations.append(current_translation.strip())
+                            # حذف شماره از ابتدای خط
+                            current_translation = line[len(str(len(persian_translations) + 1)) + 1:].strip()
+                        elif current_translation and line:
+                            # ادامه ترجمه فعلی
+                            current_translation += " " + line
+                    
+                    # اضافه کردن آخرین ترجمه
+                    if current_translation:
+                        persian_translations.append(current_translation.strip())
+                    
+                    # تطبیق تعداد ترجمه‌ها با تعداد متون اصلی
+                    while len(persian_translations) < len(texts):
+                        persian_translations.append(texts[len(persian_translations)])
+                    
+                    # محدود کردن به تعداد اصلی متون
+                    persian_translations = persian_translations[:len(texts)]
+                    
+                    logger.info(f"✅ ترجمه گروهی موفق: {len(texts)} متن ترجمه شد")
+                    return persian_translations
+            
+            logger.warning(f"⚠️ ترجمه گروهی ناموفق، بازگشت متون اصلی")
+            return texts  # بازگشت متون اصلی در صورت خطا
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در ترجمه گروهی: {e}")
+            return texts
+
 
 class AIChatStateManager:
     """مدیریت state چت کاربران"""
