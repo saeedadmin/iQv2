@@ -19,6 +19,7 @@ import html
 import re
 import datetime
 import time
+import asyncio
 from typing import Optional, Dict, Any, List
 import os
 
@@ -421,8 +422,8 @@ class GeminiChatHandler:
         
         return formatted
     
-    def translate_text_to_persian(self, text: str, max_length: int = 500) -> str:
-        """ترجمه متن انگلیسی به فارسی با استفاده از Gemini"""
+    async def translate_text_to_persian(self, text: str, max_length: int = 500) -> str:
+        """ترجمه متن انگلیسی به فارسی با استفاده از Gemini (async version)"""
         if not text or len(text.strip()) == 0:
             return text
         
@@ -442,14 +443,17 @@ class GeminiChatHandler:
                 }
             }
             
-            result = self._make_api_request(payload)
+            # استفاده از await برای فراخوانی async
+            result = await asyncio.to_thread(self._make_api_request, payload)
             
             if result['success']:
                 response_data = result['response'].json()
                 if 'candidates' in response_data and len(response_data['candidates']) > 0:
                     persian_text = response_data['candidates'][0]['content']['parts'][0]['text']
+                    logger.info(f"✅ ترجمه موفق: {text[:30]}... → {persian_text[:30]}...")
                     return persian_text.strip()
             
+            logger.warning(f"⚠️ ترجمه ناموفق، بازگشت متن اصلی")
             return text  # بازگشت متن اصلی در صورت خطا
             
         except Exception as e:

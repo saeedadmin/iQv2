@@ -23,7 +23,7 @@ class PublicMenuManager:
     def __init__(self, db_manager):
         self.db = db_manager
         # ایجاد نمونه Gemini برای ترجمه اخبار
-        self.gemini = GeminiChatHandler()
+        self.gemini = GeminiChatHandler(db_manager=db_manager)
     
     def create_main_menu_keyboard(self) -> InlineKeyboardMarkup:
         """کیبورد منوی اصلی عمومی"""
@@ -204,13 +204,13 @@ class PublicMenuManager:
                 try:
                     # ترجمه عنوان
                     if news_item.get('title'):
-                        news_item['title_fa'] = self.gemini.translate_text_to_persian(news_item['title'])
+                        news_item['title_fa'] = await self.gemini.translate_text_to_persian(news_item['title'])
                     else:
                         news_item['title_fa'] = news_item.get('title', '')
                     
                     # ترجمه توضیحات
                     if news_item.get('description'):
-                        news_item['description_fa'] = self.gemini.translate_text_to_persian(news_item['description'])
+                        news_item['description_fa'] = await self.gemini.translate_text_to_persian(news_item['description'])
                     else:
                         news_item['description_fa'] = news_item.get('description', '')
                     
