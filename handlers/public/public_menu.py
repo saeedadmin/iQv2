@@ -42,9 +42,6 @@ class PublicMenuManager:
                 InlineKeyboardButton("📈 قیمت‌های لحظه‌ای", callback_data="crypto_prices"),
             ],
             [
-                InlineKeyboardButton("📰 اخبار کریپتو", callback_data="crypto_news"),
-            ],
-            [
                 InlineKeyboardButton("🔙 بازگشت", callback_data="public_main")
             ]
         ]
@@ -504,7 +501,7 @@ class PublicMenuManager:
 • 📊 بررسی تغییرات 24 ساعته
 • 💰 قیمت تتر و دلار به تومان
 • 🚀 بیشترین صعود و نزول بازار
-• 📰 آخرین اخبار کریپتو از منابع معتبر
+• 📰 اخبار کریپتو از کیبورد اصلی (دکمه 📈 اخبار کریپتو)
 
 از دکمه‌های زیر برای دسترسی به خدمات استفاده کنید:
         """
@@ -570,40 +567,7 @@ class PublicMenuManager:
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
     
-    async def show_crypto_news(self, query):
-        """نمایش آخرین اخبار کریپتو"""
-        # نمایش پیام در حال بارگذاری
-        loading_message = "⏳ در حال دریافت آخرین اخبار کریپتو...\n\nلطفاً چند ثانیه صبر کنید."
-        await query.edit_message_text(loading_message)
-        
-        try:
-            # دریافت اخبار
-            news_list = await self.fetch_crypto_news()
-            message = self.format_crypto_news_message(news_list)
-            
-            keyboard = [
-                [InlineKeyboardButton("🔄 بروزرسانی", callback_data="crypto_news")],
-                [InlineKeyboardButton("🔙 بازگشت", callback_data="public_crypto")]
-            ]
-            
-            await query.edit_message_text(
-                message,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='Markdown',
-                disable_web_page_preview=True
-            )
-            
-        except Exception as e:
-            error_message = f"❌ خطا در دریافت اخبار:\n{str(e)}"
-            keyboard = [
-                [InlineKeyboardButton("🔄 تلاش مجدد", callback_data="crypto_news")],
-                [InlineKeyboardButton("🔙 بازگشت", callback_data="public_crypto")]
-            ]
-            
-            await query.edit_message_text(
-                error_message,
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+
     
     async def show_ai_news(self, query):
         """نمایش آخرین اخبار هوش مصنوعی"""
@@ -662,8 +626,7 @@ class PublicMenuManager:
             elif data == "crypto_prices":
                 await self.show_crypto_prices(query)
             
-            elif data == "crypto_news":
-                await self.show_crypto_news(query)
+
             
             elif data == "public_ai":
                 await self.show_ai_menu(query)
