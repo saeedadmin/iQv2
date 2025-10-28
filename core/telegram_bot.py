@@ -32,24 +32,24 @@ load_dotenv()
 # Choose database based on environment
 DATABASE_URL = os.getenv('DATABASE_URL')
 if DATABASE_URL and DATABASE_URL.startswith('postgresql'):
-    from database_postgres import PostgreSQLManager as DatabaseManager, DatabaseLogger
+    from database.database_postgres import PostgreSQLManager as DatabaseManager, DatabaseLogger
 else:
-    from database import DatabaseManager, DatabaseLogger
+    from database.database import DatabaseManager, DatabaseLogger
 
-from admin_panel import AdminPanel
-from public_menu import PublicMenuManager
-from logger_system import bot_logger
-from keyboards import get_main_menu_markup, get_public_section_markup, get_ai_menu_markup, get_ai_chat_mode_markup
-from ai_news import get_ai_news
-from ai_chat_handler import GeminiChatHandler, AIChatStateManager
-from ai_image_generator import AIImageGenerator
-from ocr_handler import OCRHandler
+from handlers.admin.admin_panel import AdminPanel
+from handlers.public.public_menu import PublicMenuManager
+from core.logger_system import bot_logger
+from handlers.public.keyboards import get_main_menu_markup, get_public_section_markup, get_ai_menu_markup, get_ai_chat_mode_markup
+from handlers.ai.ai_news import get_ai_news
+from handlers.ai.ai_chat_handler import GeminiChatHandler, AIChatStateManager
+from handlers.ai.ai_image_generator import AIImageGenerator
+from handlers.ai.ocr_handler import OCRHandler
 # Voice handler removed - no longer needed
 # Signal scraper removed - will be re-implemented later
 
 # Optional imports - TradingView Analysis
 try:
-    from tradingview_analysis import TradingViewAnalysisFetcher
+    from handlers.ai.tradingview_analysis import TradingViewAnalysisFetcher
     TRADINGVIEW_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"TradingView Analysis غیرفعال: {e}")
