@@ -1,35 +1,27 @@
-# Dockerfile for n8n on Render
-FROM node:20-alpine
+# Dockerfile for Telegram Bot
+FROM python:3.12.5-slim
 
-# Install dependencies
-RUN apk add --no-cache python3 make g++
+WORKDIR /app
 
-# Create app directory
-WORKDIR /usr/src/app
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc g++ make cmake \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy package files
-COPY package*.json ./
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install dependencies
-RUN npm install --production
+# Install Playwright dependencies
+RUN playwright install --with-deps chromium
 
 # Copy application code
 COPY . .
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S n8n -u 1001
+# Expose port 8080
+EXPOSE 8080
 
-# Change ownership
-RUN chown -R n8n:nodejs /usr/src/app
-USER n8n
-
-# Expose port
-EXPOSE 5678
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:5678/healthz || exit 1
-
-# Start n8n
-CMD ["npm", "start"]
+# Start the bot
+CMD ["python", "core/telegram_bot.py"]
