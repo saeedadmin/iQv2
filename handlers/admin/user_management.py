@@ -10,7 +10,7 @@ import asyncio
 from typing import List, Dict, Optional
 from telegram import Bot
 from telegram.error import TelegramError
-from database import DatabaseManager, DatabaseLogger
+from database.database import DatabaseManager, DatabaseLogger
 
 class UserManager:
     def __init__(self, db_manager: DatabaseManager, bot_token: str):
