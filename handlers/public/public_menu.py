@@ -14,12 +14,16 @@ from typing import Dict, Any, Optional, List
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 from core.logger_system import bot_logger
+from handlers.ai.ai_chat_handler import GeminiChatHandler
 import html
+import os
 from datetime import datetime
 
 class PublicMenuManager:
     def __init__(self, db_manager):
         self.db = db_manager
+        # ایجاد نمونه Gemini برای ترجمه اخبار
+        self.gemini = GeminiChatHandler()
     
     def create_main_menu_keyboard(self) -> InlineKeyboardMarkup:
         """کیبورد منوی اصلی عمومی"""
@@ -166,7 +170,7 @@ class PublicMenuManager:
             return {'error': f"خطای کلی: {str(e)}"}
     
     async def fetch_crypto_news(self) -> List[Dict[str, str]]:
-        """دریافت آخرین اخبار کریپتو از منابع RSS معتبر"""
+        """دریافت آخرین اخبار کریپتو از منابع RSS معتبر و ترجمه آنها به فارسی"""
         try:
             news_sources = [
                 {
@@ -194,6 +198,27 @@ class PublicMenuManager:
                     except Exception as e:
                         # در صورت خرابی یک منبع، ادامه دهیم
                         continue
+            
+            # ترجمه عنوان و توضیحات به فارسی
+            for news_item in all_news:
+                try:
+                    # ترجمه عنوان
+                    if news_item.get('title'):
+                        news_item['title_fa'] = self.gemini.translate_text_to_persian(news_item['title'])
+                    else:
+                        news_item['title_fa'] = news_item.get('title', '')
+                    
+                    # ترجمه توضیحات
+                    if news_item.get('description'):
+                        news_item['description_fa'] = self.gemini.translate_text_to_persian(news_item['description'])
+                    else:
+                        news_item['description_fa'] = news_item.get('description', '')
+                    
+                except Exception as e:
+                    # در صورت خطا در ترجمه، متن اصلی را نگه داریم
+                    bot_logger.log_error("TRANSLATION_ERROR", f"خطا در ترجمه خبر: {str(e)}")
+                    news_item['title_fa'] = news_item.get('title', '')
+                    news_item['description_fa'] = news_item.get('description', '')
             
             # مرتب‌سازی بر اساس زمان (جدیدترین اول)
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)

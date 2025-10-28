@@ -581,6 +581,65 @@ class AIChatStateManager:
                 cursor.close()
                 self.db.return_connection(conn)
     
+    def translate_text_to_persian(self, text: str) -> str:
+        """ترجمه متن به فارسی با استفاده از Gemini"""
+        try:
+            if not text or not text.strip():
+                return text
+            
+            # ایجاد پرامپت برای ترجمه
+            prompt = f"""
+لطفاً متن زیر را به فارسی ترجمه کن. فقط ترجمه را بدون توضیحات اضافی یا کامنت بازگردان:
+
+متن انگلیسی:
+{text}
+
+ترجمه فارسی:
+"""
+            
+            # ایجاد payload برای Gemini API
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": 0.3,
+                    "topK": 40,
+                    "topP": 0.95,
+                    "maxOutputTokens": 2048,
+                }
+            }
+            
+            # ارسال درخواست به API
+            result = self._make_api_request(payload)
+            
+            if result.get('success'):
+                response_data = result['response'].json()
+                
+                # استخراج متن ترجمه شده
+                if 'candidates' in response_data and len(response_data['candidates']) > 0:
+                    candidate = response_data['candidates'][0]
+                    if 'content' in candidate and 'parts' in candidate['content']:
+                        translated_text = candidate['content']['parts'][0]['text']
+                        # پاک‌سازی متن از کاراکترهای اضافی
+                        translated_text = translated_text.strip()
+                        return translated_text
+                
+                return text  # اگر ترجمه ناموفق بود، متن اصلی را برگردان
+            else:
+                logger.warning(f"⚠️ خطا در ترجمه با Gemini: {result.get('detail', 'نامشخص')}")
+                return text
+                
+        except Exception as e:
+            logger.error(f"❌ خطا در ترجمه متن: {e}")
+            return text
+    
     def get_chat_stats(self, user_id: int) -> Dict[str, Any]:
         """دریافت آمار چت کاربر"""
         conn = None
