@@ -316,30 +316,32 @@ class PublicMenuManager:
             return []
     
     def format_crypto_news_message(self, news_list: List[Dict[str, str]]) -> str:
-        """فرمت کردن پیام اخبار کریپتو"""
+        """فرمت کردن پیام اخبار کریپتو (با متن ترجمه شده به فارسی)"""
         if not news_list:
-            return "❌ خطا در دریافت اخبار. لطفاً بعداً امتحان کنید."
+            return "❌ خطا در دریافت اخبار کریپتو. لطفاً بعداً امتحان کنید."
         
-        message = "📰 *آخرین اخبار کریپتو*\n\n"
+        message = "📈 *آخرین اخبار کریپتو (به فارسی)*\n\n"
         
         for i, news in enumerate(news_list, 1):
-            # آیکون‌های مختلف برای منابع مختلف
-            source_icon = "🔹" if news['source'] == 'CoinTelegraph' else "🔸"
+            # استفاده از متن ترجمه شده
+            title = news.get('title_fa', news.get('title', ''))
+            title = title[:80] + '...' if len(title) > 80 else title
             
-            # تیتر با لینک کلیک‌پذیر
-            message += f"{source_icon} [{news['title']}]({news['link']})\n"
+            description = news.get('description_fa', news.get('description', ''))
+            description = description[:100] + '...' if len(description) > 100 else description
             
-            # منبع
-            message += f"📡 *منبع:* {news['source']}\n"
+            source_name = news.get('source', 'نامشخص')
             
-            # توضیحات (اگر موجود باشد)
-            if news.get('description'):
-                message += f"📝 {news['description']}\n"
-            
-            message += "\n"
+            message += f"📰 *{i}. {title}*\n"
+            if description:
+                message += f"   {description}\n"
+            message += f"   📊 منبع: {source_name}\n"
+            message += f"   🔗 [ادامه مطلب]({news['link']})\n\n"
         
-        message += "🕐 *آخرین بروزرسانی:* همین الان\n"
-        message += "📊 *منابع:* CoinTelegraph, CoinDesk"
+        message += "🤖 ترجمه شده توسط هوش مصنوعی Gemini\n"
+        message += "⏰ آخرین به‌روزرسانی: همین الان"
+        
+        return message
         
         return message
     
