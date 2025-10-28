@@ -230,7 +230,7 @@
 
 # Gatsby files
 **/.cache/
-**/public
+# Note: handlers/public/ is explicitly allowed below
 
 # Vue.js
 **/dist/
@@ -894,4 +894,7 @@
 # data/
 # uploads/
 # downloads/
+
+# Allow handlers/public/ directory
+!handlers/public/
 
