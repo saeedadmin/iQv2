@@ -552,65 +552,6 @@ def format_fear_greed_message(index_data):
 
 
 # Functions for News
-async def fetch_coindesk_news():
-    """دریافت 5 خبر مهم از سایت CoinDesk"""
-    import aiohttp
-    from bs4 import BeautifulSoup
-    import json
-    
-    try:
-        # URL RSS feed CoinDesk
-        coindesk_rss_url = "https://www.coindesk.com/arc/outboundfeeds/rss/"
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.get(coindesk_rss_url, timeout=15) as response:
-                if response.status == 200:
-                    rss_content = await response.text()
-                    
-                    # پارس کردن RSS
-                    from xml.etree import ElementTree as ET
-                    root = ET.fromstring(rss_content)
-                    items = root.findall('.//item')[:5]  # 5 خبر اول
-                    
-                    news_list = []
-                    for item in items:
-                        title_elem = item.find('title')
-                        link_elem = item.find('link')
-                        description_elem = item.find('description')
-                        pub_date_elem = item.find('pubDate')
-                        
-                        if title_elem is not None and link_elem is not None:
-                            # پاک‌سازی عنوان از HTML tags
-                            import html
-                            title = html.unescape(title_elem.text or '').strip()
-                            link = link_elem.text or ''
-                            
-                            # پاک‌سازی توضیحات
-                            description = ''
-                            if description_elem is not None and description_elem.text:
-                                import re
-                                desc_text = html.unescape(description_elem.text)
-                                desc_text = re.sub(r'<[^>]+>', '', desc_text)
-                                description = desc_text.strip()[:150] + '...' if len(desc_text) > 150 else desc_text.strip()
-                            
-                            # تاریخ انتشار
-                            published = pub_date_elem.text if pub_date_elem is not None else ''
-                            
-                            news_list.append({
-                                'title': title,
-                                'link': link,
-                                'description': description,
-                                'source': 'CoinDesk',
-                                'published': published
-                            })
-                    
-                    return news_list
-                else:
-                    return []
-    except Exception as e:
-        print(f"خطا در دریافت اخبار CoinDesk: {e}")
-        return []
-
 
 async def fetch_tasnim_news():
     """دریافت آخرین اخبار روز از سایت تسنیم"""
@@ -671,34 +612,6 @@ async def fetch_tasnim_news():
         print(f"خطا در دریافت اخبار تسنیم: {e}")
         return []
 
-
-def format_crypto_news_message(news_list):
-    """فرمت کردن پیام اخبار کریپتو (با متن ترجمه شده به فارسی)"""
-    if not news_list:
-        return "❌ خطا در دریافت اخبار کریپتو. لطفاً بعداً امتحان کنید."
-    
-    message = "📈 *آخرین اخبار کریپتو (به فارسی)*\n\n"
-    
-    for i, news in enumerate(news_list, 1):
-        # استفاده از متن ترجمه شده
-        title = news.get('title_fa', news.get('title', ''))
-        title = title[:80] + '...' if len(title) > 80 else title
-        
-        description = news.get('description_fa', news.get('description', ''))
-        description = description[:100] + '...' if len(description) > 100 else description
-        
-        source_name = news.get('source', 'نامشخص')
-        
-        message += f"📰 *{i}. {title}*\n"
-        if description:
-            message += f"   {description}\n"
-        message += f"   📊 منبع: {source_name}\n"
-        message += f"   🔗 [ادامه مطلب]({news['link']})\n\n"
-    
-    message += "🤖 ترجمه شده توسط هوش مصنوعی Gemini\n"
-    message += "⏰ آخرین به‌روزرسانی: همین الان"
-    
-    return message
 
 
 def format_general_news_message(news_list):
@@ -1654,12 +1567,12 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         bot_logger.log_user_action(user.id, "CRYPTO_NEWS_REQUEST", "درخواست اخبار کریپتو")
         
         # نمایش پیام "در حال بارگذاری"
-        loading_message = await update.message.reply_text("🔄 در حال دریافت آخرین اخبار کریپتو از CoinDesk...")
+        loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین اخبار کریپتو...\n\nلطفاً چند ثانیه صبر کنید.")
         
         try:
-            # دریافت اخبار کریپتو
-            news_list = await fetch_coindesk_news()
-            news_text = format_crypto_news_message(news_list)
+            # دریافت اخبار کریپتو از PublicMenuManager (با ترجمه گروهی)
+            news_list = await public_menu.fetch_crypto_news()
+            news_text = public_menu.format_crypto_news_message(news_list)
             
             # حذف پیام loading
             await loading_message.delete()
@@ -1668,7 +1581,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await update.message.reply_text(
                 news_text,
                 parse_mode='Markdown',
-                disable_web_page_preview=False
+                disable_web_page_preview=True
             )
             
         except Exception as e:
