@@ -475,13 +475,21 @@ class GeminiChatHandler:
                     texts_to_translate.append(text)
             
             # ساخت prompt برای ترجمه گروهی
-            translation_prompt = "Translate the following English texts to Persian (Farsi). Keep the order and format exactly as provided. Return only the Persian translations, one per line:\n\n"
+            translation_prompt = """Translate the following English texts to Persian (Farsi). 
+IMPORTANT: Return ONLY the Persian translations in numbered format like this:
+1. First Persian translation
+2. Second Persian translation  
+3. Third Persian translation
+
+Keep the exact same order. Here are the texts to translate:
+
+"""
             
             for i, text in enumerate(texts_to_translate, 1):
                 if text and len(text.strip()) > 0:
                     translation_prompt += f"{i}. {text}\n\n"
                 else:
-                    translation_prompt += f"{i}.\n\n"
+                    translation_prompt += f"{i}. [Empty text]\n\n"
             
             payload = {
                 "contents": [{
@@ -500,26 +508,32 @@ class GeminiChatHandler:
             
             if result['success']:
                 response_data = result['response'].json()
-                logger.info(f"📝 Gemini Response Debug: {response_data}")
                 
                 if 'candidates' in response_data and len(response_data['candidates']) > 0:
                     persian_response = response_data['candidates'][0]['content']['parts'][0]['text']
-                    logger.info(f"📝 Raw Persian Response: {persian_response[:500]}...")
+                    logger.info(f"📥 پاسخ خام Gemini:\n{persian_response}")
                     
-                    # پارس کردن پاسخ
+                    # پارس کردن پاسخ با روش قوی‌تر
+                    import re
                     persian_translations = []
                     lines = persian_response.strip().split('\n')
-                    logger.info(f"📝 Lines after split: {lines}")
                     
                     current_translation = ""
                     for line in lines:
                         line = line.strip()
-                        if line.startswith(f"{len(persian_translations) + 1}."):
-                            # شروع ترجمه جدید
+                        if not line:  # خط خالی را نادیده بگیر
+                            continue
+                            
+                        # بررسی شروع ترجمه جدید با regex
+                        match = re.match(rf'^{len(persian_translations) + 1}\.\s*(.*)$', line)
+                        if match:
+                            # ذخیره ترجمه قبلی
                             if current_translation:
                                 persian_translations.append(current_translation.strip())
-                            # حذف شماره از ابتدای خط
-                            current_translation = line[len(str(len(persian_translations) + 1)) + 1:].strip()
+                                logger.info(f"✅ ترجمه {len(persian_translations)}: {current_translation.strip()[:100]}...")
+                            
+                            # شروع ترجمه جدید
+                            current_translation = match.group(1)
                         elif current_translation and line:
                             # ادامه ترجمه فعلی
                             current_translation += " " + line
@@ -527,16 +541,29 @@ class GeminiChatHandler:
                     # اضافه کردن آخرین ترجمه
                     if current_translation:
                         persian_translations.append(current_translation.strip())
+                        logger.info(f"✅ ترجمه {len(persian_translations)}: {current_translation.strip()[:100]}...")
+                    
+                    logger.info(f"🔍 تعداد ترجمه‌های پارس شده: {len(persian_translations)} از {len(texts)} متن اصلی")
                     
                     # تطبیق تعداد ترجمه‌ها با تعداد متون اصلی
-                    while len(persian_translations) < len(texts):
-                        persian_translations.append(texts[len(persian_translations)])
+                    if len(persian_translations) < len(texts):
+                        logger.warning(f"⚠️ تعداد ترجمه‌ها ({len(persian_translations)}) کمتر از متون اصلی ({len(texts)}) است!")
+                        
+                        # تلاش برای ترجمه‌های از دست رفته به صورت جداگانه
+                        missing_count = len(texts) - len(persian_translations)
+                        logger.info(f"🔄 تلاش برای ترجمه {missing_count} متن باقی‌مانده...")
+                        
+                        for i in range(len(persian_translations), len(texts)):
+                            try:
+                                single_translation = await self.translate_text(texts[i])
+                                persian_translations.append(single_translation)
+                                logger.info(f"✅ ترجمه جداگانه {i+1}: {single_translation[:100]}...")
+                            except Exception as e:
+                                logger.error(f"❌ خطا در ترجمه جداگانه {i+1}: {e}")
+                                persian_translations.append(texts[i])  # استفاده از متن اصلی
                     
                     # محدود کردن به تعداد اصلی متون
                     persian_translations = persian_translations[:len(texts)]
-                    
-                    logger.info(f"📝 Final translations count: {len(persian_translations)}")
-                    logger.info(f"📝 Final translations: {persian_translations[:2]}")  # فقط 2 تای اول
                     
                     logger.info(f"✅ ترجمه گروهی موفق: {len(texts)} متن ترجمه شد")
                     return persian_translations
