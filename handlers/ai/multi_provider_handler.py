@@ -589,10 +589,15 @@ class MultiProviderHandler:
             try:
                 chat_history = self.db.get_chat_history(user_id, limit=50)
                 
-                # اضافه کردن تاریخچه به messages
+                # اضافه کردن تاریخچه به messages (تبدیل role به فرمت صحیح برای API ها)
                 for msg in chat_history:
+                    # تبدیل role از database به format مورد انتظار API ها
+                    role = msg['role']
+                    if role == 'model':
+                        role = 'assistant'  # Groq و بیشتر API ها نقش 'assistant' را می‌پذیرند
+                    
                     messages.append({
-                        "role": msg['role'],
+                        "role": role,
                         "content": msg['message_text']
                     })
                 

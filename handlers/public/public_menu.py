@@ -418,7 +418,12 @@ class PublicMenuManager:
                                 else:
                                     all_news.extend(news_items)
                     except Exception as e:
+                        logger.warning(f"⚠️ خطا در خواندن RSS منبع {source['name']}: {e}")
                         continue
+            
+            # دیباگ: چاپ تعداد خبرهای دریافتی از هر منبع
+            logger.info(f"📰 مجموع {len(all_news)} خبر از تمام منابع دریافت شد")
+            logger.info(f"📰 {len(foreign_news)} خبر خارجی برای ترجمه آماده")
             
             # مرتب‌سازی بر اساس زمان (جدیدترین اول)
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
