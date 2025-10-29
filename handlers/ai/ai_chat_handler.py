@@ -315,7 +315,9 @@ class GeminiChatHandler:
                         return {
                             'success': True,
                             'response': ai_result['content'],
-                            'tokens_used': 0,  # فعلاً tracking نداریم
+                            'tokens_used': ai_result.get('tokens_used', 0),
+                            'prompt_tokens': ai_result.get('prompt_tokens', 0),
+                            'completion_tokens': ai_result.get('completion_tokens', 0),
                             'error': None,
                             'error_type': None,
                             'provider': ai_result.get('provider', 'unknown')

@@ -334,7 +334,11 @@ class MultiProviderHandler:
                 "content": result["content"],
                 "provider": provider_name,
                 "model": model,
-                "api_key_used": api_key[:10] + "..."
+                "api_key_used": api_key[:10] + "...",
+                "tokens_used": result.get("tokens_used", 0),
+                "prompt_tokens": result.get("prompt_tokens", 0),
+                "completion_tokens": result.get("completion_tokens", 0),
+                "response_time": result.get("response_time", 0)
             }
             
         except Exception as e:
@@ -372,7 +376,18 @@ class MultiProviderHandler:
         if response.status_code == 200:
             result = response.json()
             content = result["choices"][0]["message"]["content"]
-            return {"content": content, "response_time": response_time}
+            
+            # استخراج توکن‌ها از response
+            usage = result.get("usage", {})
+            tokens_used = usage.get("total_tokens", 0)
+            
+            return {
+                "content": content, 
+                "response_time": response_time,
+                "tokens_used": tokens_used,
+                "prompt_tokens": usage.get("prompt_tokens", 0),
+                "completion_tokens": usage.get("completion_tokens", 0)
+            }
         else:
             raise Exception(f"API Error {response.status_code}: {response.text}")
     
