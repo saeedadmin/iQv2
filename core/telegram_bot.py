@@ -1563,41 +1563,6 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
     
-    elif message_text == "📈 اخبار کریپتو":
-        bot_logger.log_user_action(user.id, "CRYPTO_NEWS_REQUEST", "درخواست اخبار کریپتو")
-        
-        # نمایش پیام "در حال بارگذاری"
-        loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین اخبار کریپتو...\n\nلطفاً چند ثانیه صبر کنید.")
-        
-        try:
-            # دریافت اخبار کریپتو از PublicMenuManager (با ترجمه گروهی)
-            news_list = await public_menu.fetch_crypto_news()
-            news_text = public_menu.format_crypto_news_message(news_list)
-            
-            # حذف پیام loading
-            await loading_message.delete()
-            
-            # ارسال اخبار
-            await update.message.reply_text(
-                news_text,
-                parse_mode='Markdown',
-                disable_web_page_preview=True
-            )
-            
-        except Exception as e:
-            # حذف پیام loading در صورت خطا
-            try:
-                await loading_message.delete()
-            except:
-                pass
-            
-            await update.message.reply_text(
-                f"❌ خطا در دریافت اخبار کریپتو:\n{str(e)}",
-                parse_mode='Markdown'
-            )
-        
-        return
-    
     elif message_text == "📺 اخبار عمومی":
         bot_logger.log_user_action(user.id, "GENERAL_NEWS_REQUEST", "درخواست اخبار عمومی")
         
