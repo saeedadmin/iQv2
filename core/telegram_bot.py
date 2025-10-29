@@ -1044,8 +1044,8 @@ async def send_scheduled_news(context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.info(f"👥 تعداد مشترکان: {len(subscribers)}")
         
         # دریافت آخرین اخبار
-        from handlers.public.public_menu import PublicMenuHandler
-        public_menu = PublicMenuHandler(bot, db_manager)
+        from handlers.public.public_menu import PublicMenuManager
+        public_menu = PublicMenuManager(db_manager)
         news_list = await public_menu.fetch_general_news()
         
         if not news_list:
