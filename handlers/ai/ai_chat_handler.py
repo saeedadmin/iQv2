@@ -517,20 +517,15 @@ Keep the exact same order. Here are the texts to translate:
                     import re
                     persian_translations = []
                     
-                    logger.info(f"📥 پاسخ خام Gemini:\n{persian_response}")
-                    
                     # استفاده از regex برای پیدا کردن همه آیتم‌های شماره‌دار
                     pattern = r'(\d+)\.\s*([^0-9]*?)(?=\d+\.|$)'
                     matches = re.findall(pattern, persian_response, re.DOTALL | re.MULTILINE)
-                    
-                    logger.info(f"🔍 تعداد matches پیدا شده: {len(matches)}")
                     
                     for match in matches:
                         number, content = match
                         clean_content = content.strip()
                         if clean_content:
                             persian_translations.append(clean_content)
-                            logger.info(f"✅ ترجمه {number}: {clean_content[:100]}...")
                     
                     logger.info(f"🔍 تعداد ترجمه‌های پارس شده: {len(persian_translations)} از {len(texts)} متن اصلی")
                     
@@ -546,7 +541,6 @@ Keep the exact same order. Here are the texts to translate:
                             try:
                                 single_translation = await self.translate_text_to_persian(texts[i])
                                 persian_translations.append(single_translation)
-                                logger.info(f"✅ ترجمه جداگانه {i+1}: {single_translation[:100]}...")
                             except Exception as e:
                                 logger.error(f"❌ خطا در ترجمه جداگانه {i+1}: {e}")
                                 persian_translations.append(texts[i])  # استفاده از متن اصلی

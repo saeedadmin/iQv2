@@ -205,36 +205,22 @@ class PublicMenuManager:
             
             try:
                 # ترجمه گروهی عنوان‌ها در یک درخواست
-                bot_logger.log_info("BULK_TRANSLATION", f"شروع ترجمه گروهی {len(titles)} عنوان")
                 translated_titles = await self.gemini.translate_multiple_texts(titles)
                 
                 # ترجمه گروهی توضیحات در یک درخواست
-                bot_logger.log_info("BULK_TRANSLATION", f"شروع ترجمه گروهی {len(descriptions)} توضیحات")
                 translated_descriptions = await self.gemini.translate_multiple_texts(descriptions)
                 
                 # اختصاص ترجمه‌ها به اخبار
-                bot_logger.log_info("BULK_TRANSLATION_DEBUG", f"تعداد عنوان‌ها: {len(titles)}, تعداد ترجمه‌های عنوان: {len(translated_titles)}")
-                bot_logger.log_info("BULK_TRANSLATION_DEBUG", f"تعداد توضیحات: {len(descriptions)}, تعداد ترجمه‌های توضیحات: {len(translated_descriptions)}")
-                
                 for i, news_item in enumerate(all_news):
                     if i < len(translated_titles):
                         news_item['title_fa'] = translated_titles[i]
-                        bot_logger.log_info("BULK_TRANSLATION_DEBUG", f"عنوان {i+1}: {translated_titles[i][:50]}...")
                     else:
                         news_item['title_fa'] = news_item.get('title', '')
                     
                     if i < len(translated_descriptions):
                         news_item['description_fa'] = translated_descriptions[i]
-                        bot_logger.log_info("BULK_TRANSLATION_DEBUG", f"توضیحات {i+1}: {translated_descriptions[i][:50]}...")
                     else:
                         news_item['description_fa'] = news_item.get('description', '')
-                
-                # نمایش نمونه‌ای از اخبار ترجمه شده برای اطمینان
-                for i, news_item in enumerate(all_news[:2]):  # فقط 2 خبر اول
-                    bot_logger.log_info("BULK_TRANSLATION_FINAL", f"خبر {i+1} - عنوان فارسی: {news_item.get('title_fa', 'MISSING')[:60]}...")
-                    bot_logger.log_info("BULK_TRANSLATION_FINAL", f"خبر {i+1} - توضیحات فارسی: {news_item.get('description_fa', 'MISSING')[:60]}...")
-                
-                bot_logger.log_info("BULK_TRANSLATION_SUCCESS", f"ترجمه گروهی با موفقیت انجام شد")
                 
             except Exception as e:
                 # در صورت خطا در ترجمه گروهی، متن اصلی را نگه داریم
@@ -295,7 +281,7 @@ class PublicMenuManager:
             return []
     
     async def fetch_ai_news(self) -> List[Dict[str, str]]:
-        """دریافت آخرین اخبار هوش مصنوعی از منابع RSS معتبر"""
+        """دریافت آخرین اخبار هوش مصنوعی از منابع RSS معتبر با ترجمه گروهی"""
         try:
             news_sources = [
                 {
@@ -333,7 +319,41 @@ class PublicMenuManager:
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
             
             # بازگشت حداکثر 8 خبر
-            return all_news[:8]
+            all_news = all_news[:8]
+            
+            if not all_news:
+                return []
+            
+            # جمع‌آوری عنوان‌ها و توضیحات برای ترجمه گروهی
+            titles = [news_item.get('title', '') for news_item in all_news]
+            descriptions = [news_item.get('description', '') for news_item in all_news]
+            
+            try:
+                # ترجمه گروهی عنوان‌ها در یک درخواست
+                translated_titles = await self.gemini.translate_multiple_texts(titles)
+                
+                # ترجمه گروهی توضیحات در یک درخواست
+                translated_descriptions = await self.gemini.translate_multiple_texts(descriptions)
+                
+                # اختصاص ترجمه‌ها به اخبار
+                for i, news_item in enumerate(all_news):
+                    if i < len(translated_titles):
+                        news_item['title_fa'] = translated_titles[i]
+                    else:
+                        news_item['title_fa'] = news_item.get('title', '')
+                    
+                    if i < len(translated_descriptions):
+                        news_item['description_fa'] = translated_descriptions[i]
+                    else:
+                        news_item['description_fa'] = news_item.get('description', '')
+                
+            except Exception as e:
+                # در صورت خطا در ترجمه، از متون اصلی استفاده می‌کنیم
+                for news_item in all_news:
+                    news_item['title_fa'] = news_item.get('title', '')
+                    news_item['description_fa'] = news_item.get('description', '')
+            
+            return all_news
             
         except Exception as e:
             return []
@@ -369,11 +389,11 @@ class PublicMenuManager:
         return message
     
     def format_ai_news_message(self, news_list: List[Dict[str, str]]) -> str:
-        """فرمت کردن پیام اخبار هوش مصنوعی"""
+        """فرمت کردن پیام اخبار هوش مصنوعی (با متن ترجمه شده به فارسی)"""
         if not news_list:
             return "❌ خطا در دریافت اخبار. لطفاً بعداً امتحان کنید."
         
-        message = "🤖 *آخرین اخبار هوش مصنوعی*\n\n"
+        message = "🤖 *آخرین اخبار هوش مصنوعی (به فارسی)*\n\n"
         
         for i, news in enumerate(news_list, 1):
             # آیکون‌های مختلف برای منابع مختلف
@@ -386,20 +406,27 @@ class PublicMenuManager:
             else:
                 source_icon = "🤖"
             
-            # تیتر با لینک کلیک‌پذیر
-            message += f"{source_icon} [{news['title']}]({news['link']})\n"
+            # استفاده از متن ترجمه شده
+            title = news.get('title_fa', news.get('title', ''))
+            title = title[:80] + '...' if len(title) > 80 else title
+            
+            description = news.get('description_fa', news.get('description', ''))
+            description = description[:120] + '...' if len(description) > 120 else description
+            
+            # تیتر
+            message += f"{source_icon} *{i}. {title}*\n"
             
             # منبع
-            message += f"📡 *منبع:* {news['source']}\n"
+            message += f"📡 منبع: {news['source']}\n"
             
             # توضیحات (اگر موجود باشد)
-            if news.get('description'):
-                message += f"📝 {news['description']}\n"
+            if description:
+                message += f"📝 {description}\n"
             
-            message += "\n"
+            message += f"🔗 [ادامه مطلب]({news['link']})\n\n"
         
-        message += "🕐 *آخرین بروزرسانی:* همین الان\n"
-        message += "📊 *منابع:* TechCrunch AI, The Verge AI, VentureBeat AI"
+        message += "🤖 ترجمه شده توسط هوش مصنوعی Gemini\n"
+        message += "⏰ آخرین به‌روزرسانی: همین الان"
         
         return message
     
