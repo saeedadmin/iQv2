@@ -204,11 +204,22 @@ class PublicMenuManager:
             descriptions = [news_item.get('description', '') for news_item in all_news]
             
             try:
+                # Logging وضعیت GeminiChatHandler
+                bot_logger.log_info("TRANSLATION_DEBUG", f"Gemini using_multi: {self.gemini.using_multi}")
+                if hasattr(self.gemini, 'multi_handler') and self.gemini.multi_handler:
+                    bot_logger.log_info("TRANSLATION_DEBUG", "MultiProviderHandler فعال است")
+                else:
+                    bot_logger.log_warning("TRANSLATION_DEBUG", "MultiProviderHandler غیرفعال است")
+                
                 # ترجمه گروهی عنوان‌ها در یک درخواست
+                bot_logger.log_info("TRANSLATION_DEBUG", f"شروع ترجمه {len(titles)} عنوان...")
                 translated_titles = await self.gemini.translate_multiple_texts(titles)
+                bot_logger.log_info("TRANSLATION_DEBUG", f"ترجمه عنوان‌ها تکمیل شد: {len(translated_titles)} نتیجه")
                 
                 # ترجمه گروهی توضیحات در یک درخواست
+                bot_logger.log_info("TRANSLATION_DEBUG", f"شروع ترجمه {len(descriptions)} توضیح...")
                 translated_descriptions = await self.gemini.translate_multiple_texts(descriptions)
+                bot_logger.log_info("TRANSLATION_DEBUG", f"ترجمه توضیحات تکمیل شد: {len(translated_descriptions)} نتیجه")
                 
                 # اختصاص ترجمه‌ها به اخبار
                 for i, news_item in enumerate(all_news):
@@ -222,12 +233,19 @@ class PublicMenuManager:
                     else:
                         news_item['description_fa'] = news_item.get('description', '')
                 
+                bot_logger.log_info("TRANSLATION_SUCCESS", f"ترجمه {len(all_news)} خبر با موفقیت انجام شد")
+                
             except Exception as e:
                 # در صورت خطا در ترجمه گروهی، متن اصلی را نگه داریم
-                bot_logger.log_error("BULK_TRANSLATION_ERROR", f"خطا در ترجمه گروهی: {str(e)}")
+                import traceback
+                error_details = traceback.format_exc()
+                bot_logger.log_error("BULK_TRANSLATION_ERROR", f"خطا در ترجمه گروهی: {str(e)}\nStack trace: {error_details}")
+                
                 for news_item in all_news:
                     news_item['title_fa'] = news_item.get('title', '')
                     news_item['description_fa'] = news_item.get('description', '')
+                
+                bot_logger.log_warning("TRANSLATION_FALLBACK", "استفاده از متون اصلی به دلیل خطا در ترجمه")
             
             # مرتب‌سازی بر اساس زمان (جدیدترین اول)
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
@@ -323,11 +341,22 @@ class PublicMenuManager:
             descriptions = [news_item.get('description', '') for news_item in all_news]
             
             try:
+                # Logging وضعیت GeminiChatHandler
+                bot_logger.log_info("AI_TRANSLATION_DEBUG", f"Gemini using_multi: {self.gemini.using_multi}")
+                if hasattr(self.gemini, 'multi_handler') and self.gemini.multi_handler:
+                    bot_logger.log_info("AI_TRANSLATION_DEBUG", "MultiProviderHandler فعال است")
+                else:
+                    bot_logger.log_warning("AI_TRANSLATION_DEBUG", "MultiProviderHandler غیرفعال است")
+                
                 # ترجمه گروهی عنوان‌ها در یک درخواست
+                bot_logger.log_info("AI_TRANSLATION_DEBUG", f"شروع ترجمه {len(titles)} عنوان AI...")
                 translated_titles = await self.gemini.translate_multiple_texts(titles)
+                bot_logger.log_info("AI_TRANSLATION_DEBUG", f"ترجمه عنوان‌های AI تکمیل شد: {len(translated_titles)} نتیجه")
                 
                 # ترجمه گروهی توضیحات در یک درخواست
+                bot_logger.log_info("AI_TRANSLATION_DEBUG", f"شروع ترجمه {len(descriptions)} توضیح AI...")
                 translated_descriptions = await self.gemini.translate_multiple_texts(descriptions)
+                bot_logger.log_info("AI_TRANSLATION_DEBUG", f"ترجمه توضیحات AI تکمیل شد: {len(translated_descriptions)} نتیجه")
                 
                 # اختصاص ترجمه‌ها به اخبار
                 for i, news_item in enumerate(all_news):
@@ -341,20 +370,19 @@ class PublicMenuManager:
                     else:
                         news_item['description_fa'] = news_item.get('description', '')
                 
+                bot_logger.log_info("AI_TRANSLATION_SUCCESS", f"ترجمه {len(all_news)} خبر AI با موفقیت انجام شد")
+                
             except Exception as e:
                 # در صورت خطا در ترجمه، از متون اصلی استفاده می‌کنیم
+                import traceback
+                error_details = traceback.format_exc()
+                bot_logger.log_error("AI_TRANSLATION_ERROR", f"خطا در ترجمه اخبار AI: {str(e)}\nStack trace: {error_details}")
+                
                 for news_item in all_news:
                     news_item['title_fa'] = news_item.get('title', '')
                     news_item['description_fa'] = news_item.get('description', '')
                 
-                # لاگ کردن خطا برای debugging
-                import logging
-                logger = logging.getLogger(__name__)
-                
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    logger.warning("⚠️ کوئوتای Gemini API تمام شده است. متون اصلی نمایش داده می‌شوند.")
-                else:
-                    logger.error(f"❌ خطا در ترجمه اخبار هوش مصنوعی: {e}")
+                bot_logger.log_warning("AI_TRANSLATION_FALLBACK", "استفاده از متون اصلی AI به دلیل خطا در ترجمه")
             
             return all_news
             
