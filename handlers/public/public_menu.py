@@ -204,60 +204,29 @@ class PublicMenuManager:
             descriptions = [news_item.get('description', '') for news_item in all_news]
             
             try:
-                # Logging وضعیت GeminiChatHandler
-                bot_logger.log_info("TRANSLATION_DEBUG", f"Gemini using_multi: {self.gemini.using_multi}")
-                if hasattr(self.gemini, 'multi_handler') and self.gemini.multi_handler:
-                    bot_logger.log_info("TRANSLATION_DEBUG", "MultiProviderHandler فعال است")
-                else:
-                    bot_logger.log_warning("TRANSLATION_DEBUG", "MultiProviderHandler غیرفعال است")
-                
                 # ترجمه گروهی عنوان‌ها در یک درخواست
-                bot_logger.log_info("TRANSLATION_DEBUG", f"شروع ترجمه {len(titles)} عنوان...")
                 translated_titles = await self.gemini.translate_multiple_texts(titles)
-                bot_logger.log_info("TRANSLATION_DEBUG", f"ترجمه عنوان‌ها تکمیل شد: {len(translated_titles)} نتیجه")
                 
                 # ترجمه گروهی توضیحات در یک درخواست
-                bot_logger.log_info("TRANSLATION_DEBUG", f"شروع ترجمه {len(descriptions)} توضیح...")
                 translated_descriptions = await self.gemini.translate_multiple_texts(descriptions)
-                bot_logger.log_info("TRANSLATION_DEBUG", f"ترجمه توضیحات تکمیل شد: {len(translated_descriptions)} نتیجه")
                 
                 # اختصاص ترجمه‌ها به اخبار
                 for i, news_item in enumerate(all_news):
                     if i < len(translated_titles):
                         news_item['title_fa'] = translated_titles[i]
-                        bot_logger.log_info("TRANSLATION_DEBUG", f"عنوان Crypto [{i}]: {translated_titles[i][:50]}...")
                     else:
                         news_item['title_fa'] = news_item.get('title', '')
-                        bot_logger.log_warning("TRANSLATION_DEBUG", f"عنوان Crypto [{i}] خالی، استفاده از اصلی: {news_item.get('title', '')[:50]}...")
                     
                     if i < len(translated_descriptions):
                         news_item['description_fa'] = translated_descriptions[i]
-                        bot_logger.log_info("TRANSLATION_DEBUG", f"توضیح Crypto [{i}]: {translated_descriptions[i][:50]}...")
                     else:
                         news_item['description_fa'] = news_item.get('description', '')
-                        bot_logger.log_warning("TRANSLATION_DEBUG", f"توضیح Crypto [{i}] خالی، استفاده از اصلی: {news_item.get('description', '')[:50]}...")
-                
-                bot_logger.log_info("TRANSLATION_SUCCESS", f"ترجمه {len(all_news)} خبر با موفقیت انجام شد")
-                
-                # Debug: نمایش نمونه‌ای از داده‌های نهایی
-                if all_news:
-                    sample = all_news[0]
-                    bot_logger.log_info("TRANSLATION_DEBUG", f"نمونه نهایی Crypto - عنوان اصلی: {sample.get('title', 'N/A')[:50]}...")
-                    bot_logger.log_info("TRANSLATION_DEBUG", f"نمونه نهایی Crypto - عنوان فارسی: {sample.get('title_fa', 'N/A')[:50]}...")
-                    bot_logger.log_info("TRANSLATION_DEBUG", f"نمونه نهایی Crypto - توضیح اصلی: {sample.get('description', 'N/A')[:50]}...")
-                    bot_logger.log_info("TRANSLATION_DEBUG", f"نمونه نهایی Crypto - توضیح فارسی: {sample.get('description_fa', 'N/A')[:50]}...")
                 
             except Exception as e:
                 # در صورت خطا در ترجمه گروهی، متن اصلی را نگه داریم
-                import traceback
-                error_details = traceback.format_exc()
-                bot_logger.log_error("BULK_TRANSLATION_ERROR", f"خطا در ترجمه گروهی: {str(e)}\nStack trace: {error_details}")
-                
                 for news_item in all_news:
                     news_item['title_fa'] = news_item.get('title', '')
                     news_item['description_fa'] = news_item.get('description', '')
-                
-                bot_logger.log_warning("TRANSLATION_FALLBACK", "استفاده از متون اصلی به دلیل خطا در ترجمه")
             
             # مرتب‌سازی بر اساس زمان (جدیدترین اول)
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
@@ -353,60 +322,29 @@ class PublicMenuManager:
             descriptions = [news_item.get('description', '') for news_item in all_news]
             
             try:
-                # Logging وضعیت GeminiChatHandler
-                bot_logger.log_info("AI_TRANSLATION_DEBUG", f"Gemini using_multi: {self.gemini.using_multi}")
-                if hasattr(self.gemini, 'multi_handler') and self.gemini.multi_handler:
-                    bot_logger.log_info("AI_TRANSLATION_DEBUG", "MultiProviderHandler فعال است")
-                else:
-                    bot_logger.log_warning("AI_TRANSLATION_DEBUG", "MultiProviderHandler غیرفعال است")
-                
                 # ترجمه گروهی عنوان‌ها در یک درخواست
-                bot_logger.log_info("AI_TRANSLATION_DEBUG", f"شروع ترجمه {len(titles)} عنوان AI...")
                 translated_titles = await self.gemini.translate_multiple_texts(titles)
-                bot_logger.log_info("AI_TRANSLATION_DEBUG", f"ترجمه عنوان‌های AI تکمیل شد: {len(translated_titles)} نتیجه")
                 
                 # ترجمه گروهی توضیحات در یک درخواست
-                bot_logger.log_info("AI_TRANSLATION_DEBUG", f"شروع ترجمه {len(descriptions)} توضیح AI...")
                 translated_descriptions = await self.gemini.translate_multiple_texts(descriptions)
-                bot_logger.log_info("AI_TRANSLATION_DEBUG", f"ترجمه توضیحات AI تکمیل شد: {len(translated_descriptions)} نتیجه")
                 
                 # اختصاص ترجمه‌ها به اخبار
                 for i, news_item in enumerate(all_news):
                     if i < len(translated_titles):
                         news_item['title_fa'] = translated_titles[i]
-                        bot_logger.log_info("AI_TRANSLATION_DEBUG", f"عنوان AI [{i}]: {translated_titles[i][:50]}...")
                     else:
                         news_item['title_fa'] = news_item.get('title', '')
-                        bot_logger.log_warning("AI_TRANSLATION_DEBUG", f"عنوان AI [{i}] خالی، استفاده از اصلی: {news_item.get('title', '')[:50]}...")
                     
                     if i < len(translated_descriptions):
                         news_item['description_fa'] = translated_descriptions[i]
-                        bot_logger.log_info("AI_TRANSLATION_DEBUG", f"توضیح AI [{i}]: {translated_descriptions[i][:50]}...")
                     else:
                         news_item['description_fa'] = news_item.get('description', '')
-                        bot_logger.log_warning("AI_TRANSLATION_DEBUG", f"توضیح AI [{i}] خالی، استفاده از اصلی: {news_item.get('description', '')[:50]}...")
-                
-                bot_logger.log_info("AI_TRANSLATION_SUCCESS", f"ترجمه {len(all_news)} خبر AI با موفقیت انجام شد")
-                
-                # Debug: نمایش نمونه‌ای از داده‌های نهایی
-                if all_news:
-                    sample = all_news[0]
-                    bot_logger.log_info("AI_TRANSLATION_DEBUG", f"نمونه نهایی - عنوان اصلی: {sample.get('title', 'N/A')[:50]}...")
-                    bot_logger.log_info("AI_TRANSLATION_DEBUG", f"نمونه نهایی - عنوان فارسی: {sample.get('title_fa', 'N/A')[:50]}...")
-                    bot_logger.log_info("AI_TRANSLATION_DEBUG", f"نمونه نهایی - توضیح اصلی: {sample.get('description', 'N/A')[:50]}...")
-                    bot_logger.log_info("AI_TRANSLATION_DEBUG", f"نمونه نهایی - توضیح فارسی: {sample.get('description_fa', 'N/A')[:50]}...")
                 
             except Exception as e:
                 # در صورت خطا در ترجمه، از متون اصلی استفاده می‌کنیم
-                import traceback
-                error_details = traceback.format_exc()
-                bot_logger.log_error("AI_TRANSLATION_ERROR", f"خطا در ترجمه اخبار AI: {str(e)}\nStack trace: {error_details}")
-                
                 for news_item in all_news:
                     news_item['title_fa'] = news_item.get('title', '')
                     news_item['description_fa'] = news_item.get('description', '')
-                
-                bot_logger.log_warning("AI_TRANSLATION_FALLBACK", "استفاده از متون اصلی AI به دلیل خطا در ترجمه")
             
             return all_news
             
@@ -527,9 +465,9 @@ class PublicMenuManager:
                     else:
                         logger.error(f"❌ خطا در ترجمه اخبار عمومی: {e}")
             
-            # مرتب‌سازی نهایی و انتخاب 8 خبر
+            # مرتب‌سازی نهایی و انتخاب 10 خبر
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
-            all_news = all_news[:8]
+            all_news = all_news[:10]
             
             return all_news
             
@@ -549,12 +487,6 @@ class PublicMenuManager:
             title_en = news.get('title', '')
             title = title_fa if title_fa else title_en
             
-            bot_logger.log_info("NEWS_FORMATTING_DEBUG", f"خبر {i} - عنوان فارسی موجود: {'بله' if title_fa else 'خیر'}")
-            if not title_fa:
-                bot_logger.log_warning("NEWS_FORMATTING_DEBUG", f"خبر {i} - عنوان فارسی خالی است، استفاده از انگلیسی: {title_en[:50]}...")
-            else:
-                bot_logger.log_info("NEWS_FORMATTING_DEBUG", f"خبر {i} - استفاده از عنوان فارسی: {title_fa[:50]}...")
-            
             title = title[:80] + '...' if len(title) > 80 else title
             # Escape markdown characters
             title = title.replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)')
@@ -562,12 +494,6 @@ class PublicMenuManager:
             description_fa = news.get('description_fa', '')
             description_en = news.get('description', '')
             description = description_fa if description_fa else description_en
-            
-            bot_logger.log_info("NEWS_FORMATTING_DEBUG", f"خبر {i} - توضیح فارسی موجود: {'بله' if description_fa else 'خیر'}")
-            if not description_fa:
-                bot_logger.log_warning("NEWS_FORMATTING_DEBUG", f"خبر {i} - توضیح فارسی خالی است، استفاده از انگلیسی: {description_en[:50]}...")
-            else:
-                bot_logger.log_info("NEWS_FORMATTING_DEBUG", f"خبر {i} - استفاده از توضیح فارسی: {description_fa[:50]}...")
             
             description = description[:100] + '...' if len(description) > 100 else description
             # Escape markdown characters
@@ -599,12 +525,6 @@ class PublicMenuManager:
                 source_icon = "🧠"
             elif 'AI News' in news['source']:
                 source_icon = "🤖"
-            elif 'TechCrunch' in news['source']:
-                source_icon = "🔥"
-            elif 'The Verge' in news['source']:
-                source_icon = "⚡"
-            elif 'VentureBeat' in news['source']:
-                source_icon = "🚀"
             else:
                 source_icon = "📰"
             
@@ -645,12 +565,12 @@ class PublicMenuManager:
         
         for i, news in enumerate(news_list, 1):
             # آیکون‌های مختلف برای منابع مختلف
-            if 'ایرنا' in news['source']:
+            if 'تسنیم' in news['source']:
+                source_icon = "📡"
+            elif 'ایرنا' in news['source']:
                 source_icon = "🇮🇷"
             elif 'مهر' in news['source']:
                 source_icon = "🔸"
-            elif 'تسنیم' in news['source']:
-                source_icon = "📡"
             elif 'فارس' in news['source']:
                 source_icon = "⭐"
             elif 'BBC' in news['source']:

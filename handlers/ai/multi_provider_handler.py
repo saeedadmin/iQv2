@@ -51,7 +51,6 @@ class KeyRotator:
             
         # اگر همه کلیدها خراب هستند، reset کن
         if len(self.failed_keys) >= len(self.keys):
-            logger.warning(f"🔄 Reset failed keys for {self.provider_name}")
             self.failed_keys.clear()
         
         # تلاش برای پیدا کردن کلید معتبر
@@ -70,7 +69,6 @@ class KeyRotator:
     def mark_key_failed(self, key: str):
         """علامت‌گذاری کلید به عنوان خراب"""
         self.failed_keys.add(key)
-        logger.warning(f"⚠️ Key marked as failed for {self.provider_name}: {key[:10]}...")
     
     def mark_key_success(self, key: str):
         """علامت‌گذاری کلید به عنوان موفق"""
@@ -116,10 +114,6 @@ class MultiProviderHandler:
         # Performance Tracking
         self.provider_performance = {}
         self.last_provider_test = {}
-        
-        logger.info("🚀 MultiProviderHandler راه‌اندازی شد")
-        logger.info(f"📊 تعداد providers فعال: {len(self.providers)}")
-        logger.info(f"🔑 تعداد کلیدهای کل: {sum(len(rotator.keys) for rotator in self.key_rotators.values())}")
     
     def _initialize_providers(self) -> Dict[str, Dict]:
         """مقداردهی اولیه providers"""
@@ -259,7 +253,6 @@ class MultiProviderHandler:
             
         # اگر همه providers خراب هستند، reset کن
         if len(self.failed_providers) >= len(self.providers):
-            logger.warning("🔄 Reset کردن failed providers")
             self.failed_providers.clear()
         
         # مرتب‌سازی providers بر اساس اولویت و performance
@@ -336,8 +329,6 @@ class MultiProviderHandler:
             # به‌روزرسانی performance data
             self._update_performance_data(provider_name, True, result.get("response_time", 1.0))
             
-            logger.info(f"✅ {provider_name} call successful with key {api_key[:10]}...")
-            
             return {
                 "success": True,
                 "content": result["content"],
@@ -353,7 +344,6 @@ class MultiProviderHandler:
             # به‌روزرسانی performance data
             self._update_performance_data(provider_name, False, 0)
             
-            logger.error(f"❌ {provider_name} API error with key {api_key[:10]}...: {e}")
             raise
     
     async def _make_openai_request(self, api_key: str, provider: Dict, messages: List[Dict], model: str) -> Dict[str, Any]:
@@ -434,7 +424,6 @@ class MultiProviderHandler:
             return {"content": content, "response_time": response_time}
             
         except ImportError:
-            logger.warning("⚠️ Cerebras SDK not available, falling back to REST API")
             # Fallback به REST API
             headers = provider.get("headers", {}).copy()
             headers["Authorization"] = f"Bearer {api_key}"
@@ -609,7 +598,6 @@ class MultiProviderHandler:
                 }
             
             try:
-                logger.info(f"🎯 Trying provider: {provider_name}")
                 result = await self._make_api_request(provider_name, messages)
                 
                 # Record user message time
@@ -625,7 +613,6 @@ class MultiProviderHandler:
                 }
                 
             except Exception as e:
-                logger.error(f"❌ Provider {provider_name} failed: {e}")
                 continue
         
         return {
@@ -660,7 +647,6 @@ class MultiProviderHandler:
                     translated_texts.append(text)  # استفاده از متن اصلی
                     
             except Exception as e:
-                logger.error(f"❌ خطا در ترجمه متن: {e}")
                 translated_texts.append(text)  # استفاده از متن اصلی
         
         return translated_texts
@@ -695,7 +681,6 @@ class MultiProviderHandler:
                 }
                 
             except Exception as e:
-                logger.error(f"❌ Provider {provider_name} failed: {e}")
                 continue
         
         return {
@@ -710,7 +695,6 @@ class MultiProviderHandler:
         if current_date != self.last_reset_date:
             self.api_calls_today.clear()
             self.last_reset_date = current_date
-            logger.info("🔄 Daily quotas reset شد")
     
     def get_status(self) -> Dict[str, Any]:
         """دریافت وضعیت providers"""
