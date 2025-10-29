@@ -285,35 +285,38 @@ class PublicMenuManager:
         try:
             news_sources = [
                 {
-                    'name': 'TechCrunch AI',
-                    'url': 'https://techcrunch.com/category/artificial-intelligence/feed/',
-                    'limit': 3
+                    'name': 'MIT Technology Review AI',
+                    'url': 'https://feeds.feedburner.com/technology-review',
+                    'limit': 4
                 },
                 {
-                    'name': 'The Verge AI', 
-                    'url': 'https://www.theverge.com/ai-artificial-intelligence/rss/index.xml',
-                    'limit': 2
-                },
-                {
-                    'name': 'VentureBeat AI',
-                    'url': 'https://venturebeat.com/ai/feed/',
-                    'limit': 3
+                    'name': 'AI News',
+                    'url': 'https://www.artificialintelligence-news.com/feed/',
+                    'limit': 4
                 }
             ]
             
             all_news = []
             
+            bot_logger.log_info("AI_NEWS_FETCH", f"شروع دریافت اخبار هوش مصنوعی از {len(news_sources)} منبع")
+            
             async with aiohttp.ClientSession() as session:
                 for source in news_sources:
                     try:
+                        bot_logger.log_info("AI_NEWS_FETCH", f"دریافت از منبع: {source['name']}")
                         async with session.get(source['url'], timeout=15) as response:
                             if response.status == 200:
                                 xml_content = await response.text()
                                 news_items = self.parse_rss_feed(xml_content, source['name'], source['limit'])
+                                bot_logger.log_info("AI_NEWS_FETCH", f"دریافت شد: {len(news_items)} خبر از {source['name']}")
                                 all_news.extend(news_items)
+                            else:
+                                bot_logger.log_warning("AI_NEWS_FETCH", f"خطای HTTP {response.status} از {source['name']}")
                     except Exception as e:
-                        # در صورت خرابی یک منبع، ادامه دهیم
+                        bot_logger.log_error("AI_NEWS_FETCH", f"خطا در دریافت از {source['name']}: {e}")
                         continue
+            
+            bot_logger.log_info("AI_NEWS_FETCH", f"مجموع اخبار دریافت شده: {len(all_news)}")
             
             # مرتب‌سازی بر اساس زمان (جدیدترین اول)
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
@@ -322,32 +325,44 @@ class PublicMenuManager:
             all_news = all_news[:8]
             
             if not all_news:
+                bot_logger.log_warning("AI_NEWS_FETCH", "هیچ خبری دریافت نشد!")
                 return []
             
             # جمع‌آوری عنوان‌ها و توضیحات برای ترجمه گروهی
             titles = [news_item.get('title', '') for news_item in all_news]
             descriptions = [news_item.get('description', '') for news_item in all_news]
             
+            bot_logger.log_info("AI_NEWS_TRANSLATION", f"آماده ترجمه: {len(titles)} عنوان و {len(descriptions)} توضیحات")
+            
             try:
                 # ترجمه گروهی عنوان‌ها در یک درخواست
+                bot_logger.log_info("AI_NEWS_TRANSLATION", f"شروع ترجمه {len(titles)} عنوان هوش مصنوعی")
                 translated_titles = await self.gemini.translate_multiple_texts(titles)
+                bot_logger.log_info("AI_NEWS_TRANSLATION", f"ترجمه عنوان‌ها انجام شد: {len(translated_titles)} عدد")
                 
                 # ترجمه گروهی توضیحات در یک درخواست
+                bot_logger.log_info("AI_NEWS_TRANSLATION", f"شروع ترجمه {len(descriptions)} توضیحات هوش مصنوعی")
                 translated_descriptions = await self.gemini.translate_multiple_texts(descriptions)
+                bot_logger.log_info("AI_NEWS_TRANSLATION", f"ترجمه توضیحات انجام شد: {len(translated_descriptions)} عدد")
                 
                 # اختصاص ترجمه‌ها به اخبار
                 for i, news_item in enumerate(all_news):
                     if i < len(translated_titles):
                         news_item['title_fa'] = translated_titles[i]
+                        bot_logger.log_info("AI_NEWS_TRANSLATION", f"عنوان {i+1} ترجمه شد: {translated_titles[i][:50]}...")
                     else:
                         news_item['title_fa'] = news_item.get('title', '')
                     
                     if i < len(translated_descriptions):
                         news_item['description_fa'] = translated_descriptions[i]
+                        bot_logger.log_info("AI_NEWS_TRANSLATION", f"توضیحات {i+1} ترجمه شد: {translated_descriptions[i][:50]}...")
                     else:
                         news_item['description_fa'] = news_item.get('description', '')
                 
+                bot_logger.log_info("AI_NEWS_TRANSLATION", "ترجمه گروهی اخبار هوش مصنوعی موفق بود")
+                
             except Exception as e:
+                bot_logger.log_error("AI_NEWS_TRANSLATION", f"خطا در ترجمه اخبار هوش مصنوعی: {e}")
                 # در صورت خطا در ترجمه، از متون اصلی استفاده می‌کنیم
                 for news_item in all_news:
                     news_item['title_fa'] = news_item.get('title', '')
@@ -356,6 +371,7 @@ class PublicMenuManager:
             return all_news
             
         except Exception as e:
+            bot_logger.log_error("AI_NEWS_FETCH", f"خطای کلی در دریافت اخبار هوش مصنوعی: {e}")
             return []
     
     def format_crypto_news_message(self, news_list: List[Dict[str, str]]) -> str:
@@ -385,8 +401,6 @@ class PublicMenuManager:
         message += "⏰ آخرین به‌روزرسانی: همین الان"
         
         return message
-        
-        return message
     
     def format_ai_news_message(self, news_list: List[Dict[str, str]]) -> str:
         """فرمت کردن پیام اخبار هوش مصنوعی (با متن ترجمه شده به فارسی)"""
@@ -397,14 +411,18 @@ class PublicMenuManager:
         
         for i, news in enumerate(news_list, 1):
             # آیکون‌های مختلف برای منابع مختلف
-            if news['source'] == 'TechCrunch AI':
+            if 'MIT Technology Review' in news['source']:
+                source_icon = "🧠"
+            elif 'AI News' in news['source']:
+                source_icon = "🤖"
+            elif 'TechCrunch' in news['source']:
                 source_icon = "🔥"
-            elif news['source'] == 'The Verge AI':
+            elif 'The Verge' in news['source']:
                 source_icon = "⚡"
-            elif news['source'] == 'VentureBeat AI':
+            elif 'VentureBeat' in news['source']:
                 source_icon = "🚀"
             else:
-                source_icon = "🤖"
+                source_icon = "📰"
             
             # استفاده از متن ترجمه شده
             title = news.get('title_fa', news.get('title', ''))
