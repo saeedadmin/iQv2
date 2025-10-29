@@ -6,11 +6,13 @@
 نویسنده: MiniMax Agent
 
 قابلیت‌ها:
+- Multi-Provider Support (Groq, Cerebras, Gemini, OpenRouter, Cohere)
 - حافظه مکالمه (Chat History)
 - Rate Limiting (محدودیت تعداد پیام)
 - فرمت کد با syntax highlighting
 - امنیت و sanitization
-- پشتیبانی از Google Gemini API
+- Automatic Fallback بین API ها
+- Load Balancing
 """
 
 import logging
@@ -23,34 +25,57 @@ import asyncio
 from typing import Optional, Dict, Any, List
 import os
 
+# Import MultiProviderHandler
+try:
+    from .multi_provider_handler import MultiProviderHandler
+except ImportError:
+    MultiProviderHandler = None
+    logger.warning("⚠️ MultiProviderHandler یافت نشد، از GeminiChatHandler اصلی استفاده می‌شود")
+
 logger = logging.getLogger(__name__)
 
 class GeminiChatHandler:
-    """مدیریت چت با Google Gemini API با حافظه مکالمه"""
+    """مدیریت چت با هوش مصنوعی - Multi-Provider Support"""
     
     def __init__(self, api_key: str = None, db_manager = None):
         """مقداردهی هندلر چت"""
-        self.api_key = api_key or os.getenv('GEMINI_API_KEY', 'AIzaSyA8HKbAXWjvh_cKQ8ynbyXztw6zIczelGk')
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
-        self.model = "gemini-2.0-flash-exp"
         self.db = db_manager
         
-        # تنظیمات محدودیت
-        self.max_message_length = 4000  # حداکثر طول پیام کاربر
-        self.timeout = 30  # تایم‌اوت درخواست
-        self.max_history_messages = 50  # حداکثر تعداد پیام‌های تاریخچه
+        # تلاش برای استفاده از MultiProviderHandler
+        if MultiProviderHandler:
+            try:
+                self.multi_handler = MultiProviderHandler(db_manager)
+                self.using_multi = True
+                logger.info("🚀 MultiProviderHandler فعال شد")
+            except Exception as e:
+                logger.warning(f"⚠️ خطا در MultiProviderHandler: {e}")
+                self.multi_handler = None
+                self.using_multi = False
+        else:
+            self.multi_handler = None
+            self.using_multi = False
         
-        # Rate Limiting
-        self.rate_limit_messages = 10  # تعداد پیام مجاز
-        self.rate_limit_seconds = 60  # در چند ثانیه
-        self.user_message_times = {}  # ذخیره زمان پیام‌های کاربران
+        # Fallback به GeminiChatHandler قدیمی
+        if not self.using_multi:
+            self.api_key = api_key or os.getenv('GEMINI_API_KEY', 'AIzaSyA8HKbAXWjvh_cKQ8ynbyXztw6zIczelGk')
+            self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
+            self.model = "gemini-2.0-flash-exp"
+            
+            # Rate Limiting (Gemini)
+            self.rate_limit_messages = 10
+            self.rate_limit_seconds = 60
+            self.user_message_times = {}
+            
+            # Retry Settings
+            self.max_retries = 3
+            self.retry_delay_base = 2
+            
+            logger.info("🔄 GeminiChatHandler fallback فعال شد")
         
-        # Retry Settings
-        self.max_retries = 3  # حداکثر تعداد تلاش مجدد
-        self.retry_delay_base = 2  # تأخیر پایه برای retry (ثانیه)
-        
-        # ثبت پیام فقط در دیباگ
-        logger.debug("✅ GeminiChatHandler با حافظه مکالمه مقداردهی شد")
+        # تنظیمات عمومی
+        self.max_message_length = 4000
+        self.timeout = 30
+        self.max_history_messages = 50
     
     def check_rate_limit(self, user_id: int) -> Dict[str, Any]:
         """بررسی محدودیت تعداد پیام"""
@@ -248,7 +273,7 @@ class GeminiChatHandler:
     
     def send_message_with_history(self, user_id: int, user_message: str) -> Dict[str, Any]:
         """
-        ارسال پیام به Google Gemini با استفاده از تاریخچه مکالمه
+        ارسال پیام به AI با استفاده از تاریخچه مکالمه (Multi-Provider)
         
         Args:
             user_id: شناسه کاربر
@@ -261,7 +286,71 @@ class GeminiChatHandler:
             - tokens_used: تعداد توکن‌های استفاده شده
             - error: پیام خطا (در صورت وجود)
             - error_type: نوع خطا (در صورت وجود)
+            - provider: نام provider استفاده شده
         """
+        try:
+            # اگر MultiProviderHandler در دسترس است
+            if self.using_multi and self.multi_handler:
+                # پاکسازی ورودی
+                user_message = self.sanitize_input(user_message)
+                
+                if not user_message:
+                    return {
+                        'success': False,
+                        'error': 'پیام خالی است',
+                        'error_type': 'empty_message',
+                        'response': None,
+                        'tokens_used': 0,
+                        'provider': None
+                    }
+                
+                logger.info(f"🚀 ارسال درخواست به MultiProvider (کاربر: {user_id})")
+                
+                # ارسال درخواست async
+                try:
+                    # ساخت پیام برای AI
+                    ai_result = asyncio.run(self.multi_handler.send_message(user_message, user_id))
+                    
+                    if ai_result['success']:
+                        return {
+                            'success': True,
+                            'response': ai_result['content'],
+                            'tokens_used': 0,  # فعلاً tracking نداریم
+                            'error': None,
+                            'error_type': None,
+                            'provider': ai_result.get('provider', 'unknown')
+                        }
+                    else:
+                        return {
+                            'success': False,
+                            'error': ai_result.get('error', 'خطای ناشناخته'),
+                            'error_type': 'api_error',
+                            'response': ai_result.get('content', 'خطا در پردازش'),
+                            'tokens_used': 0,
+                            'provider': ai_result.get('provider', 'unknown')
+                        }
+                        
+                except Exception as e:
+                    logger.error(f"❌ خطا در MultiProviderHandler: {e}")
+                    # Fallback به GeminiChatHandler قدیمی
+                    return self._send_message_gemini_fallback(user_id, user_message)
+            
+            # Fallback به GeminiChatHandler قدیمی
+            return self._send_message_gemini_fallback(user_id, user_message)
+            
+        except Exception as e:
+            logger.error(f"❌ خطای کلی در send_message_with_history: {e}")
+            return {
+                'success': False,
+                'error': f'خطای سیستم: {str(e)}',
+                'error_type': 'system_error',
+                'response': None,
+                'tokens_used': 0,
+                'provider': 'system'
+            }
+    
+    def _send_message_gemini_fallback(self, user_id: int, user_message: str) -> Dict[str, Any]:
+        """Fallback به GeminiChatHandler قدیمی"""
         try:
             # بررسی Rate Limit
             rate_check = self.check_rate_limit(user_id)
@@ -272,7 +361,8 @@ class GeminiChatHandler:
                     'error': f'rate_limit:{wait_time}',
                     'error_type': 'rate_limit',
                     'response': None,
-                    'tokens_used': 0
+                    'tokens_used': 0,
+                    'provider': 'gemini_fallback'
                 }
             
             # پاکسازی ورودی
@@ -284,7 +374,8 @@ class GeminiChatHandler:
                     'error': 'پیام خالی است',
                     'error_type': 'empty_message',
                     'response': None,
-                    'tokens_used': 0
+                    'tokens_used': 0,
+                    'provider': 'gemini_fallback'
                 }
             
             # دریافت تاریخچه چت از دیتابیس
@@ -314,7 +405,7 @@ class GeminiChatHandler:
                 "contents": contents
             }
             
-            logger.info(f"🚀 ارسال درخواست به Gemini (تعداد پیام‌ها: {len(contents)})")
+            logger.info(f"🚀 ارسال درخواست به Gemini Fallback (تعداد پیام‌ها: {len(contents)})")
             
             # ارسال درخواست با retry logic
             api_result = self._make_api_request(payload)
@@ -325,13 +416,13 @@ class GeminiChatHandler:
                 status_code = api_result.get('status_code')
                 
                 if error_type == 'server_overload':
-                    # سرور overload است
                     return {
                         'success': False,
                         'error': f'server_overload:{status_code}',
                         'error_type': 'server_overload',
                         'response': None,
-                        'tokens_used': 0
+                        'tokens_used': 0,
+                        'provider': 'gemini_fallback'
                     }
                 elif error_type == 'timeout':
                     return {
@@ -339,7 +430,8 @@ class GeminiChatHandler:
                         'error': 'timeout',
                         'error_type': 'timeout',
                         'response': None,
-                        'tokens_used': 0
+                        'tokens_used': 0,
+                        'provider': 'gemini_fallback'
                     }
                 elif error_type == 'network_error':
                     return {
@@ -508,10 +600,50 @@ class GeminiChatHandler:
             return text
 
     async def translate_multiple_texts(self, texts: List[str], max_length: int = 500) -> List[str]:
-        """ترجمه چندین متن انگلیسی به فارسی در یک درخواست واحد"""
+        """ترجمه چندین متن انگلیسی به فارسی در یک درخواست واحد (Multi-Provider)"""
         if not texts:
             return []
         
+        try:
+            # اگر MultiProviderHandler در دسترس است
+            if self.using_multi and self.multi_handler:
+                # آماده‌سازی متن‌ها برای ترجمه
+                texts_to_translate = []
+                for text in texts:
+                    if text and len(text.strip()) > 0:
+                        texts_to_translate.append(text[:max_length])
+                    else:
+                        texts_to_translate.append(text)
+                
+                logger.info(f"🌐 ترجمه گروهی با MultiProvider (تعداد: {len(texts_to_translate)})")
+                
+                # استفاده از MultiProviderHandler
+                try:
+                    translated_texts = await self.multi_handler.translate_multiple_texts(texts_to_translate)
+                    
+                    # اطمینان از تعداد صحیح
+                    if len(translated_texts) == len(texts):
+                        return translated_texts
+                    else:
+                        # تکمیل با متن اصلی
+                        while len(translated_texts) < len(texts):
+                            translated_texts.append(texts[len(translated_texts)])
+                        return translated_texts[:len(texts)]
+                        
+                except Exception as e:
+                    logger.error(f"❌ خطا در MultiProvider translation: {e}")
+                    # Fallback به Gemini
+                    return await self._translate_with_gemini_fallback(texts, max_length)
+            
+            # Fallback به GeminiChatHandler قدیمی
+            return await self._translate_with_gemini_fallback(texts, max_length)
+            
+        except Exception as e:
+            logger.error(f"❌ خطای کلی در translate_multiple_texts: {e}")
+            return texts
+    
+    async def _translate_with_gemini_fallback(self, texts: List[str], max_length: int = 500) -> List[str]:
+        """Fallback ترجمه با GeminiChatHandler قدیمی"""
         try:
             # آماده‌سازی متن‌ها برای ترجمه
             texts_to_translate = []
@@ -559,7 +691,6 @@ Keep the exact same order. Here are the texts to translate:
                 if 'candidates' in response_data and len(response_data['candidates']) > 0:
                     persian_response = response_data['candidates'][0]['content']['parts'][0]['text']
 
-                    
                     # پارس کردن پاسخ با روش قوی‌تر
                     import re
                     persian_translations = []
@@ -574,50 +705,56 @@ Keep the exact same order. Here are the texts to translate:
                         if clean_content:
                             persian_translations.append(clean_content)
                     
-
-                    
                     # تطبیق تعداد ترجمه‌ها با تعداد متون اصلی
                     if len(persian_translations) < len(texts):
-
-                        
                         # تلاش برای ترجمه‌های از دست رفته به صورت جداگانه
                         missing_count = len(texts) - len(persian_translations)
 
-                        
                         for i in range(len(persian_translations), len(texts)):
                             try:
                                 single_translation = await self.translate_text_to_persian(texts[i])
                                 persian_translations.append(single_translation)
                             except Exception as e:
-
                                 persian_translations.append(texts[i])  # استفاده از متن اصلی
                     
                     # محدود کردن به تعداد اصلی متون
                     persian_translations = persian_translations[:len(texts)]
                     
-
                     return persian_translations
             
-            logger.warning(f"⚠️ ترجمه گروهی ناموفق، بازگشت متون اصلی")
+            logger.warning(f"⚠️ ترجمه گروهی Gemini ناموفق، بازگشت متون اصلی")
             return texts  # بازگشت متون اصلی در صورت خطا
             
         except Exception as e:
-            logger.error(f"❌ خطا در ترجمه گروهی: {e}")
+            logger.error(f"❌ خطا در ترجمه Gemini fallback: {e}")
             return texts
     
     def get_quota_status(self) -> Dict[str, Any]:
         """بررسی وضعیت کوئوتای API (اطلاعات مفید برای debugging)"""
-        return {
-            'api_key_prefix': self.api_key[:10] + '...' if self.api_key else 'NOT SET',
-            'model': self.model,
-            'timeout': self.timeout,
-            'max_retries': self.max_retries,
-            'retry_delay_base': self.retry_delay_base,
-            'rate_limit_info': {
-                'max_messages': self.rate_limit_messages,
-                'time_window': self.rate_limit_seconds
-            }
+        status = {
+            'using_multi_provider': self.using_multi,
+            'providers_status': {}
         }
+        
+        # اگر MultiProviderHandler فعال است
+        if self.using_multi and self.multi_handler:
+            status.update(self.multi_handler.get_status())
+        else:
+            # Fallback به Gemini
+            status.update({
+                'api_key_prefix': self.api_key[:10] + '...' if hasattr(self, 'api_key') and self.api_key else 'NOT SET',
+                'model': getattr(self, 'model', 'unknown'),
+                'timeout': getattr(self, 'timeout', 30),
+                'max_retries': getattr(self, 'max_retries', 3),
+                'retry_delay_base': getattr(self, 'retry_delay_base', 2),
+                'rate_limit_info': {
+                    'max_messages': getattr(self, 'rate_limit_messages', 10),
+                    'time_window': getattr(self, 'rate_limit_seconds', 60)
+                },
+                'fallback_mode': True
+            })
+        
+        return status
 
 
 class AIChatStateManager:
