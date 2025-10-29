@@ -357,12 +357,6 @@ class PublicMenuManager:
             news_sources = [
                 # منابع داخلی (فارسی)
                 {
-                    'name': 'ایرنا',
-                    'url': 'https://www.irna.ir/rss/0/5/4/news.xml',
-                    'limit': 2,
-                    'language': 'fa'
-                },
-                {
                     'name': 'خبرگزاری مهر', 
                     'url': 'https://www.mehrnews.com/rss',
                     'limit': 2,
@@ -380,22 +374,28 @@ class PublicMenuManager:
                     'limit': 2,
                     'language': 'fa'
                 },
+                {
+                    'name': 'مهر - سیاسی',
+                    'url': 'https://www.mehrnews.com/rss/tp/sch',
+                    'limit': 2,
+                    'language': 'fa'
+                },
+                {
+                    'name': 'تسنیم - بین‌الملل',
+                    'url': 'https://www.tasnimnews.com/fa/rss/feed/0/9/0/%D8%A8%DB%8C%D9%86-%D8%A7%D9%84%D9%85%D9%84%D9%84%D9%84',
+                    'limit': 1,
+                    'language': 'fa'
+                },
                 # منابع خارجی (انگلیسی - نیاز به ترجمه)
                 {
-                    'name': 'BBC Persian',
+                    'name': 'BBC World',
                     'url': 'https://feeds.bbci.co.uk/news/world/rss.xml',
                     'limit': 1,
                     'language': 'en'
                 },
                 {
-                    'name': 'Reuters World',
-                    'url': 'https://feeds.reuters.com/reuters/topNews',
-                    'limit': 1,
-                    'language': 'en'
-                },
-                {
-                    'name': 'AP News',
-                    'url': 'https://feeds.apnews.com/topnews',
+                    'name': 'CNN World',
+                    'url': 'http://rss.cnn.com/rss/edition.rss',
                     'limit': 1,
                     'language': 'en'
                 }
