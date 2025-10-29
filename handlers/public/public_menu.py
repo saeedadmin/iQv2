@@ -213,16 +213,26 @@ class PublicMenuManager:
                 translated_descriptions = await self.gemini.translate_multiple_texts(descriptions)
                 
                 # اختصاص ترجمه‌ها به اخبار
+                bot_logger.log_info("BULK_TRANSLATION_DEBUG", f"تعداد عنوان‌ها: {len(titles)}, تعداد ترجمه‌های عنوان: {len(translated_titles)}")
+                bot_logger.log_info("BULK_TRANSLATION_DEBUG", f"تعداد توضیحات: {len(descriptions)}, تعداد ترجمه‌های توضیحات: {len(translated_descriptions)}")
+                
                 for i, news_item in enumerate(all_news):
                     if i < len(translated_titles):
                         news_item['title_fa'] = translated_titles[i]
+                        bot_logger.log_info("BULK_TRANSLATION_DEBUG", f"عنوان {i+1}: {translated_titles[i][:50]}...")
                     else:
                         news_item['title_fa'] = news_item.get('title', '')
                     
                     if i < len(translated_descriptions):
                         news_item['description_fa'] = translated_descriptions[i]
+                        bot_logger.log_info("BULK_TRANSLATION_DEBUG", f"توضیحات {i+1}: {translated_descriptions[i][:50]}...")
                     else:
                         news_item['description_fa'] = news_item.get('description', '')
+                
+                # نمایش نمونه‌ای از اخبار ترجمه شده برای اطمینان
+                for i, news_item in enumerate(all_news[:2]):  # فقط 2 خبر اول
+                    bot_logger.log_info("BULK_TRANSLATION_FINAL", f"خبر {i+1} - عنوان فارسی: {news_item.get('title_fa', 'MISSING')[:60]}...")
+                    bot_logger.log_info("BULK_TRANSLATION_FINAL", f"خبر {i+1} - توضیحات فارسی: {news_item.get('description_fa', 'MISSING')[:60]}...")
                 
                 bot_logger.log_info("BULK_TRANSLATION_SUCCESS", f"ترجمه گروهی با موفقیت انجام شد")
                 

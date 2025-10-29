@@ -500,12 +500,16 @@ class GeminiChatHandler:
             
             if result['success']:
                 response_data = result['response'].json()
+                logger.info(f"📝 Gemini Response Debug: {response_data}")
+                
                 if 'candidates' in response_data and len(response_data['candidates']) > 0:
                     persian_response = response_data['candidates'][0]['content']['parts'][0]['text']
+                    logger.info(f"📝 Raw Persian Response: {persian_response[:500]}...")
                     
                     # پارس کردن پاسخ
                     persian_translations = []
                     lines = persian_response.strip().split('\n')
+                    logger.info(f"📝 Lines after split: {lines}")
                     
                     current_translation = ""
                     for line in lines:
@@ -530,6 +534,9 @@ class GeminiChatHandler:
                     
                     # محدود کردن به تعداد اصلی متون
                     persian_translations = persian_translations[:len(texts)]
+                    
+                    logger.info(f"📝 Final translations count: {len(persian_translations)}")
+                    logger.info(f"📝 Final translations: {persian_translations[:2]}")  # فقط 2 تای اول
                     
                     logger.info(f"✅ ترجمه گروهی موفق: {len(texts)} متن ترجمه شد")
                     return persian_translations
