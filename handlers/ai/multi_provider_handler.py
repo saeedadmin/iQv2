@@ -569,7 +569,7 @@ class MultiProviderHandler:
         self.user_message_times[user_id].append(current_time)
     
     async def send_message(self, message: str, user_id: int = None) -> Dict[str, Any]:
-        """ارسال پیام با استفاده از provider موجود"""
+        """ارسال پیام با استفاده از provider موجود و حافظه مکالمه"""
         # بررسی rate limit کاربر
         if user_id and not self._check_user_rate_limit(user_id):
             return {
@@ -581,10 +581,28 @@ class MultiProviderHandler:
         # پیام سیستم برای راهنمایی AI
         system_prompt = "تو یک دستیار هوشمند هستی که به زبان فارسی پاسخ می‌دهی. پاسخ‌هایت مفید، دقیق و کوتاه باشد."
         
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": message}
-        ]
+        # شروع ساخت پیام‌ها
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # اگر user_id موجود است، تاریخچه چت را از database بخوان
+        if user_id and self.db:
+            try:
+                chat_history = self.db.get_chat_history(user_id, limit=50)
+                
+                # اضافه کردن تاریخچه به messages
+                for msg in chat_history:
+                    messages.append({
+                        "role": msg['role'],
+                        "content": msg['message_text']
+                    })
+                
+                logger.info(f"📚 بارگذاری {len(chat_history)} پیام از تاریخچه کاربر {user_id}")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ خطا در خواندن تاریخچه چت: {e}")
+        
+        # اضافه کردن پیام جدید کاربر
+        messages.append({"role": "user", "content": message})
         
         # تلاش با providers مختلف
         for attempt in range(len(self.providers)):
@@ -604,6 +622,15 @@ class MultiProviderHandler:
                 if user_id:
                     self._record_user_message(user_id)
                 
+                # ذخیره پیام کاربر و پاسخ AI در تاریخچه (اگر database موجود است)
+                if user_id and self.db:
+                    try:
+                        self.db.add_chat_message(user_id, 'user', message)
+                        self.db.add_chat_message(user_id, 'model', result["content"])
+                        logger.info(f"💾 پیام‌های جدید در تاریخچه کاربر {user_id} ذخیره شد")
+                    except Exception as e:
+                        logger.warning(f"⚠️ خطا در ذخیره تاریخچه چت: {e}")
+                
                 return {
                     "success": True,
                     "content": result["content"],
@@ -613,6 +640,7 @@ class MultiProviderHandler:
                 }
                 
             except Exception as e:
+                logger.warning(f"⚠️ خطا در provider {provider_name}: {e}")
                 continue
         
         return {

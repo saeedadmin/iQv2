@@ -26,13 +26,13 @@ from typing import Optional, Dict, Any, List
 import os
 
 # Import MultiProviderHandler
+logger = logging.getLogger(__name__)
+
 try:
     from .multi_provider_handler import MultiProviderHandler
 except ImportError:
     MultiProviderHandler = None
     logger.warning("⚠️ MultiProviderHandler یافت نشد، از GeminiChatHandler اصلی استفاده می‌شود")
-
-logger = logging.getLogger(__name__)
 
 class GeminiChatHandler:
     """مدیریت چت با هوش مصنوعی - Multi-Provider Support"""
