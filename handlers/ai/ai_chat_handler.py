@@ -516,32 +516,21 @@ Keep the exact same order. Here are the texts to translate:
                     # پارس کردن پاسخ با روش قوی‌تر
                     import re
                     persian_translations = []
-                    lines = persian_response.strip().split('\n')
                     
-                    current_translation = ""
-                    for line in lines:
-                        line = line.strip()
-                        if not line:  # خط خالی را نادیده بگیر
-                            continue
-                            
-                        # بررسی شروع ترجمه جدید با regex
-                        match = re.match(rf'^{len(persian_translations) + 1}\.\s*(.*)$', line)
-                        if match:
-                            # ذخیره ترجمه قبلی
-                            if current_translation:
-                                persian_translations.append(current_translation.strip())
-                                logger.info(f"✅ ترجمه {len(persian_translations)}: {current_translation.strip()[:100]}...")
-                            
-                            # شروع ترجمه جدید
-                            current_translation = match.group(1)
-                        elif current_translation and line:
-                            # ادامه ترجمه فعلی
-                            current_translation += " " + line
+                    logger.info(f"📥 پاسخ خام Gemini:\n{persian_response}")
                     
-                    # اضافه کردن آخرین ترجمه
-                    if current_translation:
-                        persian_translations.append(current_translation.strip())
-                        logger.info(f"✅ ترجمه {len(persian_translations)}: {current_translation.strip()[:100]}...")
+                    # استفاده از regex برای پیدا کردن همه آیتم‌های شماره‌دار
+                    pattern = r'(\d+)\.\s*([^0-9]*?)(?=\d+\.|$)'
+                    matches = re.findall(pattern, persian_response, re.DOTALL | re.MULTILINE)
+                    
+                    logger.info(f"🔍 تعداد matches پیدا شده: {len(matches)}")
+                    
+                    for match in matches:
+                        number, content = match
+                        clean_content = content.strip()
+                        if clean_content:
+                            persian_translations.append(clean_content)
+                            logger.info(f"✅ ترجمه {number}: {clean_content[:100]}...")
                     
                     logger.info(f"🔍 تعداد ترجمه‌های پارس شده: {len(persian_translations)} از {len(texts)} متن اصلی")
                     
@@ -555,7 +544,7 @@ Keep the exact same order. Here are the texts to translate:
                         
                         for i in range(len(persian_translations), len(texts)):
                             try:
-                                single_translation = await self.translate_text(texts[i])
+                                single_translation = await self.translate_text_to_persian(texts[i])
                                 persian_translations.append(single_translation)
                                 logger.info(f"✅ ترجمه جداگانه {i+1}: {single_translation[:100]}...")
                             except Exception as e:
