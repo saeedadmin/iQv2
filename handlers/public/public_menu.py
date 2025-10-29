@@ -346,6 +346,15 @@ class PublicMenuManager:
                 for news_item in all_news:
                     news_item['title_fa'] = news_item.get('title', '')
                     news_item['description_fa'] = news_item.get('description', '')
+                
+                # لاگ کردن خطا برای debugging
+                import logging
+                logger = logging.getLogger(__name__)
+                
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    logger.warning("⚠️ کوئوتای Gemini API تمام شده است. متون اصلی نمایش داده می‌شوند.")
+                else:
+                    logger.error(f"❌ خطا در ترجمه اخبار هوش مصنوعی: {e}")
             
             return all_news
             
@@ -456,6 +465,15 @@ class PublicMenuManager:
                         news_item['title_fa'] = news_item.get('title', '')
                         news_item['description_fa'] = news_item.get('description', '')
                     all_news.extend(foreign_news)
+                    
+                    # لاگ کردن خطا برای debugging
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    
+                    if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                        logger.warning("⚠️ کوئوتای Gemini API تمام شده است. متون اصلی نمایش داده می‌شوند.")
+                    else:
+                        logger.error(f"❌ خطا در ترجمه اخبار عمومی: {e}")
             
             # مرتب‌سازی نهایی و انتخاب 8 خبر
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)

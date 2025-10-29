@@ -156,9 +156,56 @@ class GeminiChatHandler:
                         'detail': error_detail
                     }
             
-            # خطاهای 4xx (Client Errors) - غیرقابل retry
+            # خطاهای 4xx (Client Errors) - بعضی قابل retry
             else:
                 error_detail = response.text
+                
+                # خطای 429 (Rate Limit) - قابل retry با delay مخصوص
+                if response.status_code == 429:
+                    import json
+                    try:
+                        # تلاش برای استخراج retry delay از پاسخ
+                        error_data = json.loads(error_detail)
+                        retry_delay = 30  # delay پیش‌فرض
+                        
+                        # جستجو برای retryDelay در details
+                        if 'error' in error_data and 'details' in error_data['error']:
+                            for detail in error_data['error']['details']:
+                                if detail.get('@type') == 'type.googleapis.com/google.rpc.RetryInfo':
+                                    retry_info = detail.get('retryInfo', {})
+                                    if 'retryDelay' in retry_info:
+                                        # تبدیل "17s" به عدد
+                                        retry_str = retry_info['retryDelay']
+                                        if retry_str.endswith('s'):
+                                            retry_delay = float(retry_str[:-1])
+                        
+                        logger.warning(f"⚠️ Rate limit detected. Retry in {retry_delay}s: {error_detail}")
+                        
+                        # صبر کردن به اندازه retry delay پیشنهاد شده
+                        logger.info(f"⏳ صبر {retry_delay} ثانیه برای ریست کوئوتا...")
+                        time.sleep(retry_delay)
+                        
+                        # اگر تلاش اولیه است، retry کن
+                        if attempt == 1:
+                            return self._make_api_request(payload, attempt + 1)
+                        else:
+                            logger.warning("⚠️ حداکثر تلاش‌ها برای rate limit انجام شد")
+                            return {
+                                'success': False,
+                                'error_type': 'rate_limit_exceeded',
+                                'status_code': 429,
+                                'detail': error_detail,
+                                'retry_delay': retry_delay
+                            }
+                    except json.JSONDecodeError:
+                        # اگر JSON نیست، از delay پیش‌فرض استفاده کن
+                        retry_delay = 30
+                        logger.warning(f"⚠️ Rate limit (parse error). Retry in {retry_delay}s")
+                        time.sleep(retry_delay)
+                        if attempt == 1:
+                            return self._make_api_request(payload, attempt + 1)
+                
+                # سایر خطاهای 4xx - غیرقابل retry
                 logger.error(f"❌ خطای API {response.status_code}: {error_detail}")
                 return {
                     'success': False,
@@ -557,6 +604,20 @@ Keep the exact same order. Here are the texts to translate:
         except Exception as e:
             logger.error(f"❌ خطا در ترجمه گروهی: {e}")
             return texts
+    
+    def get_quota_status(self) -> Dict[str, Any]:
+        """بررسی وضعیت کوئوتای API (اطلاعات مفید برای debugging)"""
+        return {
+            'api_key_prefix': self.api_key[:10] + '...' if self.api_key else 'NOT SET',
+            'model': self.model,
+            'timeout': self.timeout,
+            'max_retries': self.max_retries,
+            'retry_delay_base': self.retry_delay_base,
+            'rate_limit_info': {
+                'max_messages': self.rate_limit_messages,
+                'time_window': self.rate_limit_seconds
+            }
+        }
 
 
 class AIChatStateManager:
