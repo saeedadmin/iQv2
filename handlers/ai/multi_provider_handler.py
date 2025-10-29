@@ -641,15 +641,21 @@ class MultiProviderHandler:
         
         translated_texts = []
         
+        # سیستم پرامپت مشخص برای ترجمه
+        translation_system_prompt = "تو یک مترجم حرفه‌ای هستی که فقط به زبان فارسی پاسخ می‌دهی. هرگز انگلیسی یا هر زبان دیگری نوشته نمی‌شود. فقط ترجمه فارسی ارائه بده."
+        
         for text in texts:
             try:
-                # پیام ترجمه
-                translation_prompt = f"لطفاً متن زیر را به فارسی ترجمه کن:\n\n{text}"
+                # پیام ترجمه با سیستم پرامپت مشخص
+                translation_prompt = f"لطفاً متن زیر را دقیقاً به فارسی ترجمه کن و فقط ترجمه فارسی بده:\n\n{text}"
                 
-                result = await self.send_message(translation_prompt)
+                # استفاده از متد داخلی برای پیام با سیستم پرامپت مشخص
+                result = await self._send_message_with_custom_prompt(translation_prompt, translation_system_prompt)
                 
                 if result["success"]:
-                    translated_texts.append(result["content"])
+                    # پاکسازی پاسخ از متن اضافی
+                    translated_content = result["content"].strip()
+                    translated_texts.append(translated_content)
                 else:
                     translated_texts.append(text)  # استفاده از متن اصلی
                     
@@ -658,6 +664,45 @@ class MultiProviderHandler:
                 translated_texts.append(text)  # استفاده از متن اصلی
         
         return translated_texts
+    
+    async def _send_message_with_custom_prompt(self, message: str, custom_system_prompt: str) -> Dict[str, Any]:
+        """ارسال پیام با سیستم پرامپت سفارشی"""
+        messages = [
+            {"role": "system", "content": custom_system_prompt},
+            {"role": "user", "content": message}
+        ]
+        
+        # تلاش با providers مختلف
+        for attempt in range(len(self.providers)):
+            provider_name = self.get_next_available_provider()
+            
+            if not provider_name:
+                return {
+                    "success": False,
+                    "error": "No available providers",
+                    "content": "متأسفانه در حال حاضر هیچ سرویس AI در دسترس نیست."
+                }
+            
+            try:
+                result = await self._make_api_request(provider_name, messages)
+                
+                return {
+                    "success": True,
+                    "content": result["content"],
+                    "provider": result["provider"],
+                    "model": result["model"],
+                    "api_key_used": result.get("api_key_used", "N/A")
+                }
+                
+            except Exception as e:
+                logger.error(f"❌ Provider {provider_name} failed: {e}")
+                continue
+        
+        return {
+            "success": False, 
+            "error": "All providers failed",
+            "content": "متأسفانه در حال حاضر هیچ سرویس AI در دسترس نیست."
+        }
     
     def reset_daily_quotas(self):
         """Reset کوئوتای روزانه"""
