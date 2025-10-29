@@ -450,7 +450,7 @@ class GeminiChatHandler:
                 response_data = result['response'].json()
                 if 'candidates' in response_data and len(response_data['candidates']) > 0:
                     persian_text = response_data['candidates'][0]['content']['parts'][0]['text']
-                    logger.info(f"✅ ترجمه موفق: {text[:30]}... → {persian_text[:30]}...")
+
                     return persian_text.strip()
             
             logger.warning(f"⚠️ ترجمه ناموفق، بازگشت متن اصلی")
@@ -511,7 +511,7 @@ Keep the exact same order. Here are the texts to translate:
                 
                 if 'candidates' in response_data and len(response_data['candidates']) > 0:
                     persian_response = response_data['candidates'][0]['content']['parts'][0]['text']
-                    logger.info(f"📥 پاسخ خام Gemini:\n{persian_response}")
+
                     
                     # پارس کردن پاسخ با روش قوی‌تر
                     import re
@@ -527,28 +527,28 @@ Keep the exact same order. Here are the texts to translate:
                         if clean_content:
                             persian_translations.append(clean_content)
                     
-                    logger.info(f"🔍 تعداد ترجمه‌های پارس شده: {len(persian_translations)} از {len(texts)} متن اصلی")
+
                     
                     # تطبیق تعداد ترجمه‌ها با تعداد متون اصلی
                     if len(persian_translations) < len(texts):
-                        logger.warning(f"⚠️ تعداد ترجمه‌ها ({len(persian_translations)}) کمتر از متون اصلی ({len(texts)}) است!")
+
                         
                         # تلاش برای ترجمه‌های از دست رفته به صورت جداگانه
                         missing_count = len(texts) - len(persian_translations)
-                        logger.info(f"🔄 تلاش برای ترجمه {missing_count} متن باقی‌مانده...")
+
                         
                         for i in range(len(persian_translations), len(texts)):
                             try:
                                 single_translation = await self.translate_text_to_persian(texts[i])
                                 persian_translations.append(single_translation)
                             except Exception as e:
-                                logger.error(f"❌ خطا در ترجمه جداگانه {i+1}: {e}")
+
                                 persian_translations.append(texts[i])  # استفاده از متن اصلی
                     
                     # محدود کردن به تعداد اصلی متون
                     persian_translations = persian_translations[:len(texts)]
                     
-                    logger.info(f"✅ ترجمه گروهی موفق: {len(texts)} متن ترجمه شد")
+
                     return persian_translations
             
             logger.warning(f"⚠️ ترجمه گروهی ناموفق، بازگشت متون اصلی")
