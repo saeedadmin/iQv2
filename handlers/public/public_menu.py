@@ -556,6 +556,8 @@ class PublicMenuManager:
                 bot_logger.log_info("NEWS_FORMATTING_DEBUG", f"خبر {i} - استفاده از عنوان فارسی: {title_fa[:50]}...")
             
             title = title[:80] + '...' if len(title) > 80 else title
+            # Escape markdown characters
+            title = title.replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)')
             
             description_fa = news.get('description_fa', '')
             description_en = news.get('description', '')
@@ -568,6 +570,8 @@ class PublicMenuManager:
                 bot_logger.log_info("NEWS_FORMATTING_DEBUG", f"خبر {i} - استفاده از توضیح فارسی: {description_fa[:50]}...")
             
             description = description[:100] + '...' if len(description) > 100 else description
+            # Escape markdown characters
+            description = description.replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)')
             
             source_name = news.get('source', 'نامشخص')
             
@@ -607,9 +611,13 @@ class PublicMenuManager:
             # استفاده از متن ترجمه شده
             title = news.get('title_fa', news.get('title', ''))
             title = title[:80] + '...' if len(title) > 80 else title
+            # Escape markdown characters
+            title = title.replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)')
             
             description = news.get('description_fa', news.get('description', ''))
             description = description[:120] + '...' if len(description) > 120 else description
+            # Escape markdown characters
+            description = description.replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)')
             
             # تیتر
             message += f"{source_icon} *{i}. {title}*\n"
@@ -657,9 +665,13 @@ class PublicMenuManager:
             # استفاده از متن ترجمه شده (در صورت موجود بودن)
             title = news.get('title_fa', news.get('title', ''))
             title = title[:80] + '...' if len(title) > 80 else title
+            # Escape markdown characters
+            title = title.replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)')
             
             description = news.get('description_fa', news.get('description', ''))
             description = description[:100] + '...' if len(description) > 100 else description
+            # Escape markdown characters
+            description = description.replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)')
             
             # تیتر
             message += f"{source_icon} *{i}. {title}*\n"
