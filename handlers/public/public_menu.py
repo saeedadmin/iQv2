@@ -351,6 +351,120 @@ class PublicMenuManager:
             
         except Exception as e:
             return []
+
+    async def fetch_general_news(self) -> List[Dict[str, str]]:
+        """دریافت آخرین اخبار عمومی از منابع متعدد داخلی و خارجی با ترجمه"""
+        try:
+            news_sources = [
+                # منابع داخلی (فارسی)
+                {
+                    'name': 'ایرنا',
+                    'url': 'https://www.irna.ir/rss/0/5/4/news.xml',
+                    'limit': 2,
+                    'language': 'fa'
+                },
+                {
+                    'name': 'خبرگزاری مهر', 
+                    'url': 'https://www.mehrnews.com/rss',
+                    'limit': 2,
+                    'language': 'fa'
+                },
+                {
+                    'name': 'تسنیم',
+                    'url': 'https://www.tasnimnews.com/fa/rss/feed/0/8/0/%D8%A2%D8%AE%D8%B1%DB%8C%D9%86-%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1',
+                    'limit': 2,
+                    'language': 'fa'
+                },
+                {
+                    'name': 'فارس',
+                    'url': 'https://www.farsnews.ir/rss.xml',
+                    'limit': 2,
+                    'language': 'fa'
+                },
+                # منابع خارجی (انگلیسی - نیاز به ترجمه)
+                {
+                    'name': 'BBC Persian',
+                    'url': 'https://feeds.bbci.co.uk/news/world/rss.xml',
+                    'limit': 1,
+                    'language': 'en'
+                },
+                {
+                    'name': 'Reuters World',
+                    'url': 'https://feeds.reuters.com/reuters/topNews',
+                    'limit': 1,
+                    'language': 'en'
+                },
+                {
+                    'name': 'AP News',
+                    'url': 'https://feeds.apnews.com/topnews',
+                    'limit': 1,
+                    'language': 'en'
+                }
+            ]
+            
+            all_news = []
+            foreign_news = []  # برای ذخیره اخبار خارجی که نیاز به ترجمه دارند
+            
+            async with aiohttp.ClientSession() as session:
+                for source in news_sources:
+                    try:
+                        async with session.get(source['url'], timeout=15) as response:
+                            if response.status == 200:
+                                xml_content = await response.text()
+                                news_items = self.parse_rss_feed(xml_content, source['name'], source['limit'])
+                                
+                                # اگر منبع خارجی باشد، به لیست جداگانه برای ترجمه اضافه می‌کنیم
+                                if source['language'] == 'en':
+                                    foreign_news.extend(news_items)
+                                else:
+                                    all_news.extend(news_items)
+                    except Exception as e:
+                        continue
+            
+            # مرتب‌سازی بر اساس زمان (جدیدترین اول)
+            all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
+            
+            # اگر اخبار خارجی موجود باشد، آنها را ترجمه می‌کنیم
+            if foreign_news:
+                try:
+                    # جمع‌آوری عنوان‌ها و توضیحات برای ترجمه گروهی
+                    foreign_titles = [news_item.get('title', '') for news_item in foreign_news]
+                    foreign_descriptions = [news_item.get('description', '') for news_item in foreign_news]
+                    
+                    # ترجمه گروهی عنوان‌ها و توضیحات
+                    translated_titles = await self.gemini.translate_multiple_texts(foreign_titles)
+                    translated_descriptions = await self.gemini.translate_multiple_texts(foreign_descriptions)
+                    
+                    # اختصاص ترجمه‌ها به اخبار خارجی
+                    for i, news_item in enumerate(foreign_news):
+                        if i < len(translated_titles):
+                            news_item['title_fa'] = translated_titles[i]
+                        else:
+                            news_item['title_fa'] = news_item.get('title', '')
+                        
+                        if i < len(translated_descriptions):
+                            news_item['description_fa'] = translated_descriptions[i]
+                        else:
+                            news_item['description_fa'] = news_item.get('description', '')
+                    
+                    # اضافه کردن اخبار خارجی به لیست اصلی
+                    all_news.extend(foreign_news)
+                    
+                except Exception as e:
+                    # در صورت خطا در ترجمه، از متون اصلی استفاده می‌کنیم
+                    for news_item in foreign_news:
+                        news_item['title_fa'] = news_item.get('title', '')
+                        news_item['description_fa'] = news_item.get('description', '')
+                    all_news.extend(foreign_news)
+            
+            # مرتب‌سازی نهایی و انتخاب 8 خبر
+            all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
+            all_news = all_news[:8]
+            
+            return all_news
+            
+        except Exception as e:
+            return []
     
     def format_crypto_news_message(self, news_list: List[Dict[str, str]]) -> str:
         """فرمت کردن پیام اخبار کریپتو (با متن ترجمه شده به فارسی)"""
@@ -408,6 +522,56 @@ class PublicMenuManager:
             
             description = news.get('description_fa', news.get('description', ''))
             description = description[:120] + '...' if len(description) > 120 else description
+            
+            # تیتر
+            message += f"{source_icon} *{i}. {title}*\n"
+            
+            # منبع
+            message += f"📡 منبع: {news['source']}\n"
+            
+            # توضیحات (اگر موجود باشد)
+            if description:
+                message += f"📝 {description}\n"
+            
+            message += f"🔗 [ادامه مطلب]({news['link']})\n\n"
+        
+        message += "🤖 ترجمه شده توسط هوش مصنوعی Gemini\n"
+        message += "⏰ آخرین به‌روزرسانی: همین الان"
+        
+        return message
+    
+    def format_general_news_message(self, news_list: List[Dict[str, str]]) -> str:
+        """فرمت کردن پیام اخبار عمومی (با متن ترجمه شده به فارسی)"""
+        if not news_list:
+            return "❌ خطا در دریافت اخبار عمومی. لطفاً بعداً امتحان کنید."
+        
+        message = "📺 *آخرین اخبار روز (به فارسی)*\n\n"
+        
+        for i, news in enumerate(news_list, 1):
+            # آیکون‌های مختلف برای منابع مختلف
+            if 'ایرنا' in news['source']:
+                source_icon = "🇮🇷"
+            elif 'مهر' in news['source']:
+                source_icon = "🔸"
+            elif 'تسنیم' in news['source']:
+                source_icon = "📡"
+            elif 'فارس' in news['source']:
+                source_icon = "⭐"
+            elif 'BBC' in news['source']:
+                source_icon = "🇬🇧"
+            elif 'Reuters' in news['source']:
+                source_icon = "🌍"
+            elif 'AP' in news['source']:
+                source_icon = "🇺🇸"
+            else:
+                source_icon = "📰"
+            
+            # استفاده از متن ترجمه شده (در صورت موجود بودن)
+            title = news.get('title_fa', news.get('title', ''))
+            title = title[:80] + '...' if len(title) > 80 else title
+            
+            description = news.get('description_fa', news.get('description', ''))
+            description = description[:100] + '...' if len(description) > 100 else description
             
             # تیتر
             message += f"{source_icon} *{i}. {title}*\n"
