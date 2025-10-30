@@ -651,12 +651,28 @@ class MultiProviderHandler:
                     except Exception as e:
                         logger.warning(f"⚠️ خطا در ذخیره تاریخچه چت: {e}")
                 
+                # اضافه کردن اطلاعات توکن‌ها به return
+                tokens_used = result.get("tokens_used", 0)
+                prompt_tokens = result.get("prompt_tokens", 0)
+                completion_tokens = result.get("completion_tokens", 0)
+                response_time = result.get("response_time", 0)
+                
+                logger.info(f"🎯 Provider Success - {result['provider']}:")
+                logger.info(f"   📊 Total Tokens: {tokens_used}")
+                logger.info(f"   📝 Prompt Tokens: {prompt_tokens}")
+                logger.info(f"   ✍️ Completion Tokens: {completion_tokens}")
+                logger.info(f"   ⏱️ Response Time: {response_time:.2f}s")
+                
                 return {
                     "success": True,
                     "content": result["content"],
                     "provider": result["provider"],
                     "model": result["model"],
-                    "api_key_used": result.get("api_key_used", "N/A")
+                    "api_key_used": result.get("api_key_used", "N/A"),
+                    "tokens_used": tokens_used,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "response_time": response_time
                 }
                 
             except Exception as e:
@@ -720,12 +736,22 @@ class MultiProviderHandler:
             try:
                 result = await self._make_api_request(provider_name, messages)
                 
+                # اضافه کردن اطلاعات توکن‌ها به return
+                tokens_used = result.get("tokens_used", 0)
+                prompt_tokens = result.get("prompt_tokens", 0)
+                completion_tokens = result.get("completion_tokens", 0)
+                response_time = result.get("response_time", 0)
+                
                 return {
                     "success": True,
                     "content": result["content"],
                     "provider": result["provider"],
                     "model": result["model"],
-                    "api_key_used": result.get("api_key_used", "N/A")
+                    "api_key_used": result.get("api_key_used", "N/A"),
+                    "tokens_used": tokens_used,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "response_time": response_time
                 }
                 
             except Exception as e:

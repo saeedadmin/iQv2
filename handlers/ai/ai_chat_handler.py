@@ -309,18 +309,36 @@ class GeminiChatHandler:
                 # ارسال درخواست async
                 try:
                     # ساخت پیام برای AI
+                    logger.info(f"🔄 ارسال درخواست به MultiHandler (کاربر: {user_id})")
                     ai_result = asyncio.run(self.multi_handler.send_message(user_message, user_id))
                     
+                    # لاگ جزیی برای debugging توکن‌ها
+                    logger.info(f"🔍 MultiHandler Result - Success: {ai_result.get('success', False)}")
+                    
                     if ai_result['success']:
+                        tokens_used = ai_result.get('tokens_used', 0)
+                        prompt_tokens = ai_result.get('prompt_tokens', 0)
+                        completion_tokens = ai_result.get('completion_tokens', 0)
+                        provider = ai_result.get('provider', 'unknown')
+                        content = ai_result.get('content', '')
+                        
+                        logger.info(f"📊 Token Analysis:")
+                        logger.info(f"   🎯 Total Tokens: {tokens_used}")
+                        logger.info(f"   📝 Prompt Tokens: {prompt_tokens}")
+                        logger.info(f"   ✍️ Completion Tokens: {completion_tokens}")
+                        logger.info(f"   🤖 Provider: {provider}")
+                        logger.info(f"   📄 Content Length: {len(content)} chars")
+                        logger.info(f"   💬 Content Preview: {content[:100]}...")
+                        
                         return {
                             'success': True,
                             'response': ai_result['content'],
-                            'tokens_used': ai_result.get('tokens_used', 0),
-                            'prompt_tokens': ai_result.get('prompt_tokens', 0),
-                            'completion_tokens': ai_result.get('completion_tokens', 0),
+                            'tokens_used': tokens_used,
+                            'prompt_tokens': prompt_tokens,
+                            'completion_tokens': completion_tokens,
                             'error': None,
                             'error_type': None,
-                            'provider': ai_result.get('provider', 'unknown')
+                            'provider': provider
                         }
                     else:
                         return {
