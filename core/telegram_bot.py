@@ -1029,7 +1029,8 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user_data = db_manager.get_user(user.id)
     
     # 🚨 بررسی حالت چت با AI - اگر کاربر در چت است، پیام را به AI بفرستید
-    if ai_chat_state.is_in_chat(user.id) and message_text != "❌ خروج از چت":
+    # استثنا: دکمه‌های خروج از چت و بازگشت به منوی AI
+    if ai_chat_state.is_in_chat(user.id) and message_text not in ["❌ خروج از چت", "🔙 بازگشت به منوی AI"]:
         bot_logger.log_user_action(user.id, "AI_CHAT_MESSAGE", f"پیام در چت: {message_text[:50]}...")
         
         # نمایش پیام "در حال تایپ..."
