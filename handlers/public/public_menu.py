@@ -18,6 +18,9 @@ from handlers.ai.ai_chat_handler import GeminiChatHandler
 import html
 import os
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class PublicMenuManager:
     def __init__(self, db_manager):
@@ -359,19 +362,19 @@ class PublicMenuManager:
                 {
                     'name': 'خبرگزاری مهر', 
                     'url': 'https://www.mehrnews.com/rss',
-                    'limit': 2,
+                    'limit': 3,
                     'language': 'fa'
                 },
                 {
                     'name': 'تسنیم',
                     'url': 'https://www.tasnimnews.com/fa/rss/feed/0/8/0/%D8%A2%D8%AE%D8%B1%DB%8C%D9%86-%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1',
-                    'limit': 2,
+                    'limit': 3,
                     'language': 'fa'
                 },
                 {
-                    'name': 'فارس',
-                    'url': 'https://www.farsnews.ir/rss.xml',
-                    'limit': 2,
+                    'name': 'مهر عمومی',  # جایگزین فارس خراب
+                    'url': 'https://www.mehrnews.com/rss/tp/1',
+                    'limit': 3,
                     'language': 'fa'
                 },
                 {
@@ -383,20 +386,20 @@ class PublicMenuManager:
                 {
                     'name': 'تسنیم - بین‌الملل',
                     'url': 'https://www.tasnimnews.com/fa/rss/feed/0/9/0/%D8%A8%DB%8C%D9%86-%D8%A7%D9%84%D9%85%D9%84%D9%84%D9%84',
-                    'limit': 1,
+                    'limit': 2,
                     'language': 'fa'
                 },
                 # منابع خارجی (انگلیسی - نیاز به ترجمه)
                 {
                     'name': 'BBC World',
                     'url': 'https://feeds.bbci.co.uk/news/world/rss.xml',
-                    'limit': 1,
+                    'limit': 2,
                     'language': 'en'
                 },
                 {
                     'name': 'CNN World',
                     'url': 'http://rss.cnn.com/rss/edition.rss',
-                    'limit': 1,
+                    'limit': 2,
                     'language': 'en'
                 }
             ]
