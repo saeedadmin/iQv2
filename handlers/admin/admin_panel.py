@@ -933,7 +933,7 @@ class AdminPanel:
             usage_report = await self._get_ai_usage_report(ai_handler)
             
             # فرمت کردن گزارش
-            formatted_report = self._format_ai_usage_message(usage_report)
+            formatted_report = self._format_ai_usage_message(usage_report, ai_handler)
             
             back_keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 بروزرسانی", callback_data="admin_ai_usage")],
@@ -1016,12 +1016,8 @@ class AdminPanel:
                 "Content-Type": "application/json"
             }
             
-            # امتحان کردن endpoint درست
-            response = requests.get("https://api.groq.com/usage/limits", headers=headers, timeout=10)
-            
-            # اگر این endpoint کار نکرد، از endpoint دیگه استفاده کن
-            if response.status_code != 200:
-                response = requests.get("https://api.groq.com/openai/v1/me", headers=headers, timeout=10)
+            # بررسی API key با endpoint valid
+            response = requests.get("https://api.groq.com/openai/v1/models", headers=headers, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
@@ -1142,7 +1138,7 @@ class AdminPanel:
                 "message": "خطا در دریافت اطلاعات Cohere"
             }
     
-    def _format_ai_usage_message(self, usage_data: Dict) -> str:
+    def _format_ai_usage_message(self, usage_data: Dict, ai_handler=None) -> str:
         """فرمت کردن پیام گزارش AI usage"""
         message = "💎 **گزارش استفاده از توکن‌های AI**\n\n"
         message += f"🕐 تاریخ: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
@@ -1234,7 +1230,10 @@ class AdminPanel:
         
         # آمار دقیق از database tracking (برای تمام providers)
         try:
-            db_stats = ai_handler.get_usage_stats(days=30)
+            if ai_handler and hasattr(ai_handler, 'get_usage_stats'):
+                db_stats = ai_handler.get_usage_stats(days=30)
+            else:
+                db_stats = None
             if db_stats:
                 message += "**📈 آمار تفصیلی از Database (۳۰ روز گذشته):**\n"
                 
