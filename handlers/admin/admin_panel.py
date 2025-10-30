@@ -1052,66 +1052,63 @@ class AdminPanel:
             }
     
     async def _check_cerebras_usage(self, ai_handler: MultiProviderHandler, provider_name: str) -> Dict:
-        """بررسی usage Cerebras"""
+        """بررسی usage Cerebras با rate limits"""
         try:
-            # Cerebras اطلاعات usage رو در response نمیده
-            # فقط می‌تونیم از performance tracking استفاده کنیم
+            # Cerebras اطلاعات usage رو در response headers میده
+            # از internal tracking هم استفاده می‌کنیم
             if provider_name in ai_handler.provider_performance:
                 perf_data = ai_handler.provider_performance[provider_name]
                 return {
                     "status": "partial",
                     "provider": "Cerebras",
-                    "total_requests": perf_data.get("total_requests", 0),
-                    "successful_requests": perf_data.get("successful_requests", 0),
-                    "success_rate": f"{perf_data.get('success_rate', 0):.1f}%",
-                    "avg_response_time": f"{perf_data.get('avg_response_time', 0):.2f}s",
-                    "message": "اطلاعات عملکرد از ربات (usage مستقیم در دسترس نیست)"
+                    "message": "Rate limits در headers موجود",
+                    "rate_limit_headers": "x-ratelimit-*",
+                    "note": "Real-time rate limits از API headers",
+                    "performance_stats": perf_data,
+                    "suggested_check": "API response headers",
+                    "response_time": f"{datetime.datetime.now().strftime('%H:%M:%S')}"
                 }
             else:
                 return {
                     "status": "no_data",
                     "provider": "Cerebras",
-                    "message": "هنوز درخواستی انجام نشده"
+                    "message": "هنوز usage یافت نشده",
+                    "suggested_check": "استفاده از AI برای شروع tracking"
                 }
                 
         except Exception as e:
             return {
                 "status": "error",
                 "error": str(e),
-                "message": "خطا در دریافت اطلاعات Cerebras"
+                "message": "خطا در بررسی Cerebras"
             }
     
     async def _check_gemini_usage(self, ai_handler: MultiProviderHandler, provider_name: str) -> Dict:
-        """بررسی usage Gemini"""
+        """بررسی usage Gemini - بدون API endpoint مستقیم"""
         try:
-            import requests
-            
-            if provider_name not in ai_handler.key_rotators:
-                return {"status": "no_keys", "message": "API Key یافت نشد"}
-            
-            # گرفتن یکی از کلیدهای Gemini
-            key_rotator = ai_handler.key_rotators[provider_name]
-            api_key = key_rotator.get_next_key()
-            
-            if not api_key:
-                return {"status": "no_keys", "message": "API Key فعال یافت نشد"}
-            
-            # درخواست بررسی quota
-            headers = {
-                "x-goog-api-key": api_key
-            }
-            
-            # Gemini API برای check quota محدودیت داره
-            # معمولاً باید از Google Cloud Console استفاده کرد
+            # Gemini هیچ endpoint برای programmatic usage check نداره
+            # پیشنهاد استفاده از internal tracking و Google Cloud Console
             return {
-                "status": "limited",
+                "status": "no_api_endpoint",
                 "provider": "Gemini",
-                "message": "بررسی مستقیم quota در دسترس نیست. از Google Cloud Console استفاده کنید.",
-                "note": "Gemini محدودیت 50 درخواست در روز برای هر کلید دارد"
+                "message": "API endpoint برای usage monitoring موجود نیست",
+                "alternatives": [
+                    "Google AI Studio Console (https://aistudio.google.com/usage)",
+                    "Google Cloud Console Quotas",
+                    "Internal tracking system (database)"
+                ],
+                "rate_limits": "50 requests/day, 1,000 requests/minute",
+                "manual_check_url": "https://aistudio.google.com/usage",
+                "note": "مصرف در internal database ذخیره می‌شود",
+                "response_time": f"{datetime.datetime.now().strftime('%H:%M:%S')}"
             }
                 
         except Exception as e:
             return {
+                "status": "error",
+                "error": str(e),
+                "message": "خطا در بررسی Gemini"
+            }
                 "status": "error",
                 "error": str(e),
                 "message": "خطا در دریافت اطلاعات Gemini"
@@ -1171,7 +1168,8 @@ class AdminPanel:
                 "no_keys": "🔴",
                 "api_error": "🔴",
                 "error": "❌",
-                "not_supported": "⚪"
+                "not_supported": "⚪",
+                "no_api_endpoint": "🔵"  # Gemini
             }.get(status, "❓")
             
             message += f"**{status_emoji} {provider_display}:**\n"
@@ -1199,6 +1197,20 @@ class AdminPanel:
                 if "note" in data:
                     message += f"  • نکته: {data['note']}\n"
                     
+            elif status == "no_api_endpoint":
+                # مخصوص Gemini
+                message += f"  • {data.get('message', 'API endpoint در دسترس نیست')}\n"
+                if "alternatives" in data:
+                    message += "  • روش‌های بررسی:\n"
+                    for alt in data["alternatives"]:
+                        message += f"    - {alt}\n"
+                if "rate_limits" in data:
+                    message += f"  • محدودیت‌ها: {data['rate_limits']}\n"
+                if "manual_check_url" in data:
+                    message += f"  • لینک بررسی دستی: {data['manual_check_url']}\n"
+                if "note" in data:
+                    message += f"  • نکته: {data['note']}\n"
+                    
             elif status == "no_data":
                 message += f"  • {data.get('message', 'اطلاعاتی موجود نیست')}\n"
                 
@@ -1222,7 +1234,29 @@ class AdminPanel:
         message += f"**📊 خلاصه کلی:**\n"
         message += f"• کل providers: {total_providers}\n"
         message += f"• providers فعال: {active_providers}\n"
-        message += f"• providers با اطلاعات کامل: {successful_providers}\n"
+        message += f"• providers با اطلاعات کامل: {successful_providers}\n\n"
+        
+        # آمار دقیق از database tracking (برای تمام providers)
+        try:
+            db_stats = ai_handler.get_usage_stats(days=30)
+            if db_stats:
+                message += "**📈 آمار تفصیلی از Database (۳۰ روز گذشته):**\n"
+                
+                for provider_name, stats in db_stats.items():
+                    message += f"**{provider_name.title()}:**\n"
+                    message += f"  • کل درخواست‌ها: {stats['total_requests']:,}\n"
+                    message += f"  • کل توکن‌های استفاده شده: {stats['total_tokens']:,}\n"
+                    message += f"  • توکن‌های prompt: {stats['total_prompt_tokens']:,}\n"
+                    message += f"  • توکن‌های completion: {stats['total_completion_tokens']:,}\n"
+                    message += f"  • میانگین توکن هر درخواست: {stats.get('avg_tokens_per_request', 0):.0f}\n"
+                    if stats.get('total_cost', 0) > 0:
+                        message += f"  • تخمین هزینه: ${stats['total_cost']:.4f}\n"
+                    if stats.get('last_date'):
+                        message += f"  • آخرین استفاده: {stats['last_date']}\n"
+                    message += "\n"
+                    
+        except Exception as e:
+            message += f"**⚠️ خطا در دریافت آمار database:** `{str(e)[:50]}...`\n"
         
         return message
     

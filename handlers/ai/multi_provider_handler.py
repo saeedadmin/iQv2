@@ -327,6 +327,18 @@ class MultiProviderHandler:
             # به‌روزرسانی performance data
             self._update_performance_data(provider_name, True, result.get("response_time", 1.0))
             
+            # ذخیره usage در database برای tracking
+            try:
+                self.save_usage_to_db(
+                    provider_name=provider_name,
+                    result=result,
+                    user_id=None,  # می‌تونیم user_id رو از parameters بگیریم
+                    chat_id=None,
+                    model=model
+                )
+            except Exception as e:
+                logger.error(f"خطا در ذخیره usage: {str(e)}")
+            
             return {
                 "success": True,
                 "content": result["content"],
@@ -389,6 +401,118 @@ class MultiProviderHandler:
         else:
             raise Exception(f"API Error {response.status_code}: {response.text}")
     
+    def _extract_header_int(self, headers: Dict, header_name: str) -> Optional[int]:
+        """استخراج مقدار integer از header"""
+        try:
+            value = headers.get(header_name, "").strip()
+            return int(value) if value else None
+        except (ValueError, TypeError):
+            return None
+
+    def save_usage_to_db(self, provider_name: str, result: Dict[str, Any], user_id: int = None, 
+                        chat_id: int = None, model: str = None, response_time: float = None):
+        """ذخیره اطلاعات usage در database"""
+        try:
+            if not hasattr(self, 'db') or not self.db:
+                return
+            
+            # اطلاعات tokens
+            prompt_tokens = result.get('prompt_tokens', 0)
+            completion_tokens = result.get('completion_tokens', 0)
+            total_tokens = result.get('tokens_used', 0) or (prompt_tokens + completion_tokens)
+            
+            # اطلاعات rate limit (Cerebras)
+            rate_limit_info = result.get('rate_limit_info', {})
+            
+            # تخمین هزینه (برای آینده)
+            cost_estimate = self._estimate_cost(provider_name, total_tokens)
+            
+            # ذخیره در database
+            query = """
+                INSERT INTO ai_usage_tracking 
+                (provider, user_id, chat_id, model, prompt_tokens, completion_tokens, 
+                 total_tokens, rate_limit_info, cost_estimate)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            
+            values = (
+                provider_name, user_id, chat_id, model,
+                prompt_tokens, completion_tokens, total_tokens,
+                json.dumps(rate_limit_info) if rate_limit_info else None,
+                cost_estimate
+            )
+            
+            self.db.execute(query, values)
+            
+        except Exception as e:
+            logger.error(f"خطا در ذخیره usage در database: {str(e)}")
+
+    def _estimate_cost(self, provider_name: str, tokens: int) -> float:
+        """تخمین هزینه تقریبی بر اساس قیمت‌های شناخته شده"""
+        # قیمت‌های تقریبی به ازای 1M token (دلار)
+        pricing = {
+            "groq": 0.0006,      # Llama-3.1 70B 
+            "gemini": 0.00025,   # Gemini-1.5-pro
+            "cerebras": 0.0004,  # Llama-3.1-70B
+            "cohere": 0.0015     # Command-R+
+        }
+        
+        rate = pricing.get(provider_name, 0.001)
+        return (tokens * rate) / 1000000
+    
+    def get_usage_stats(self, provider: str = None, days: int = 30) -> Dict[str, Any]:
+        """دریافت آمار مصرف از database"""
+        try:
+            if not hasattr(self, 'db') or not self.db:
+                return {}
+            
+            # آمار کلی
+            base_query = """
+                SELECT 
+                    provider,
+                    COUNT(*) as total_requests,
+                    SUM(total_tokens) as total_tokens,
+                    SUM(prompt_tokens) as total_prompt_tokens,
+                    SUM(completion_tokens) as total_completion_tokens,
+                    SUM(cost_estimate) as total_cost,
+                    MIN(date) as first_date,
+                    MAX(date) as last_date
+                FROM ai_usage_tracking
+                WHERE date >= CURRENT_DATE - INTERVAL '%s days'
+                %s
+                GROUP BY provider
+                ORDER BY total_tokens DESC
+            """
+            
+            if provider:
+                where_clause = f"AND provider = '{provider}'"
+                query = base_query % (days, where_clause)
+            else:
+                query = base_query % (days, "")
+            
+            # اجرای query
+            self.db.execute(query)
+            results = self.db.fetchall()
+            
+            stats = {}
+            for row in results:
+                stats[row[0]] = {
+                    'provider': row[0],
+                    'total_requests': row[1] or 0,
+                    'total_tokens': row[2] or 0,
+                    'total_prompt_tokens': row[3] or 0,
+                    'total_completion_tokens': row[4] or 0,
+                    'total_cost': float(row[5] or 0),
+                    'first_date': row[6].strftime('%Y-%m-%d') if row[6] else None,
+                    'last_date': row[7].strftime('%Y-%m-%d') if row[7] else None
+                }
+            
+            return stats
+            
+        except Exception as e:
+            logger.error(f"خطا در دریافت آمار usage: {str(e)}")
+            return {}
+
     async def _make_cerebras_request(self, api_key: str, provider: Dict, messages: List[Dict], model: str) -> Dict[str, Any]:
         """ارسال درخواست به Cerebras با استفاده از کتابخانه رسمی"""
         try:
@@ -434,7 +558,35 @@ class MultiProviderHandler:
             
             # دریافت پاسخ
             content = stream.choices[0].message.content
-            return {"content": content, "response_time": response_time}
+            
+            # استخراج rate limit headers از response
+            rate_limit_info = {
+                "tokens_remaining_minute": getattr(stream, '_rate_limit_tokens_remaining', None),
+                "tokens_limit_minute": getattr(stream, '_rate_limit_tokens_limit', None),
+                "requests_remaining_day": getattr(stream, '_rate_limit_requests_remaining', None),
+                "requests_limit_day": getattr(stream, '_rate_limit_requests_limit', None),
+                "reset_tokens_seconds": getattr(stream, '_rate_limit_reset_tokens', None),
+                "reset_requests_seconds": getattr(stream, '_rate_limit_reset_requests', None)
+            }
+            
+            # اگر SDK headers نداشت، manual extraction سعی می‌کنیم
+            if not any(rate_limit_info.values()):
+                # Rate limit headers از response headers اگر موجود باشه
+                response_headers = getattr(stream, '_headers', {})
+                rate_limit_info = {
+                    "tokens_remaining_minute": self._extract_header_int(response_headers, "x-ratelimit-remaining-tokens-minute"),
+                    "tokens_limit_minute": self._extract_header_int(response_headers, "x-ratelimit-limit-tokens-minute"),
+                    "requests_remaining_day": self._extract_header_int(response_headers, "x-ratelimit-remaining-requests-day"),
+                    "requests_limit_day": self._extract_header_int(response_headers, "x-ratelimit-limit-requests-day"),
+                    "reset_tokens_seconds": self._extract_header_int(response_headers, "x-ratelimit-reset-tokens-minute"),
+                    "reset_requests_seconds": self._extract_header_int(response_headers, "x-ratelimit-reset-requests-day")
+                }
+            
+            return {
+                "content": content, 
+                "response_time": response_time,
+                "rate_limit_info": rate_limit_info
+            }
             
         except ImportError:
             # Fallback به REST API
@@ -457,6 +609,17 @@ class MultiProviderHandler:
                 json=payload,
                 timeout=30
             )
+            
+            # استخراج rate limit headers از response
+            response_headers = response.headers if hasattr(response, 'headers') else {}
+            rate_limit_info = {
+                "tokens_remaining_minute": self._extract_header_int(response_headers, "x-ratelimit-remaining-tokens-minute"),
+                "tokens_limit_minute": self._extract_header_int(response_headers, "x-ratelimit-limit-tokens-minute"),
+                "requests_remaining_day": self._extract_header_int(response_headers, "x-ratelimit-remaining-requests-day"),
+                "requests_limit_day": self._extract_header_int(response_headers, "x-ratelimit-limit-requests-day"),
+                "reset_tokens_seconds": self._extract_header_int(response_headers, "x-ratelimit-reset-tokens-minute"),
+                "reset_requests_seconds": self._extract_header_int(response_headers, "x-ratelimit-reset-requests-day")
+            }
             response_time = time.time() - start_time
             
             if response.status_code == 200:
@@ -472,7 +635,8 @@ class MultiProviderHandler:
                     "response_time": response_time,
                     "tokens_used": tokens_used,
                     "prompt_tokens": usage.get("prompt_tokens", 0),
-                    "completion_tokens": usage.get("completion_tokens", 0)
+                    "completion_tokens": usage.get("completion_tokens", 0),
+                    "rate_limit_info": rate_limit_info
                 }
             else:
                 raise Exception(f"API Error {response.status_code}: {response.text}")
