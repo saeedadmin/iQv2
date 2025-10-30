@@ -115,6 +115,12 @@ ai_chat_state = AIChatStateManager(db_manager)
 ai_image_gen = AIImageGenerator()
 ocr_handler = OCRHandler()
 
+# Initialize TradingView fetcher if available
+if TRADINGVIEW_AVAILABLE and TradingViewAnalysisFetcher:
+    tradingview_fetcher = TradingViewAnalysisFetcher()
+else:
+    tradingview_fetcher = None
+
 # متغیرهای مکالمه
 (BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION, TRADINGVIEW_ANALYSIS) = range(4)
 
@@ -685,6 +691,11 @@ async def tradingview_analysis_process(update: Update, context: ContextTypes.DEF
     
     # اول بررسی کن که آیا فرمت درست است
     if re.match(crypto_pair_pattern, message_clean) and len(message_clean) >= 6:
+        # چک کردن در دسترس بودن TradingView
+        if not tradingview_fetcher:
+            await update.message.reply_text("❌ سرویس تحلیل TradingView در دسترس نیست.")
+            return ConversationHandler.END
+        
         # نمایش پیام در حال بارگذاری
         loading_message = await update.message.reply_text("⏳ در حال دریافت آخرین تحلیل کامیونیتی از TradingView...\n\nلطفاً چند ثانیه صبر کنید.")
         
@@ -842,6 +853,12 @@ async def tradingview_analysis_process(update: Update, context: ContextTypes.DEF
         else:
             await update.message.reply_text("❌ ورودی نامعتبر. لطفاً نام ارز را به فرمت صحیح وارد کنید یا /cancel برای لغو بفرستید.")
             return TRADINGVIEW_ANALYSIS
+
+# Handler برای لغو conversation
+async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """لغو هر conversation فعال"""
+    await update.message.reply_text("❌ عملیات لغو شد.")
+    return ConversationHandler.END
 
 # کالبک هندلر برای دکمه‌های اشتراک اخبار
 async def news_subscription_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1936,7 +1953,7 @@ async def main() -> None:
         states={
             BROADCAST_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, broadcast_message)],
         },
-        fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
+        fallbacks=[CommandHandler("cancel", cancel_conversation)],
     )
     application.add_handler(broadcast_conv_handler)
     
@@ -1946,7 +1963,7 @@ async def main() -> None:
         states={
             TRADINGVIEW_ANALYSIS: [MessageHandler(filters.TEXT & ~filters.COMMAND, tradingview_analysis_process)],
         },
-        fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
+        fallbacks=[CommandHandler("cancel", cancel_conversation)],
     )
     application.add_handler(tradingview_conv_handler)
     
