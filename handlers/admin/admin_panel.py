@@ -917,8 +917,6 @@ class AdminPanel:
         await self.show_recent_logs(query)
     
     async def refresh_main_menu(self, query):
-    
-    async def refresh_main_menu(self, query):
         """بروزرسانی منوی اصلی"""
         await self.show_main_menu(query)
         await query.answer("🔄 بروزرسانی شد!")
