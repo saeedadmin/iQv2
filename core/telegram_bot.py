@@ -1028,9 +1028,18 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     message_text = update.message.text
     user_data = db_manager.get_user(user.id)
     
+    # لیست دکمه‌های کیبورد که نباید به AI فرستاده بشن
+    keyboard_buttons = [
+        "💰 ارزهای دیجیتال", "🔗 بخش عمومی", "🤖 هوش مصنوعی",
+        "🔙 بازگشت به منوی اصلی", "📺 اخبار عمومی", "📰 مدیریت اشتراک اخبار",
+        "💬 چت با هوش مصنوعی", "📰 اخبار هوش مصنوعی", "🔙 بازگشت به منوی AI",
+        "📊 قیمت‌های لحظه‌ای", "📰 اخبار کریپتو", "📈 تحلیل TradingView",
+        "😨 شاخص ترس و طمع", "❌ خروج از چت"
+    ]
+    
     # 🚨 بررسی حالت چت با AI - اگر کاربر در چت است، پیام را به AI بفرستید
-    # استثنا: دکمه‌های خروج از چت و بازگشت به منوی AI
-    if ai_chat_state.is_in_chat(user.id) and message_text not in ["❌ خروج از چت", "🔙 بازگشت به منوی AI"]:
+    # استثنا: همه دکمه‌های کیبورد که باید مستقیم پردازش بشن
+    if ai_chat_state.is_in_chat(user.id) and message_text not in keyboard_buttons:
         bot_logger.log_user_action(user.id, "AI_CHAT_MESSAGE", f"پیام در چت: {message_text[:50]}...")
         
         # نمایش پیام "در حال تایپ..."
@@ -1520,17 +1529,22 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if message_text == "🔙 بازگشت به منوی AI":
         # پاک کردن حافظه چت و غیرفعال کردن حالت چت
         try:
-            ai_chat_state.deactivate_chat(user.id)
-            gemini_chat.clear_chat_history(user.id)
+            # end_chat هم state رو false می‌کنه هم تاریخچه رو پاک می‌کنه
+            ai_chat_state.end_chat(user.id)
             bot_logger.log_user_action(user.id, "AI_CHAT_ENDED", "خروج از حالت چت و پاک کردن حافظه")
+            
+            await update.message.reply_text(
+                "🤖 **منوی هوش مصنوعی**\n\n✅ چت پایان یافت و حافظه پاک شد",
+                parse_mode='Markdown',
+                reply_markup=get_ai_menu_markup()
+            )
         except Exception as e:
             logger.error(f"خطا در پاک کردن حافظه چت: {e}")
-        
-        await update.message.reply_text(
-            "🤖 **منوی هوش مصنوعی**\n\n✅ حافظه چت پاک شد",
-            parse_mode='Markdown',
-            reply_markup=get_ai_menu_markup()
-        )
+            await update.message.reply_text(
+                "🤖 **منوی هوش مصنوعی**",
+                parse_mode='Markdown',
+                reply_markup=get_ai_menu_markup()
+            )
         return
 
 # OCR Handler for Image Processing
