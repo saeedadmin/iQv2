@@ -1517,8 +1517,16 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 # چک کردن OCR request
     if message_text == "🔙 بازگشت به منوی AI":
+        # پاک کردن حافظه چت و غیرفعال کردن حالت چت
+        try:
+            ai_chat_state.deactivate_chat(user.id)
+            gemini_chat.clear_chat_history(user.id)
+            bot_logger.log_user_action(user.id, "AI_CHAT_ENDED", "خروج از حالت چت و پاک کردن حافظه")
+        except Exception as e:
+            logger.error(f"خطا در پاک کردن حافظه چت: {e}")
+        
         await update.message.reply_text(
-            "🤖 **منوی هوش مصنوعی**",
+            "🤖 **منوی هوش مصنوعی**\n\n✅ حافظه چت پاک شد",
             parse_mode='Markdown',
             reply_markup=get_ai_menu_markup()
         )

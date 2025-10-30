@@ -465,9 +465,6 @@ class PublicMenuManager:
                     all_news.extend(foreign_news)
                     
                     # لاگ کردن خطا برای debugging
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    
                     if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
                         logger.warning("⚠️ کوئوتای Gemini API تمام شده است. متون اصلی نمایش داده می‌شوند.")
                     else:
