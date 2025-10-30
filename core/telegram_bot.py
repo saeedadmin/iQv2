@@ -37,9 +37,7 @@ else:
     from database.database import DatabaseManager, DatabaseLogger
 
 from handlers.admin.admin_panel import AdminPanel
-from handlers.public.public_menu import PublicMenuManager
 from core.logger_system import bot_logger
-from handlers.public.keyboards import get_main_menu_markup, get_public_section_markup, get_ai_menu_markup, get_ai_chat_mode_markup
 from handlers.ai.ai_chat_handler import GeminiChatHandler, AIChatStateManager
 from handlers.ai.ai_image_generator import AIImageGenerator
 from handlers.ai.ocr_handler import OCRHandler
@@ -84,7 +82,6 @@ else:
 
 db_logger = DatabaseLogger(db_manager)
 admin_panel = AdminPanel(db_manager, ADMIN_USER_ID)
-public_menu = PublicMenuManager(db_manager)
 
 # Initialize AI systems
 gemini_chat = GeminiChatHandler(db_manager=db_manager)
@@ -92,13 +89,52 @@ ai_chat_state = AIChatStateManager(db_manager)
 ai_image_gen = AIImageGenerator()
 ocr_handler = OCRHandler()
 
-# AI handlers initialized successfully
+# ========================================
+# KEYBOARD HELPERS
+# ========================================
 
-# Initialize TradingView fetcher if available
-if TRADINGVIEW_AVAILABLE:
-    tradingview_fetcher = TradingViewAnalysisFetcher()
-else:
-    tradingview_fetcher = None
+def get_main_menu_markup() -> ReplyKeyboardMarkup:
+    """کیبورد منوی اصلی"""
+    keyboard = [
+        [KeyboardButton("💰 ارزهای دیجیتال"), KeyboardButton("🔗 بخش عمومی")],
+        [KeyboardButton("🤖 هوش مصنوعی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+def get_public_section_markup() -> ReplyKeyboardMarkup:
+    """کیبورد بخش عمومی"""
+    keyboard = [
+        [KeyboardButton("📺 اخبار عمومی")],
+        [KeyboardButton("📰 مدیریت اشتراک اخبار")],
+        [KeyboardButton("🔙 بازگشت به منوی اصلی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+def get_ai_menu_markup() -> ReplyKeyboardMarkup:
+    """کیبورد منوی هوش مصنوعی"""
+    keyboard = [
+        [KeyboardButton("💬 چت با هوش مصنوعی")],
+        [KeyboardButton("📰 اخبار هوش مصنوعی")],
+        [KeyboardButton("🔙 بازگشت به منوی اصلی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+def get_ai_chat_mode_markup() -> ReplyKeyboardMarkup:
+    """کیبورد حالت چت با هوش مصنوعی"""
+    keyboard = [
+        [KeyboardButton("🔙 بازگشت به منوی AI")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+async def handle_public_callback(self, update, context):
+    """مدیریت callback queries بخش عمومی"""
+    query = update.callback_query
+    await query.answer()
+    # Implement callback handling if needed
+    pass
+
+# Initialize public_menu instance
+public_menu = PublicMenuManager(db_manager)
 
 # متغیرهای مکالمه
 (BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION, TRADINGVIEW_ANALYSIS) = range(4)
