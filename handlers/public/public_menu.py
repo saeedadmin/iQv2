@@ -243,11 +243,27 @@ class PublicMenuManager:
     def parse_rss_feed(self, xml_content: str, source_name: str, limit: int) -> List[Dict[str, str]]:
         """پارس کردن محتوای RSS و استخراج اخبار"""
         try:
+            logger.info(f"🔍 شروع پارس RSS برای {source_name}...")
+            logger.info(f"📄 XML Content Length: {len(xml_content)} characters")
+            
+            # بررسی محتوای اولیه
+            if not xml_content.strip():
+                logger.warning(f"⚠️ {source_name}: محتوای XML خالی است")
+                return []
+            
+            if "DOCTYPE" in xml_content or "<html" in xml_content.lower():
+                logger.error(f"❌ {source_name}: این URL به جای RSS، HTML بازگردانده است!")
+                return []
+            
             root = ET.fromstring(xml_content)
             items = root.findall('.//item')[:limit]
             
+            logger.info(f"🔍 {source_name}: {len(items)} آیتم RSS یافت شد")
+            
             news_list = []
-            for item in items:
+            for i, item in enumerate(items):
+                logger.debug(f"📝 {source_name}: پردازش آیتم {i+1}")
+                
                 title_elem = item.find('title')
                 link_elem = item.find('link')
                 description_elem = item.find('description')
@@ -257,29 +273,49 @@ class PublicMenuManager:
                     title = html.unescape(title_elem.text or '').strip()
                     link = link_elem.text or ''
                     
+                    if not title:
+                        logger.warning(f"⚠️ {source_name}: آیتم {i+1} عنوان ندارد")
+                        continue
+                    
                     # پاک‌سازی توضیحات
                     description = ''
                     if description_elem is not None and description_elem.text:
-                        # حذف HTML tags
-                        import re
-                        desc_text = html.unescape(description_elem.text)
-                        desc_text = re.sub(r'<[^>]+>', '', desc_text)
-                        description = desc_text.strip()[:120] + '...' if len(desc_text) > 120 else desc_text.strip()
+                        try:
+                            # حذف HTML tags
+                            import re
+                            desc_text = html.unescape(description_elem.text)
+                            desc_text = re.sub(r'<[^>]+>', '', desc_text)
+                            description = desc_text.strip()[:120] + '...' if len(desc_text) > 120 else desc_text.strip()
+                            logger.debug(f"📝 {source_name}: توضیح استخراج شد: {len(description)} کاراکتر")
+                        except Exception as desc_error:
+                            logger.warning(f"⚠️ {source_name}: خطا در پردازش توضیح آیتم {i+1}: {desc_error}")
                     
                     # تاریخ انتشار
                     published = pub_date_elem.text if pub_date_elem is not None else ''
                     
-                    news_list.append({
+                    news_item = {
                         'title': title,
                         'link': link,
                         'description': description,
                         'source': source_name,
                         'published': published
-                    })
+                    }
+                    
+                    news_list.append(news_item)
+                    logger.debug(f"✅ {source_name}: آیتم {i+1} با موفقیت پردازش شد")
+                else:
+                    logger.warning(f"⚠️ {source_name}: آیتم {i+1} عنوان یا لینک ندارد")
             
+            logger.info(f"🎉 {source_name}: {len(news_list)} خبر با موفقیت استخراج شد")
             return news_list
             
+        except ET.ParseError as e:
+            logger.error(f"❌ {source_name}: خطا در پارس XML: {type(e).__name__}: {e}")
+            logger.error(f"📄 Sample XML content (first 200 chars): {xml_content[:200]}...")
+            return []
         except Exception as e:
+            logger.error(f"💥 {source_name}: خطای عمومی در parse_rss_feed: {type(e).__name__}: {e}")
+            logger.error(f"📍 Stack trace: ", exc_info=True)
             return []
     
     async def fetch_ai_news(self) -> List[Dict[str, str]]:
@@ -357,6 +393,8 @@ class PublicMenuManager:
     async def fetch_general_news(self) -> List[Dict[str, str]]:
         """دریافت آخرین اخبار عمومی از منابع متعدد داخلی و خارجی با ترجمه"""
         try:
+            logger.info("🚀 شروع دریافت اخبار عمومی...")
+            
             news_sources = [
                 # منابع داخلی (فارسی)
                 {
@@ -406,41 +444,70 @@ class PublicMenuManager:
             
             all_news = []
             foreign_news = []  # برای ذخیره اخبار خارجی که نیاز به ترجمه دارند
+            successful_sources = 0
+            failed_sources = 0
+            
+            logger.info(f"📡 شروع پردازش {len(news_sources)} منبع RSS...")
             
             async with aiohttp.ClientSession() as session:
                 for source in news_sources:
+                    logger.info(f"🔄 پردازش منبع: {source['name']} ({source['url']})")
+                    
                     try:
                         async with session.get(source['url'], timeout=15) as response:
+                            logger.info(f"📡 {source['name']}: HTTP Status = {response.status}")
+                            
                             if response.status == 200:
                                 xml_content = await response.text()
+                                logger.info(f"📄 {source['name']}: Content Length = {len(xml_content)} characters")
+                                
                                 news_items = self.parse_rss_feed(xml_content, source['name'], source['limit'])
+                                logger.info(f"📰 {source['name']}: {len(news_items)} خبر استخراج شد")
                                 
                                 # اگر منبع خارجی باشد، به لیست جداگانه برای ترجمه اضافه می‌کنیم
                                 if source['language'] == 'en':
                                     foreign_news.extend(news_items)
+                                    logger.info(f"🌍 {source['name']}: خبرهای خارجی برای ترجمه اضافه شد")
                                 else:
                                     all_news.extend(news_items)
+                                    logger.info(f"🇮🇷 {source['name']}: خبرهای داخلی اضافه شد")
+                                
+                                successful_sources += 1
+                            else:
+                                logger.error(f"❌ {source['name']}: HTTP Status غیرعادی = {response.status}")
+                                failed_sources += 1
+                                
                     except Exception as e:
-                        logger.warning(f"⚠️ خطا در خواندن RSS منبع {source['name']}: {e}")
+                        logger.error(f"❌ خطا در خواندن RSS منبع {source['name']}: {type(e).__name__}: {e}")
+                        failed_sources += 1
                         continue
             
-            # دیباگ: چاپ تعداد خبرهای دریافتی از هر منبع
-            logger.info(f"📰 مجموع {len(all_news)} خبر از تمام منابع دریافت شد")
-            logger.info(f"📰 {len(foreign_news)} خبر خارجی برای ترجمه آماده")
+            logger.info(f"📊 خلاصه پردازش منابع:")
+            logger.info(f"✅ منابع موفق: {successful_sources}")
+            logger.info(f"❌ منابع ناموفق: {failed_sources}")
+            logger.info(f"📰 مجموع {len(all_news)} خبر داخلی دریافت شد")
+            logger.info(f"🌍 {len(foreign_news)} خبر خارجی برای ترجمه آماده")
             
             # مرتب‌سازی بر اساس زمان (جدیدترین اول)
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
             
             # اگر اخبار خارجی موجود باشد، آنها را ترجمه می‌کنیم
             if foreign_news:
+                logger.info(f"🔄 شروع ترجمه {len(foreign_news)} خبر خارجی...")
+                
                 try:
                     # جمع‌آوری عنوان‌ها و توضیحات برای ترجمه گروهی
                     foreign_titles = [news_item.get('title', '') for news_item in foreign_news]
                     foreign_descriptions = [news_item.get('description', '') for news_item in foreign_news]
                     
+                    logger.info(f"📝 ترجمه {len(foreign_titles)} عنوان و {len(foreign_descriptions)} توضیح...")
+                    
                     # ترجمه گروهی عنوان‌ها و توضیحات
                     translated_titles = await self.gemini.translate_multiple_texts(foreign_titles)
                     translated_descriptions = await self.gemini.translate_multiple_texts(foreign_descriptions)
+                    
+                    logger.info(f"✅ ترجمه عنوان‌ها: {len(translated_titles)} تکمیل شد")
+                    logger.info(f"✅ ترجمه توضیحات: {len(translated_descriptions)} تکمیل شد")
                     
                     # اختصاص ترجمه‌ها به اخبار خارجی
                     for i, news_item in enumerate(foreign_news):
@@ -456,30 +523,34 @@ class PublicMenuManager:
                     
                     # اضافه کردن اخبار خارجی به لیست اصلی
                     all_news.extend(foreign_news)
+                    logger.info(f"✅ {len(foreign_news)} خبر خارجی ترجمه شده به لیست اصلی اضافه شد")
                     
                 except Exception as e:
                     # در صورت خطا در ترجمه، از متون اصلی استفاده می‌کنیم
+                    logger.warning(f"⚠️ خطا در ترجمه: {type(e).__name__}: {e}")
+                    
                     for news_item in foreign_news:
                         news_item['title_fa'] = news_item.get('title', '')
                         news_item['description_fa'] = news_item.get('description', '')
                     all_news.extend(foreign_news)
                     
                     # لاگ کردن خطا برای debugging
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    
                     if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
                         logger.warning("⚠️ کوئوتای Gemini API تمام شده است. متون اصلی نمایش داده می‌شوند.")
                     else:
-                        logger.error(f"❌ خطا در ترجمه اخبار عمومی: {e}")
+                        logger.error(f"❌ خطا در ترجمه اخبار عمومی: {type(e).__name__}: {e}")
             
             # مرتب‌سازی نهایی و انتخاب 10 خبر
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
             all_news = all_news[:10]
             
+            logger.info(f"🎉 نهایی‌سازی: {len(all_news)} خبر انتخاب شد و آماده نمایش است")
+            
             return all_news
             
         except Exception as e:
+            logger.error(f"💥 خطای عمومی در fetch_general_news: {type(e).__name__}: {e}")
+            logger.error(f"📍 Stack trace: ", exc_info=True)
             return []
     
     def format_crypto_news_message(self, news_list: List[Dict[str, str]]) -> str:
