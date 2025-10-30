@@ -1109,10 +1109,6 @@ class AdminPanel:
                 "error": str(e),
                 "message": "خطا در بررسی Gemini"
             }
-                "status": "error",
-                "error": str(e),
-                "message": "خطا در دریافت اطلاعات Gemini"
-            }
     
 
     
