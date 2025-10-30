@@ -327,17 +327,18 @@ class MultiProviderHandler:
             # به‌روزرسانی performance data
             self._update_performance_data(provider_name, True, result.get("response_time", 1.0))
             
-            # ذخیره usage در database برای tracking
-            try:
-                self.save_usage_to_db(
-                    provider_name=provider_name,
-                    result=result,
-                    user_id=None,  # می‌تونیم user_id رو از parameters بگیریم
-                    chat_id=None,
-                    model=model
-                )
-            except Exception as e:
-                logger.error(f"خطا در ذخیره usage: {str(e)}")
+            # ذخیره usage غیرفعال شده - Usage tracking disabled per user request
+            # try:
+            #     self.save_usage_to_db(
+            #         provider_name=provider_name,
+            #         result=result,
+            #         user_id=None,
+            #         chat_id=None,
+            #         model=model,
+            #         response_time=result.get("response_time", 1.0)
+            #     )
+            # except Exception as db_error:
+            #     logger.warning(f"خطا در ذخیره usage: {db_error}")
             
             return {
                 "success": True,

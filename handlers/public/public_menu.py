@@ -480,6 +480,7 @@ class PublicMenuManager:
             return all_news
             
         except Exception as e:
+            logger.error(f"❌ خطای کلی در fetch_general_news: {str(e)}", exc_info=True)
             return []
     
     def format_crypto_news_message(self, news_list: List[Dict[str, str]]) -> str:
