@@ -972,8 +972,8 @@ class AdminPanel:
             "groq": self._check_groq_usage,
             "cerebras": self._check_cerebras_usage, 
             "gemini": self._check_gemini_usage,
-            "openrouter": self._check_openrouter_usage,
             "cohere": self._check_cohere_usage
+            # OpenRouter غیرفعال شده
         }
         
         # بررسی هر provider
@@ -1010,30 +1010,38 @@ class AdminPanel:
             if not api_key:
                 return {"status": "no_keys", "message": "API Key فعال یافت نشد"}
             
-            # درخواست usage info
+            # Groq endpoint درست شده
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             }
             
-            response = requests.get("https://api.groq.com/openai/v1/usage", headers=headers, timeout=10)
+            # امتحان کردن endpoint درست
+            response = requests.get("https://api.groq.com/usage/limits", headers=headers, timeout=10)
+            
+            # اگر این endpoint کار نکرد، از endpoint دیگه استفاده کن
+            if response.status_code != 200:
+                response = requests.get("https://api.groq.com/openai/v1/me", headers=headers, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
+                
+                # Groq معمولاً اطلاعات usage رو در response نمیده
+                # فقط اطلاعات rate limit
                 return {
-                    "status": "success",
-                    "provider": "Groq",
-                    "total_requests": data.get("total_requests", 0),
-                    "total_tokens": data.get("total_tokens", 0),
-                    "remaining_tokens": data.get("remaining_tokens", "نامشخص"),
-                    "requests_today": data.get("requests_today", 0),
-                    "message": "اطلاعات با موفقیت دریافت شد"
+                    "status": "partial",
+                    "provider": "Groq", 
+                    "message": "API فعال است (اطلاعات usage مستقیم در دسترس نیست)",
+                    "note": "Groq rate limits: 1000 requests/min, 14400 requests/day",
+                    "api_response": "OK",
+                    "response_time": f"{datetime.datetime.now().strftime('%H:%M:%S')}"
                 }
             else:
                 return {
-                    "status": "api_error",
+                    "status": "api_error", 
                     "error_code": response.status_code,
-                    "message": f"خطای API: {response.status_code}"
+                    "message": f"خطای API: {response.status_code}",
+                    "api_key_status": "ناکارآمد" if response.status_code in [401, 403] else "خطای نامشخص"
                 }
                 
         except Exception as e:
@@ -1109,50 +1117,7 @@ class AdminPanel:
                 "message": "خطا در دریافت اطلاعات Gemini"
             }
     
-    async def _check_openrouter_usage(self, ai_handler: MultiProviderHandler, provider_name: str) -> Dict:
-        """بررسی usage OpenRouter"""
-        try:
-            import requests
-            
-            if provider_name not in ai_handler.key_rotators:
-                return {"status": "no_keys", "message": "API Key یافت نشد"}
-            
-            key_rotator = ai_handler.key_rotators[provider_name]
-            api_key = key_rotator.get_next_key()
-            
-            if not api_key:
-                return {"status": "no_keys", "message": "API Key فعال یافت نشد"}
-            
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            response = requests.get("https://openrouter.ai/api/v1/me/credits", headers=headers, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                return {
-                    "status": "success",
-                    "provider": "OpenRouter",
-                    "credits_total": data.get("credits_total", 0),
-                    "credits_used": data.get("credits_used", 0),
-                    "credits_remaining": data.get("credits_remaining", 0),
-                    "message": "اطلاعات اعتبار با موفقیت دریافت شد"
-                }
-            else:
-                return {
-                    "status": "api_error",
-                    "error_code": response.status_code,
-                    "message": f"خطای API: {response.status_code}"
-                }
-                
-        except Exception as e:
-            return {
-                "status": "error", 
-                "error": str(e),
-                "message": "خطا در دریافت اطلاعات OpenRouter"
-            }
+
     
     async def _check_cohere_usage(self, ai_handler: MultiProviderHandler, provider_name: str) -> Dict:
         """بررسی usage Cohere"""

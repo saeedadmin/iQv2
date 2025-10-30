@@ -236,9 +236,7 @@ class MultiProviderHandler:
         if gemini_keys:
             rotators["gemini"] = KeyRotator(gemini_keys, "gemini")
         
-        # OpenRouter keys (اگر موجود باشد)
-        if os.getenv('OPENROUTER_API_KEY'):
-            rotators["openrouter"] = KeyRotator([os.getenv('OPENROUTER_API_KEY')], "openrouter")
+        # OpenRouter keys - غیرفعال شده
         
         # Cohere keys (اگر موجود باشد)
         if os.getenv('COHERE_API_KEY'):
