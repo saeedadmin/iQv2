@@ -16,6 +16,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, CallbackQueryHandler
 from database.database import DatabaseManager, DatabaseLogger
 from core.logger_system import bot_logger
+from handlers.ai.multi_provider_handler import MultiProviderHandler
 
 class AdminPanel:
     def __init__(self, db_manager: DatabaseManager, admin_user_id: int):
@@ -34,7 +35,7 @@ class AdminPanel:
             ],
             [
                 InlineKeyboardButton("📊 آمار", callback_data="admin_stats"),
-                InlineKeyboardButton("📋 لاگ‌ها", callback_data="admin_logs")
+                InlineKeyboardButton("💎 گزارش توکن‌های AI", callback_data="admin_ai_usage")
             ],
             [
                 InlineKeyboardButton("📢 پیام همگانی", callback_data="admin_broadcast")
@@ -298,6 +299,9 @@ class AdminPanel:
             
             elif data == "admin_logs":
                 await self.show_logs_menu(query)
+            
+            elif data == "admin_ai_usage":
+                await self.show_ai_usage_report(query)
             
             elif data == "sys_resources":
                 await self.show_system_resources(query)
@@ -915,6 +919,347 @@ class AdminPanel:
     async def show_logs_menu(self, query):
         """نمایش لاگ‌های اخیر - نسخه ساده شده"""
         await self.show_recent_logs(query)
+    
+    async def show_ai_usage_report(self, query):
+        """نمایش گزارش استفاده از توکن‌های AI"""
+        try:
+            message = "🔄 **در حال بررسی وضعیت AI Providers...**\n\nلطفاً کمی صبر کنید."
+            await query.edit_message_text(message, parse_mode='Markdown')
+            
+            # ایجاد MultiProviderHandler
+            ai_handler = MultiProviderHandler(self.db)
+            
+            # جمع‌آوری اطلاعات usage از هر provider
+            usage_report = await self._get_ai_usage_report(ai_handler)
+            
+            # فرمت کردن گزارش
+            formatted_report = self._format_ai_usage_message(usage_report)
+            
+            back_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 بروزرسانی", callback_data="admin_ai_usage")],
+                [InlineKeyboardButton("🏠 منوی اصلی", callback_data="admin_main")]
+            ])
+            
+            await query.edit_message_text(
+                formatted_report,
+                reply_markup=back_keyboard,
+                parse_mode='Markdown'
+            )
+            
+        except Exception as e:
+            error_message = f"❌ **خطا در دریافت گزارش AI:**\n\n`{str(e)}`"
+            
+            back_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 تلاش مجدد", callback_data="admin_ai_usage")],
+                [InlineKeyboardButton("🏠 منوی اصلی", callback_data="admin_main")]
+            ])
+            
+            await query.edit_message_text(
+                error_message,
+                reply_markup=back_keyboard,
+                parse_mode='Markdown'
+            )
+    
+    async def _get_ai_usage_report(self, ai_handler: MultiProviderHandler) -> Dict:
+        """جمع‌آوری اطلاعات usage از تمام AI providers"""
+        import requests
+        import asyncio
+        
+        usage_data = {}
+        
+        # تعریف providers که قابلیت check usage دارند
+        usage_checkers = {
+            "groq": self._check_groq_usage,
+            "cerebras": self._check_cerebras_usage, 
+            "gemini": self._check_gemini_usage,
+            "openrouter": self._check_openrouter_usage,
+            "cohere": self._check_cohere_usage
+        }
+        
+        # بررسی هر provider
+        for provider_name in ai_handler.providers.keys():
+            try:
+                if provider_name in usage_checkers and provider_name in ai_handler.key_rotators:
+                    usage_info = await usage_checkers[provider_name](ai_handler, provider_name)
+                    usage_data[provider_name] = usage_info
+                else:
+                    usage_data[provider_name] = {
+                        "status": "not_supported",
+                        "message": "این provider قابلیت بررسی usage ندارد"
+                    }
+            except Exception as e:
+                usage_data[provider_name] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+        
+        return usage_data
+    
+    async def _check_groq_usage(self, ai_handler: MultiProviderHandler, provider_name: str) -> Dict:
+        """بررسی usage Groq"""
+        try:
+            import requests
+            
+            if provider_name not in ai_handler.key_rotators:
+                return {"status": "no_keys", "message": "API Key یافت نشد"}
+            
+            # گرفتن یکی از کلیدهای Groq
+            key_rotator = ai_handler.key_rotators[provider_name]
+            api_key = key_rotator.get_next_key()
+            
+            if not api_key:
+                return {"status": "no_keys", "message": "API Key فعال یافت نشد"}
+            
+            # درخواست usage info
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            response = requests.get("https://api.groq.com/openai/v1/usage", headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    "status": "success",
+                    "provider": "Groq",
+                    "total_requests": data.get("total_requests", 0),
+                    "total_tokens": data.get("total_tokens", 0),
+                    "remaining_tokens": data.get("remaining_tokens", "نامشخص"),
+                    "requests_today": data.get("requests_today", 0),
+                    "message": "اطلاعات با موفقیت دریافت شد"
+                }
+            else:
+                return {
+                    "status": "api_error",
+                    "error_code": response.status_code,
+                    "message": f"خطای API: {response.status_code}"
+                }
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "message": "خطا در دریافت اطلاعات Groq"
+            }
+    
+    async def _check_cerebras_usage(self, ai_handler: MultiProviderHandler, provider_name: str) -> Dict:
+        """بررسی usage Cerebras"""
+        try:
+            # Cerebras اطلاعات usage رو در response نمیده
+            # فقط می‌تونیم از performance tracking استفاده کنیم
+            if provider_name in ai_handler.provider_performance:
+                perf_data = ai_handler.provider_performance[provider_name]
+                return {
+                    "status": "partial",
+                    "provider": "Cerebras",
+                    "total_requests": perf_data.get("total_requests", 0),
+                    "successful_requests": perf_data.get("successful_requests", 0),
+                    "success_rate": f"{perf_data.get('success_rate', 0):.1f}%",
+                    "avg_response_time": f"{perf_data.get('avg_response_time', 0):.2f}s",
+                    "message": "اطلاعات عملکرد از ربات (usage مستقیم در دسترس نیست)"
+                }
+            else:
+                return {
+                    "status": "no_data",
+                    "provider": "Cerebras",
+                    "message": "هنوز درخواستی انجام نشده"
+                }
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "message": "خطا در دریافت اطلاعات Cerebras"
+            }
+    
+    async def _check_gemini_usage(self, ai_handler: MultiProviderHandler, provider_name: str) -> Dict:
+        """بررسی usage Gemini"""
+        try:
+            import requests
+            
+            if provider_name not in ai_handler.key_rotators:
+                return {"status": "no_keys", "message": "API Key یافت نشد"}
+            
+            # گرفتن یکی از کلیدهای Gemini
+            key_rotator = ai_handler.key_rotators[provider_name]
+            api_key = key_rotator.get_next_key()
+            
+            if not api_key:
+                return {"status": "no_keys", "message": "API Key فعال یافت نشد"}
+            
+            # درخواست بررسی quota
+            headers = {
+                "x-goog-api-key": api_key
+            }
+            
+            # Gemini API برای check quota محدودیت داره
+            # معمولاً باید از Google Cloud Console استفاده کرد
+            return {
+                "status": "limited",
+                "provider": "Gemini",
+                "message": "بررسی مستقیم quota در دسترس نیست. از Google Cloud Console استفاده کنید.",
+                "note": "Gemini محدودیت 50 درخواست در روز برای هر کلید دارد"
+            }
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "message": "خطا در دریافت اطلاعات Gemini"
+            }
+    
+    async def _check_openrouter_usage(self, ai_handler: MultiProviderHandler, provider_name: str) -> Dict:
+        """بررسی usage OpenRouter"""
+        try:
+            import requests
+            
+            if provider_name not in ai_handler.key_rotators:
+                return {"status": "no_keys", "message": "API Key یافت نشد"}
+            
+            key_rotator = ai_handler.key_rotators[provider_name]
+            api_key = key_rotator.get_next_key()
+            
+            if not api_key:
+                return {"status": "no_keys", "message": "API Key فعال یافت نشد"}
+            
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            response = requests.get("https://openrouter.ai/api/v1/me/credits", headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    "status": "success",
+                    "provider": "OpenRouter",
+                    "credits_total": data.get("credits_total", 0),
+                    "credits_used": data.get("credits_used", 0),
+                    "credits_remaining": data.get("credits_remaining", 0),
+                    "message": "اطلاعات اعتبار با موفقیت دریافت شد"
+                }
+            else:
+                return {
+                    "status": "api_error",
+                    "error_code": response.status_code,
+                    "message": f"خطای API: {response.status_code}"
+                }
+                
+        except Exception as e:
+            return {
+                "status": "error", 
+                "error": str(e),
+                "message": "خطا در دریافت اطلاعات OpenRouter"
+            }
+    
+    async def _check_cohere_usage(self, ai_handler: MultiProviderHandler, provider_name: str) -> Dict:
+        """بررسی usage Cohere"""
+        try:
+            # Cohere اطلاعات usage رو در response نمیده
+            # فقط می‌تونیم از performance tracking استفاده کنیم
+            if provider_name in ai_handler.provider_performance:
+                perf_data = ai_handler.provider_performance[provider_name]
+                return {
+                    "status": "partial",
+                    "provider": "Cohere", 
+                    "total_requests": perf_data.get("total_requests", 0),
+                    "successful_requests": perf_data.get("successful_requests", 0),
+                    "success_rate": f"{perf_data.get('success_rate', 0):.1f}%",
+                    "avg_response_time": f"{perf_data.get('avg_response_time', 0):.2f}s",
+                    "message": "اطلاعات عملکرد از ربات (usage مستقیم در دسترس نیست)"
+                }
+            else:
+                return {
+                    "status": "no_data",
+                    "provider": "Cohere",
+                    "message": "هنوز درخواستی انجام نشده"
+                }
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e), 
+                "message": "خطا در دریافت اطلاعات Cohere"
+            }
+    
+    def _format_ai_usage_message(self, usage_data: Dict) -> str:
+        """فرمت کردن پیام گزارش AI usage"""
+        message = "💎 **گزارش استفاده از توکن‌های AI**\n\n"
+        message += f"🕐 تاریخ: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        
+        if not usage_data:
+            message += "❌ هیچ provider یافت نشد."
+            return message
+        
+        for provider_name, data in usage_data.items():
+            provider_display = data.get("provider", provider_name.title())
+            status = data.get("status", "unknown")
+            
+            # انتخاب ایموجی بر اساس وضعیت
+            status_emoji = {
+                "success": "🟢",
+                "partial": "🟡", 
+                "limited": "🟠",
+                "no_data": "⚪",
+                "no_keys": "🔴",
+                "api_error": "🔴",
+                "error": "❌",
+                "not_supported": "⚪"
+            }.get(status, "❓")
+            
+            message += f"**{status_emoji} {provider_display}:**\n"
+            
+            # نمایش اطلاعات بر اساس نوع
+            if status == "success":
+                if "total_requests" in data:
+                    message += f"  • کل درخواست‌ها: {data['total_requests']}\n"
+                    message += f"  • کل توکن‌ها: {data['total_tokens']:,}\n"
+                    message += f"  • توکن باقی‌مانده: {data['remaining_tokens']}\n"
+                    message += f"  • درخواست‌های امروز: {data['requests_today']}\n"
+                elif "credits_total" in data:
+                    message += f"  • کل اعتبار: {data['credits_total']:,.2f}\n"
+                    message += f"  • اعتبار استفاده شده: {data['credits_used']:,.2f}\n"
+                    message += f"  • اعتبار باقی‌مانده: {data['credits_remaining']:,.2f}\n"
+                    
+            elif status == "partial":
+                message += f"  • کل درخواست‌ها: {data.get('total_requests', 0)}\n"
+                message += f"  • درخواست‌های موفق: {data.get('successful_requests', 0)}\n"
+                message += f"  • نرخ موفقیت: {data.get('success_rate', '0%')}\n"
+                message += f"  • میانگین زمان پاسخ: {data.get('avg_response_time', '0s')}\n"
+                
+            elif status == "limited":
+                message += f"  • {data.get('message', 'محدودیت API')}\n"
+                if "note" in data:
+                    message += f"  • نکته: {data['note']}\n"
+                    
+            elif status == "no_data":
+                message += f"  • {data.get('message', 'اطلاعاتی موجود نیست')}\n"
+                
+            elif status in ["no_keys", "error", "api_error"]:
+                message += f"  • {data.get('message', 'خطا در دریافت اطلاعات')}\n"
+                if "error" in data:
+                    message += f"  • جزئیات خطا: `{data['error'][:50]}{'...' if len(data['error']) > 50 else ''}`\n"
+                if "error_code" in data:
+                    message += f"  • کد خطا: `{data['error_code']}`\n"
+                    
+            else:
+                message += f"  • {data.get('message', 'وضعیت نامشخص')}\n"
+            
+            message += "\n"
+        
+        # خلاصه کلی
+        total_providers = len(usage_data)
+        successful_providers = len([d for d in usage_data.values() if d.get("status") == "success"])
+        active_providers = len([d for d in usage_data.values() if d.get("status") in ["success", "partial"]])
+        
+        message += f"**📊 خلاصه کلی:**\n"
+        message += f"• کل providers: {total_providers}\n"
+        message += f"• providers فعال: {active_providers}\n"
+        message += f"• providers با اطلاعات کامل: {successful_providers}\n"
+        
+        return message
     
 
     
