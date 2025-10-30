@@ -464,7 +464,18 @@ class MultiProviderHandler:
             if response.status_code == 200:
                 result = response.json()
                 content = result["choices"][0]["message"]["content"]
-                return {"content": content, "response_time": response_time}
+                
+                # استخراج توکن‌ها از OpenAI-compatible response
+                usage = result.get("usage", {})
+                tokens_used = usage.get("total_tokens", 0)
+                
+                return {
+                    "content": content, 
+                    "response_time": response_time,
+                    "tokens_used": tokens_used,
+                    "prompt_tokens": usage.get("prompt_tokens", 0),
+                    "completion_tokens": usage.get("completion_tokens", 0)
+                }
             else:
                 raise Exception(f"API Error {response.status_code}: {response.text}")
     
@@ -500,7 +511,18 @@ class MultiProviderHandler:
         if response.status_code == 200:
             result = response.json()
             content = result["candidates"][0]["content"]["parts"][0]["text"]
-            return {"content": content, "response_time": response_time}
+            
+            # استخراج توکن‌ها از Gemini response
+            usage = result.get("usageMetadata", {})
+            tokens_used = usage.get("totalTokenCount", 0)
+            
+            return {
+                "content": content, 
+                "response_time": response_time,
+                "tokens_used": tokens_used,
+                "prompt_tokens": usage.get("promptTokenCount", 0),
+                "completion_tokens": usage.get("candidatesTokenCount", 0)
+            }
         else:
             raise Exception(f"API Error {response.status_code}: {response.text}")
     
