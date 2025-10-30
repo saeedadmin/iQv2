@@ -37,10 +37,35 @@ else:
     from database.database import DatabaseManager, DatabaseLogger
 
 from handlers.admin.admin_panel import AdminPanel
+from handlers.public import (
+    get_main_menu_markup, 
+    get_public_section_markup, 
+    get_ai_menu_markup, 
+    get_ai_chat_mode_markup,
+    get_crypto_menu_markup,
+    PublicMenuManager
+)
 from core.logger_system import bot_logger
 from handlers.ai.ai_chat_handler import GeminiChatHandler, AIChatStateManager
 from handlers.ai.ai_image_generator import AIImageGenerator
 from handlers.ai.ocr_handler import OCRHandler
+from services.crypto_service import (
+    fetch_fear_greed_index,
+    download_fear_greed_chart,
+    format_fear_greed_message
+)
+from services.spam_service import (
+    check_spam_and_handle,
+    send_spam_block_notification,
+    send_admin_spam_notification,
+    SPAM_MESSAGE_LIMIT,
+    SPAM_TIME_WINDOW
+)
+from utils.helpers import (
+    check_user_access as check_user_access_helper,
+    send_access_denied_message,
+    format_general_news_message
+)
 # Voice handler removed - no longer needed
 # Signal scraper removed - will be re-implemented later
 
@@ -82,6 +107,7 @@ else:
 
 db_logger = DatabaseLogger(db_manager)
 admin_panel = AdminPanel(db_manager, ADMIN_USER_ID)
+public_menu = PublicMenuManager(db_manager)
 
 # Initialize AI systems
 gemini_chat = GeminiChatHandler(db_manager=db_manager)
@@ -89,197 +115,22 @@ ai_chat_state = AIChatStateManager(db_manager)
 ai_image_gen = AIImageGenerator()
 ocr_handler = OCRHandler()
 
-# ========================================
-# KEYBOARD HELPERS
-# ========================================
-
-def get_main_menu_markup() -> ReplyKeyboardMarkup:
-    """کیبورد منوی اصلی"""
-    keyboard = [
-        [KeyboardButton("💰 ارزهای دیجیتال"), KeyboardButton("🔗 بخش عمومی")],
-        [KeyboardButton("🤖 هوش مصنوعی")]
-    ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
-
-def get_public_section_markup() -> ReplyKeyboardMarkup:
-    """کیبورد بخش عمومی"""
-    keyboard = [
-        [KeyboardButton("📺 اخبار عمومی")],
-        [KeyboardButton("📰 مدیریت اشتراک اخبار")],
-        [KeyboardButton("🔙 بازگشت به منوی اصلی")]
-    ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
-
-def get_ai_menu_markup() -> ReplyKeyboardMarkup:
-    """کیبورد منوی هوش مصنوعی"""
-    keyboard = [
-        [KeyboardButton("💬 چت با هوش مصنوعی")],
-        [KeyboardButton("📰 اخبار هوش مصنوعی")],
-        [KeyboardButton("🔙 بازگشت به منوی اصلی")]
-    ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
-
-def get_ai_chat_mode_markup() -> ReplyKeyboardMarkup:
-    """کیبورد حالت چت با هوش مصنوعی"""
-    keyboard = [
-        [KeyboardButton("🔙 بازگشت به منوی AI")]
-    ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
-
-async def handle_public_callback(self, update, context):
-    """مدیریت callback queries بخش عمومی"""
-    query = update.callback_query
-    await query.answer()
-    # Implement callback handling if needed
-    pass
-
-# Initialize public_menu instance
-public_menu = PublicMenuManager(db_manager)
-
 # متغیرهای مکالمه
 (BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION, TRADINGVIEW_ANALYSIS) = range(4)
 
-# بررسی دسترسی کاربر
+# بررسی دسترسی کاربر (wrapper for compatibility)
 async def check_user_access(user_id: int) -> bool:
     """بررسی دسترسی کاربر به ربات"""
-    # ادمین همیشه دسترسی دارد
-    if user_id == ADMIN_USER_ID:
-        return True
-    
-    # بررسی فعال بودن ربات
-    if not db_manager.is_bot_enabled():
-        return False
-    
-    # بررسی بلاک بودن کاربر
-    if db_manager.is_user_blocked(user_id):
-        return False
-    
-    return True
+    return await check_user_access_helper(user_id, db_manager, ADMIN_USER_ID)
 
-# تنظیمات Anti-Spam
-SPAM_MESSAGE_LIMIT = 8  # تعداد پیام مجاز
-SPAM_TIME_WINDOW = 15   # در چند ثانیه
+# Spam handling wrappers (using service functions)
+async def check_spam_and_handle_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Wrapper for spam checking service"""
+    from services.spam_service import check_spam_and_handle as spam_check
+    return await spam_check(update, context, db_manager, bot_logger, ADMIN_USER_ID)
 
-async def check_spam_and_handle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """بررسی اسپم و مدیریت بلاک خودکار
-    
-    Returns:
-        True: کاربر اسپم کرده و بلاک شد
-        False: کاربر عادی است
-    """
-    user = update.effective_user
-    
-    # ادمین از چک اسپم معاف است
-    if user.id == ADMIN_USER_ID:
-        return False
-    
-    # ثبت پیام کاربر در tracking
-    db_manager.track_user_message(user.id, 'text')
-    
-    # بررسی تعداد پیام‌های اخیر
-    recent_messages = db_manager.get_recent_message_count(user.id, SPAM_TIME_WINDOW)
-    
-    # اگر تعداد پیام‌ها از حد مجاز بیشتر شد
-    if recent_messages > SPAM_MESSAGE_LIMIT:
-        # بلاک کردن کاربر
-        block_result = db_manager.block_user_for_spam(user.id)
-        
-        if block_result['success']:
-            # لاگ بلاک اسپم
-            bot_logger.log_admin_action(
-                0,  # سیستم
-                "AUTO_SPAM_BLOCK",
-                target=f"User {user.id}",
-                details=f"{recent_messages} پیام در {SPAM_TIME_WINDOW} ثانیه - سطح {block_result['warning_level']}"
-            )
-            
-            # ارسال نوتیفیکیشن به کاربر
-            await send_spam_block_notification(update, context, block_result)
-            
-            # ارسال نوتیفیکیشن به ادمین
-            await send_admin_spam_notification(context, user, block_result)
-            
-            return True
-    
-    return False
-
-async def send_spam_block_notification(update: Update, context: ContextTypes.DEFAULT_TYPE, block_result: dict):
-    """ارسال نوتیفیکیشن بلاک به کاربر"""
-    try:
-        warning_level = block_result['warning_level']
-        block_duration = block_result['block_duration']
-        is_permanent = block_result['is_permanent']
-        
-        if is_permanent:
-            message = f"""🚫 **شما به طور دائمی بلاک شدید**
-
-⚠️ **دلیل:** ارسال پیام‌های متوالی (اسپم)
-📊 **سطح بلاک:** {warning_level} (دائمی)
-
-❌ **این سومین بار است که به دلیل اسپم بلاک می‌شوید.**
-دسترسی شما به طور دائم محدود شده است.
-
-💡 برای بازگشایی حساب، با ادمین تماس بگیرید."""
-        else:
-            block_until_str = ""
-            if block_result.get('block_until'):
-                block_until_str = block_result['block_until'].strftime('%Y/%m/%d ساعت %H:%M')
-            
-            message = f"""⚠️ **شما موقتاً بلاک شدید**
-
-🚫 **دلیل:** ارسال پیام‌های متوالی (اسپم)
-⏰ **مدت بلاک:** {block_duration}
-📊 **سطح بلاک:** {warning_level}
-📅 **تا تاریخ:** {block_until_str}
-
-💡 **توجه:**
-• از ارسال پیام‌های پشت سر هم خودداری کنید
-• بار بعد مدت بلاک طولانی‌تر خواهد بود
-• در صورت تکرار، بلاک دائمی اعمال می‌شود
-
-✅ پس از اتمام مدت بلاک، خودکار آزاد خواهید شد."""
-        
-        await update.message.reply_text(message, parse_mode='Markdown')
-        
-    except Exception as e:
-        logger.error(f"❌ خطا در ارسال نوتیفیکیشن بلاک به کاربر: {e}")
-
-async def send_admin_spam_notification(context: ContextTypes.DEFAULT_TYPE, user, block_result: dict):
-    """ارسال نوتیفیکیشن به ادمین"""
-    try:
-        import html
-        
-        warning_level = block_result['warning_level']
-        block_duration = block_result['block_duration']
-        
-        # Escape کردن نام و یوزرنیم برای جلوگیری از خطای HTML
-        safe_full_name = html.escape(user.full_name or 'ندارد')
-        safe_username = html.escape(user.username or 'ندارد')
-        
-        message = f"""🚨 <b>هشدار اسپم - بلاک خودکار</b>
-
-👤 <b>کاربر:</b>
-• نام: {safe_full_name}
-• آیدی: <code>{user.id}</code>
-• یوزرنیم: @{safe_username}
-
-📊 <b>جزئیات بلاک:</b>
-• سطح: {warning_level}
-• مدت: {block_duration}
-• دلیل: ارسال پیام‌های متوالی (اسپم)
-
-⏰ <b>زمان:</b> {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}"""
-        
-        await context.bot.send_message(
-            chat_id=ADMIN_USER_ID,
-            text=message,
-            parse_mode='HTML'
-        )
-        
-    except Exception as e:
-        logger.error(f"❌ خطا در ارسال نوتیفیکیشن به ادمین: {e}")
-
-# Signal functions removed - will be re-implemented later
+# Keep original function name for compatibility
+check_spam_and_handle = check_spam_and_handle_wrapper
 
 # Functions for Fear & Greed Index
 async def fetch_fear_greed_index():
