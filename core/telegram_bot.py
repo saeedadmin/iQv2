@@ -949,15 +949,15 @@ async def send_scheduled_news(context: ContextTypes.DEFAULT_TYPE) -> None:
         
         # دریافت آخرین اخبار
         from handlers.public.public_menu import PublicMenuManager
-        public_menu = PublicMenuManager(db_manager)
-        news_list = await public_menu.fetch_general_news()
+        public_menu_temp = PublicMenuManager(db_manager)
+        news_list = await public_menu_temp.fetch_general_news()
         
         if not news_list:
             logger.error("❌ خطا در دریافت اخبار برای ارسال خودکار")
             return
         
-        # فرمت کردن پیام اخبار
-        news_message = format_general_news_message(news_list)
+        # فرمت کردن پیام اخبار با تابع صحیح از public_menu
+        news_message = public_menu_temp.format_general_news_message(news_list)
         
         # اضافه کردن یک هدر برای ارسال خودکار
         header = f"""🔔 **اخبار خودکار - {datetime.datetime.now().strftime('%Y/%m/%d %H:%M')}**

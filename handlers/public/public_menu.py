@@ -616,6 +616,16 @@ class PublicMenuManager:
         
         return message
     
+    def _escape_markdown(self, text: str) -> str:
+        """Escape کردن کاراکترهای خاص Markdown برای جلوگیری از خطای parse"""
+        if not text:
+            return text
+        # کاراکترهایی که باید escape بشن
+        chars_to_escape = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+        for char in chars_to_escape:
+            text = text.replace(char, f'\\{char}')
+        return text
+    
     def format_crypto_message(self, data: Dict[str, Any]) -> str:
         """فرمت کردن پیام قیمت‌های ارز"""
         if data.get('error'):
@@ -654,8 +664,10 @@ class PublicMenuManager:
         gainer = data.get('top_gainer', {})
         if gainer.get('symbol'):
             gainer_price_irr = gainer.get('price_usd', 0) * usd_to_irr
+            # Escape کردن نام ارز برای جلوگیری از خطای parse
+            gainer_name = self._escape_markdown(gainer.get('name', 'N/A'))
             message += f"🚀 *بیشترین صعود:*\n"
-            message += f"🔥 {gainer['symbol']} ({gainer.get('name', 'N/A')})\n"
+            message += f"🔥 {gainer['symbol']} ({gainer_name})\n"
             message += f"💵 ${gainer.get('price_usd', 0):,.4f}\n"
             message += f"💰 {gainer_price_irr:,.0f} تومان\n"
             message += f"🔺 {gainer.get('change_24h', 0):+.2f}%\n\n"
@@ -664,8 +676,10 @@ class PublicMenuManager:
         loser = data.get('top_loser', {})
         if loser.get('symbol'):
             loser_price_irr = loser.get('price_usd', 0) * usd_to_irr
+            # Escape کردن نام ارز برای جلوگیری از خطای parse
+            loser_name = self._escape_markdown(loser.get('name', 'N/A'))
             message += f"📉 *بیشترین نزول:*\n"
-            message += f"💥 {loser['symbol']} ({loser.get('name', 'N/A')})\n"
+            message += f"💥 {loser['symbol']} ({loser_name})\n"
             message += f"💵 ${loser.get('price_usd', 0):,.4f}\n"
             message += f"💰 {loser_price_irr:,.0f} تومان\n"
             message += f"🔻 {loser.get('change_24h', 0):+.2f}%\n\n"
