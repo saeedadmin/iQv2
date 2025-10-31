@@ -1670,6 +1670,9 @@ async def broadcast_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ]
     ])
     
+    # محدود کردن پیش‌نمایش به 200 کاراکتر
+    preview_text = message_text[:200] + ('...' if len(message_text) > 200 else '')
+    
     preview_message = f"""
 📢 **پیش‌نمایش پیام همگانی**
 
@@ -1677,7 +1680,7 @@ async def broadcast_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 **✨ فعال امروز:** {active_today} کاربر
 
 **📄 متن پیام:**
-{message_text}
+{preview_text}
 
 آیا می‌خواهید این پیام را ارسال کنید؟
     """
@@ -1685,11 +1688,19 @@ async def broadcast_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # ذخیره پیام در context برای استفاده بعدی
     context.user_data['broadcast_message'] = message_text
     
-    await update.message.reply_text(
-        preview_message, 
-        reply_markup=confirm_keyboard,
-        parse_mode='Markdown'
-    )
+    try:
+        await update.message.reply_text(
+            preview_message, 
+            reply_markup=confirm_keyboard,
+            parse_mode='Markdown'
+        )
+    except Exception as e:
+        # اگر markdown مشکل داشت، بدون markdown ارسال کن
+        logger.warning(f"خطا در ارسال با Markdown: {e}")
+        await update.message.reply_text(
+            preview_message, 
+            reply_markup=confirm_keyboard
+        )
     return ConversationHandler.END
 
 # Handler برای callback های broadcast
@@ -1756,29 +1767,53 @@ async def broadcast_callback_handler(update: Update, context: ContextTypes.DEFAU
 
 async def send_broadcast_message(bot, message_text: str) -> tuple:
     """ارسال پیام همگانی به تمام کاربران غیربلاک"""
-    active_users = db_manager.get_all_unblocked_users_ids()
+    all_users = db_manager.get_all_unblocked_users_ids()
     success_count = 0
     fail_count = 0
+    blocked_by_user_count = 0
     
-    for user_id in active_users:
+    for user_id in all_users:
         try:
-            await bot.send_message(
-                chat_id=user_id,
-                text=f"📢 **پیام همگانی ادمین**\n\n{message_text}",
-                parse_mode='Markdown'
-            )
+            # سعی می‌کنیم با Markdown ارسال کنیم
+            try:
+                await bot.send_message(
+                    chat_id=user_id,
+                    text=f"📢 **پیام همگانی ادمین**\n\n{message_text}",
+                    parse_mode='Markdown'
+                )
+            except Exception as markdown_error:
+                # اگر Markdown مشکل داشت، بدون formatting ارسال کن
+                if "can't parse" in str(markdown_error).lower():
+                    await bot.send_message(
+                        chat_id=user_id,
+                        text=f"📢 پیام همگانی ادمین\n\n{message_text}"
+                    )
+                else:
+                    raise  # اگر خطای دیگه‌ای بود، throw کن
+            
             success_count += 1
             
-            # کمی تأخیر برای جلوگیری از Rate Limit
-            await asyncio.sleep(0.1)
+            # تأخیر برای جلوگیری از Rate Limit
+            await asyncio.sleep(0.05)  # 50ms
             
         except Exception as e:
             fail_count += 1
+            error_msg = str(e).lower()
+            
+            # لاگ خطا
             logger.warning(f"خطا در ارسال پیام به {user_id}: {e}")
             
-            # در صورت بلاک شدن از طرف کاربر، او را بلاک کنیم
-            if "blocked by the user" in str(e).lower():
-                db_manager.block_user(user_id)
+            # اگر کاربر ربات رو بلاک کرده، فقط لاگ می‌کنیم (نباید او رو بلاک کنیم!)
+            if "blocked by the user" in error_msg or "bot was blocked" in error_msg:
+                blocked_by_user_count += 1
+                logger.info(f"کاربر {user_id} ربات را بلاک کرده است")
+            # اگر chat یافت نشد یا user دیگه وجود نداره
+            elif "chat not found" in error_msg or "user not found" in error_msg:
+                logger.info(f"کاربر {user_id} یافت نشد (احتمالاً حساب حذف شده)")
+    
+    # لاگ خلاصه
+    if blocked_by_user_count > 0:
+        logger.info(f"📊 تعداد کاربرانی که ربات را بلاک کرده‌اند: {blocked_by_user_count}")
     
     return success_count, fail_count
 
