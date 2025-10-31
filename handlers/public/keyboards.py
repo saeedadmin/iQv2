@@ -12,7 +12,7 @@ def get_main_menu_markup() -> ReplyKeyboardMarkup:
     """کیبورد منوی اصلی"""
     keyboard = [
         [KeyboardButton("💰 ارزهای دیجیتال"), KeyboardButton("🔗 بخش عمومی")],
-        [KeyboardButton("🤖 هوش مصنوعی")]
+        [KeyboardButton("🤖 هوش مصنوعی"), KeyboardButton("⚽ بخش ورزش")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
 
@@ -51,5 +51,16 @@ def get_crypto_menu_markup() -> ReplyKeyboardMarkup:
         [KeyboardButton("📊 قیمت‌های لحظه‌ای"), KeyboardButton("📰 اخبار کریپتو")],
         [KeyboardButton("📈 تحلیل TradingView")],
         [KeyboardButton("😨 شاخص ترس و طمع"), KeyboardButton("🔙 بازگشت به منوی اصلی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+
+def get_sports_menu_markup() -> ReplyKeyboardMarkup:
+    """کیبورد منوی ورزش"""
+    keyboard = [
+        [KeyboardButton("📰 اخبار ورزشی")],
+        [KeyboardButton("📅 بازی‌های هفتگی")],
+        [KeyboardButton("🔴 بازی‌های زنده")],
+        [KeyboardButton("🔙 بازگشت به منوی اصلی")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
