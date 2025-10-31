@@ -63,11 +63,8 @@ from services.spam_service import (
 )
 from utils.helpers import (
     check_user_access as check_user_access_helper,
-    send_access_denied_message,
-    format_general_news_message
+    send_access_denied_message
 )
-# Voice handler removed - no longer needed
-# Signal scraper removed - will be re-implemented later
 
 # Optional imports - TradingView Analysis
 try:
@@ -1015,8 +1012,6 @@ async def send_scheduled_news(context: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         logger.error(f"❌ خطای کلی در ارسال خودکار اخبار: {e}")
 
-# Voice handlers removed - no longer needed
-
 # Handler برای پیام‌های متنی (echo)
 async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """راهنمایی برای پیام‌های ناشناخته"""
@@ -1540,9 +1535,6 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         
         return
     
-    # Voice functionality removed - no longer needed
-
-# چک کردن OCR request
     if message_text == "🔙 بازگشت به منوی AI":
         # پاک کردن حافظه چت و غیرفعال کردن حالت چت
         try:
@@ -1966,8 +1958,6 @@ async def main() -> None:
         fallbacks=[CommandHandler("cancel", cancel_conversation)],
     )
     application.add_handler(tradingview_conv_handler)
-    
-    # Voice handler removed - no longer needed
     
     # Handler برای پیام‌های ناشناخته (راهنمایی ساده)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, fallback_handler))

@@ -40,14 +40,3 @@ async def safe_delete_message(message) -> None:
         await message.delete()
     except Exception:
         pass  # Ignore deletion errors
-
-
-def format_general_news_message(news_list):
-    """تابع کمکی برای فرمت اخبار عمومی (standalone)"""
-    if not news_list:
-        return "❌ اخباری یافت نشد"
-    
-    message = "📺 **آخرین اخبار روز**\n\n"
-    for i, news in enumerate(news_list[:10], 1):
-        message += f"{i}. {news.get('title', 'N/A')}\n"
-    return message
