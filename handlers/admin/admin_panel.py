@@ -296,6 +296,9 @@ class AdminPanel:
             elif data == "admin_stats":
                 await self.show_general_stats(query)
             
+            elif data == "admin_broadcast":
+                await self.start_broadcast(query, context)
+            
             elif data == "admin_logs":
                 await self.show_logs_menu(query)
             
@@ -919,4 +922,31 @@ class AdminPanel:
     async def refresh_main_menu(self, query):
         """بروزرسانی منوی اصلی"""
         await self.show_main_menu(query)
-        await query.answer("🔄 بروزرسانی شد!")
+    
+    async def start_broadcast(self, query, context):
+        """شروع پیام همگانی از طریق callback"""
+        # دریافت آمار کاربران
+        active_users_today = len(self.db.get_active_users_ids())
+        all_unblocked = len(self.db.get_all_unblocked_users_ids())
+        
+        message = f"""
+📢 **ارسال پیام همگانی**
+
+👥 کاربران فعال امروز: {active_users_today}
+📊 کل کاربران غیربلاک: {all_unblocked}
+
+✅ برای ارسال پیام همگانی، لطفاً دستور زیر را بفرستید:
+👉 /broadcast
+
+سپس می‌توانید پیام مورد نظر خود را تایپ کنید.
+        """
+        
+        back_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 منوی اصلی", callback_data="admin_main")]
+        ])
+        
+        await query.edit_message_text(
+            message,
+            reply_markup=back_keyboard,
+            parse_mode='Markdown'
+        )
