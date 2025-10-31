@@ -9,13 +9,11 @@ Utils Module
 from .helpers import (
     check_user_access,
     send_access_denied_message,
-    safe_delete_message,
-    format_general_news_message
+    safe_delete_message
 )
 
 __all__ = [
     'check_user_access',
     'send_access_denied_message',
-    'safe_delete_message',
-    'format_general_news_message'
+    'safe_delete_message'
 ]
