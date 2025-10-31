@@ -982,3 +982,154 @@ class MultiProviderHandler:
             status["key_rotator_stats"][name] = rotator.get_stats()
         
         return status
+    
+    async def send_vision_message(self, user_id: int, question: str, image_base64: str) -> Dict[str, Any]:
+        """ارسال تصویر به AI Vision با multi-provider support"""
+        try:
+            # فعلاً فقط Gemini از vision پشتیبانی می‌کنه
+            # بعداً می‌تونیم OpenAI GPT-4 Vision و Claude رو اضافه کنیم
+            
+            provider_name = "gemini"
+            
+            # چک کردن اینکه Gemini provider فعال باشه
+            if provider_name not in self.providers or not self.providers[provider_name].get("available"):
+                return {
+                    'success': False,
+                    'error': 'سرویس Vision در حال حاضر در دسترس نیست',
+                    'response': None
+                }
+            
+            # دریافت rotator برای Gemini
+            rotator = self.key_rotators.get(provider_name)
+            if not rotator:
+                return {
+                    'success': False,
+                    'error': 'کلید API برای Vision یافت نشد',
+                    'response': None
+                }
+            
+            # لیست مدل‌های Gemini با قابلیت vision
+            models_to_try = [
+                "gemini-1.5-pro-latest",
+                "gemini-1.5-pro",
+                "gemini-1.5-flash-latest",
+                "gemini-pro-vision"
+            ]
+            
+            last_error = None
+            keys_tried = []
+            
+            # تلاش با هر کلید و هر مدل
+            for attempt in range(len(rotator.keys)):
+                api_key = rotator.get_next_key()
+                if not api_key or api_key in keys_tried:
+                    continue
+                
+                keys_tried.append(api_key)
+                logger.info(f"🔑 تلاش با کلید #{attempt + 1} برای Vision...")
+                
+                # امتحان هر مدل با این کلید
+                for model in models_to_try:
+                    try:
+                        logger.info(f"🔄 تلاش با مدل {model}...")
+                        
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                        
+                        payload = {
+                            "contents": [{
+                                "parts": [
+                                    {"text": question},
+                                    {
+                                        "inline_data": {
+                                            "mime_type": "image/jpeg",
+                                            "data": image_base64
+                                        }
+                                    }
+                                ]
+                            }],
+                            "generationConfig": {
+                                "maxOutputTokens": 2000,
+                                "temperature": 0.4
+                            }
+                        }
+                        
+                        headers = {"Content-Type": "application/json"}
+                        
+                        response = requests.post(
+                            url=url,
+                            headers=headers,
+                            json=payload,
+                            timeout=45
+                        )
+                        
+                        if response.status_code == 200:
+                            result = response.json()
+                            
+                            if 'candidates' in result and len(result['candidates']) > 0:
+                                content = result['candidates'][0]['content']['parts'][0]['text']
+                                
+                                logger.info(f"✅ Vision موفق با مدل {model}")
+                                
+                                # علامت‌گذاری کلید به عنوان موفق
+                                rotator.mark_key_success(api_key)
+                                
+                                # ذخیره در تاریخچه
+                                if self.db:
+                                    try:
+                                        self.db.add_chat_message(user_id, 'user', f"[تصویر] {question}")
+                                        self.db.add_chat_message(user_id, 'assistant', content)
+                                    except Exception as db_error:
+                                        logger.warning(f"خطا در ذخیره تاریخچه vision: {db_error}")
+                                
+                                usage = result.get('usageMetadata', {})
+                                tokens_used = usage.get('totalTokenCount', 0)
+                                
+                                return {
+                                    'success': True,
+                                    'response': content,
+                                    'tokens_used': tokens_used,
+                                    'provider': f'gemini-vision-{model}'
+                                }
+                        
+                        elif response.status_code == 429:
+                            last_error = 'محدودیت تعداد درخواست - در حال رفتن به کلید بعدی'
+                            logger.warning(f"⚠️ کلید #{attempt + 1} - مدل {model}: Rate limited")
+                            rotator.mark_key_failed(api_key)
+                            break  # این کلید محدود شده، برو به کلید بعدی
+                        
+                        elif response.status_code == 404:
+                            last_error = f'مدل {model} یافت نشد'
+                            logger.warning(f"⚠️ مدل {model}: Not found (404)")
+                            continue  # این مدل نداریم، مدل بعدی رو امتحان کن
+                        
+                        else:
+                            error_detail = response.text[:150] if response.text else 'خطای ناشناخته'
+                            last_error = f'خطا {response.status_code}'
+                            logger.warning(f"⚠️ کلید #{attempt + 1} - مدل {model}: {last_error}")
+                            continue
+                    
+                    except requests.Timeout:
+                        last_error = 'زمان پاسخ‌دهی تمام شد'
+                        logger.warning(f"⚠️ مدل {model}: Timeout")
+                        continue
+                    
+                    except Exception as e:
+                        last_error = f'خطای سیستم: {str(e)[:100]}'
+                        logger.error(f"❌ مدل {model}: {e}")
+                        continue
+            
+            # اگر همه کلیدها و مدل‌ها شکست خوردند
+            logger.error(f"❌ همه کلیدها و مدل‌های Vision شکست خوردند")
+            return {
+                'success': False,
+                'error': f'متأسفانه هیچ سرویس Vision موجودی نتوانست پاسخ دهد.\n💡 ممکن است محدودیت API رخ داده باشد. لطفاً کمی بعد تلاش کنید.',
+                'response': None
+            }
+        
+        except Exception as e:
+            logger.error(f"❌ خطای کلی در send_vision_message: {e}")
+            return {
+                'success': False,
+                'error': f'خطای سیستم: {str(e)}\n💡 لطفاً دوباره تلاش کنید.',
+                'response': None
+            }
