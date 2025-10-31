@@ -1556,9 +1556,9 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             )
         return
 
-# OCR Handler for Image Processing
-async def ocr_image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """هندلر پردازش تصاویر برای OCR"""
+# Handler برای پردازش عکس (AI Vision یا OCR)
+async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """هندلر اصلی برای پردازش تصاویر - AI Vision یا OCR"""
     user = update.effective_user
     
     # چک کردن دسترسی
@@ -1576,6 +1576,78 @@ async def ocr_image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     # به‌روزرسانی فعالیت
     db_manager.update_user_activity(user.id)
+    
+    # اگر کاربر در حالت چت AI است، عکس را به AI بفرست
+    if ai_chat_state.is_in_chat(user.id):
+        await ai_vision_handler(update, context)
+    else:
+        # در غیر این صورت، OCR انجام بده
+        await ocr_image_handler(update, context)
+
+# Handler برای ارسال عکس به AI (Vision)
+async def ai_vision_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """پردازش تصویر با AI Vision در حالت چت"""
+    user = update.effective_user
+    
+    # دریافت caption (اگر کاربر با عکس متن فرستاده)
+    caption = update.message.caption or "این عکس چیست؟ توضیح بده."
+    
+    try:
+        # نمایش پیام loading
+        loading_message = await update.message.reply_text("🤖 در حال تحلیل تصویر...")
+        
+        # دریافت بهترین کیفیت تصویر
+        photo = update.message.photo[-1]
+        
+        # دانلود تصویر
+        file = await context.bot.get_file(photo.file_id)
+        image_bytes = await file.download_as_bytearray()
+        image_data = bytes(image_bytes)
+        
+        # تبدیل به base64
+        import base64
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+        
+        # ارسال به AI
+        bot_logger.log_user_action(user.id, "AI_VISION", f"تحلیل تصویر: {caption[:30]}...")
+        
+        result = await gemini_chat.send_vision_message(user.id, caption, image_base64)
+        
+        # حذف پیام loading
+        await loading_message.delete()
+        
+        if result.get('success'):
+            response = result['response']
+            
+            # ارسال پاسخ
+            await update.message.reply_text(
+                f"🤖 **پاسخ AI:**\n\n{response}",
+                parse_mode='Markdown'
+            )
+            
+            bot_logger.log_user_action(
+                user.id, 
+                "AI_VISION_SUCCESS", 
+                f"تصویر تحلیل شد. توکن: {result.get('tokens_used', 0)}"
+            )
+        else:
+            error_msg = result.get('error', 'خطای ناشناخته')
+            await update.message.reply_text(
+                f"❌ خطا در تحلیل تصویر:\n{error_msg}\n\n💡 می‌توانید دوباره تلاش کنید."
+            )
+    
+    except Exception as e:
+        logger.error(f"خطا در AI vision: {e}")
+        if 'loading_message' in locals():
+            await loading_message.delete()
+        await update.message.reply_text(
+            f"❌ خطا در پردازش تصویر:\n{str(e)}\n\n💡 لطفاً دوباره تلاش کنید."
+        )
+
+# OCR Handler for Image Processing  
+async def ocr_image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """هندلر پردازش تصاویر برای OCR"""
+    user = update.effective_user
     
     # بررسی اینکه آیا تصویر است
     if not update.message.photo:
@@ -2002,8 +2074,8 @@ async def main() -> None:
     # Handler برای پیام‌های ناشناخته (راهنمایی ساده)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, fallback_handler))
     
-    # OCR Image Handler
-    application.add_handler(MessageHandler(filters.PHOTO, ocr_image_handler))
+    # Photo Handler (AI Vision or OCR)
+    application.add_handler(MessageHandler(filters.PHOTO, photo_handler))
     
     # Handler برای خطاها
     application.add_error_handler(error_handler)

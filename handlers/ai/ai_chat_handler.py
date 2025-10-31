@@ -775,6 +775,115 @@ Keep the exact same order. Here are the texts to translate:
             })
         
         return status
+    
+    async def send_vision_message(self, user_id: int, question: str, image_base64: str) -> Dict[str, Any]:
+        """ارسال تصویر به Gemini Vision برای تحلیل"""
+        try:
+            # استفاده از Gemini Flash که از vision پشتیبانی می‌کنه
+            api_key = os.getenv('GEMINI_API_KEY', self.api_key if hasattr(self, 'api_key') else None)
+            
+            if not api_key:
+                return {
+                    'success': False,
+                    'error': 'کلید API Gemini یافت نشد',
+                    'response': None
+                }
+            
+            # ساخت URL برای Gemini Vision
+            model = "gemini-1.5-flash"  # مدل با قابلیت vision
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            
+            # ساخت payload با تصویر
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {"text": question},
+                        {
+                            "inline_data": {
+                                "mime_type": "image/jpeg",
+                                "data": image_base64
+                            }
+                        }
+                    ]
+                }],
+                "generationConfig": {
+                    "maxOutputTokens": 2000,
+                    "temperature": 0.4
+                }
+            }
+            
+            headers = {"Content-Type": "application/json"}
+            
+            # ارسال درخواست
+            response = requests.post(
+                url=url,
+                headers=headers,
+                json=payload,
+                timeout=45  # زمان بیشتر برای پردازش تصویر
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if 'candidates' in result and len(result['candidates']) > 0:
+                    content = result['candidates'][0]['content']['parts'][0]['text']
+                    
+                    # ذخیره در تاریخچه چت
+                    if self.db:
+                        try:
+                            # ذخیره سوال کاربر
+                            self.db.add_chat_message(user_id, 'user', f"[تصویر] {question}")
+                            # ذخیره پاسخ AI
+                            self.db.add_chat_message(user_id, 'assistant', content)
+                        except Exception as db_error:
+                            logger.warning(f"خطا در ذخیره تاریخچه vision: {db_error}")
+                    
+                    # استخراج توکن‌ها
+                    usage = result.get('usageMetadata', {})
+                    tokens_used = usage.get('totalTokenCount', 0)
+                    
+                    return {
+                        'success': True,
+                        'response': content,
+                        'tokens_used': tokens_used,
+                        'provider': 'gemini-vision'
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': 'پاسخی از AI دریافت نشد',
+                        'response': None
+                    }
+            
+            elif response.status_code == 429:
+                return {
+                    'success': False,
+                    'error': 'محدودیت تعداد درخواست. لطفاً کمی صبر کنید.',
+                    'response': None
+                }
+            
+            else:
+                error_detail = response.text[:200] if response.text else 'خطای ناشناخته'
+                return {
+                    'success': False,
+                    'error': f'خطا در ارتباط با AI: {error_detail}',
+                    'response': None
+                }
+        
+        except requests.Timeout:
+            return {
+                'success': False,
+                'error': 'زمان پاسخ‌دهی تمام شد. لطفاً دوباره تلاش کنید.',
+                'response': None
+            }
+        
+        except Exception as e:
+            logger.error(f"خطا در send_vision_message: {e}")
+            return {
+                'success': False,
+                'error': f'خطای سیستم: {str(e)}',
+                'response': None
+            }
 
 
 class AIChatStateManager:
