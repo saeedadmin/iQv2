@@ -1632,11 +1632,14 @@ async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("❌ شما دسترسی به این دستور ندارید.")
         return ConversationHandler.END
     
-    active_users = len(db_manager.get_active_users_ids())
+    # دریافت آمار کاربران
+    active_users_today = len(db_manager.get_active_users_ids())  # فعال امروز
+    all_unblocked = len(db_manager.get_all_unblocked_users_ids())  # همه غیربلاک
     
     await update.message.reply_text(
         f"📢 **ارسال پیام همگانی**\n\n"
-        f"👥 تعداد کاربران فعال: {active_users}\n\n"
+        f"👥 کاربران فعال امروز: {active_users_today}\n"
+        f"📊 کل کاربران غیربلاک: {all_unblocked}\n\n"
         f"لطفاً پیام مورد نظر خود را بفرستید:\n"
         f"(برای لغو /cancel بفرستید)"
     )
@@ -1651,17 +1654,18 @@ async def broadcast_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.message.reply_text("❌ پیام همگانی لغو شد.")
         return ConversationHandler.END
     
-    # دریافت لیست کاربران فعال
-    active_users = db_manager.get_active_users_ids()
+    # دریافت لیست همه کاربران غیربلاک برای ارسال
+    all_users = db_manager.get_all_unblocked_users_ids()
+    active_today = len(db_manager.get_active_users_ids())
     
-    if not active_users:
-        await update.message.reply_text("❌ هیچ کاربر فعالی یافت نشد.")
+    if not all_users:
+        await update.message.reply_text("❌ هیچ کاربر غیربلاکی یافت نشد.")
         return ConversationHandler.END
     
     # تأیید ارسال
     confirm_keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("✅ تأیید و ارسال", callback_data=f"broadcast_confirm:{len(active_users)}"),
+            InlineKeyboardButton("✅ تأیید و ارسال", callback_data=f"broadcast_confirm:{len(all_users)}"),
             InlineKeyboardButton("❌ لغو", callback_data="broadcast_cancel")
         ]
     ])
@@ -1669,7 +1673,8 @@ async def broadcast_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     preview_message = f"""
 📢 **پیش‌نمایش پیام همگانی**
 
-**👥 تعداد گیرندگان:** {len(active_users)} کاربر
+**👥 تعداد گیرندگان:** {len(all_users)} کاربر
+**✨ فعال امروز:** {active_today} کاربر
 
 **📄 متن پیام:**
 {message_text}
@@ -1750,8 +1755,8 @@ async def broadcast_callback_handler(update: Update, context: ContextTypes.DEFAU
             del context.user_data['broadcast_message']
 
 async def send_broadcast_message(bot, message_text: str) -> tuple:
-    """ارسال پیام همگانی به تمام کاربران فعال"""
-    active_users = db_manager.get_active_users_ids()
+    """ارسال پیام همگانی به تمام کاربران غیربلاک"""
+    active_users = db_manager.get_all_unblocked_users_ids()
     success_count = 0
     fail_count = 0
     

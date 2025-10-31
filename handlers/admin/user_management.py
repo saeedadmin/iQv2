@@ -96,8 +96,15 @@ class UserManager:
         
         # آمار پایه
         total_users = len(all_users)
-        active_users = len([u for u in all_users if not u['is_blocked']])
+        active_users = len([u for u in all_users if not u['is_blocked']])  # غیربلاک
         blocked_users = len([u for u in all_users if u['is_blocked']])
+        
+        # کاربران فعال امروز (با فعالیت در 24 ساعت گذشته)
+        import datetime
+        yesterday = datetime.datetime.now() - datetime.timedelta(hours=24)
+        active_today = len([u for u in all_users if not u['is_blocked'] and 
+                           u.get('last_activity') and 
+                           datetime.datetime.fromisoformat(u['last_activity'].replace('Z', '+00:00')) >= yesterday])
         
         # آمار پیام‌ها
         total_messages = sum(u['message_count'] for u in all_users)
@@ -108,7 +115,6 @@ class UserManager:
         highly_active = len([u for u in all_users if u['message_count'] > active_threshold])
         
         # آمار زمانی
-        import datetime
         today = datetime.date.today()
         week_ago = today - datetime.timedelta(days=7)
         month_ago = today - datetime.timedelta(days=30)
@@ -124,7 +130,8 @@ class UserManager:
         
         return {
             'total_users': total_users,
-            'active_users': active_users,
+            'active_users': active_users,  # کل غیربلاک
+            'active_today': active_today,  # فعال در 24 ساعت گذشته
             'blocked_users': blocked_users,
             'total_messages': total_messages,
             'avg_messages_per_user': round(avg_messages_per_user, 2),

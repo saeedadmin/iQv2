@@ -444,8 +444,12 @@ class PostgreSQLManager:
             cursor.execute('SELECT COUNT(*) FROM users')
             total = cursor.fetchone()[0]
             
-            # کاربران فعال
-            cursor.execute('SELECT COUNT(*) FROM users WHERE is_blocked = FALSE')
+            # کاربران فعال (غیربلاک + فعالیت در 24 ساعت گذشته)
+            cursor.execute('''
+                SELECT COUNT(*) FROM users 
+                WHERE is_blocked = FALSE 
+                AND last_activity >= NOW() - INTERVAL '24 hours'
+            ''')
             active = cursor.fetchone()[0]
             
             # کاربران بلاک شده
@@ -567,7 +571,32 @@ class PostgreSQLManager:
                 self.return_connection(conn)
 
     def get_active_users_ids(self) -> List[int]:
-        """دریافت ID های کاربران فعال (غیر بلاک شده)"""
+        """دریافت ID های کاربران فعال (غیربلاک و در 24 ساعت گذشته فعالیت داشته باشند)"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # کاربران فعال = غیربلاک + فعالیت در 24 ساعت گذشته
+            cursor.execute('''
+                SELECT user_id FROM users 
+                WHERE is_blocked = FALSE 
+                AND last_activity >= NOW() - INTERVAL '24 hours'
+            ''')
+            results = cursor.fetchall()
+            
+            return [row[0] for row in results]
+            
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت کاربران فعال: {e}")
+            return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+    
+    def get_all_unblocked_users_ids(self) -> List[int]:
+        """دریافت ID های همه کاربران غیربلاک (برای broadcast)"""
         conn = None
         try:
             conn = self.get_connection()
@@ -579,7 +608,7 @@ class PostgreSQLManager:
             return [row[0] for row in results]
             
         except Exception as e:
-            logger.error(f"❌ خطا در دریافت کاربران فعال: {e}")
+            logger.error(f"❌ خطا در دریافت کاربران غیربلاک: {e}")
             return []
         finally:
             if conn:
