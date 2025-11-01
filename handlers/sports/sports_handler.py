@@ -26,8 +26,22 @@ class SportsHandler:
     def __init__(self):
         """مقداردهی handler ورزش"""
         # API-Football (100 req/day - رایگان)
-        self.football_api_key = os.getenv('FOOTBALL_DATA_API_KEY', '')
+        self.api_keys = [
+            os.getenv('FOOTBALL_DATA_API_KEY', ''),
+            os.getenv('FOOTBALL_DATA_API_KEY_2', '')
+        ]
+        # حذف کلیدهای خالی
+        self.api_keys = [key for key in self.api_keys if key]
+
         self.football_api_base = "https://v3.football.api-sports.io"
+        self.current_api_index = 0
+        self.football_api_key = self.api_keys[0] if self.api_keys else ''
+
+        # وضعیت محدودیت برای هر کلید
+        self.api_limits = {i: {'used': 0, 'limit': 100, 'exhausted': False} for i in range(len(self.api_keys))}
+
+        if not self.api_keys:
+            logger.warning("⚠️ هیچ کلید API برای SportsHandler تنظیم نشده است")
         
         # RSS Feeds برای اخبار فارسی
         self.varzesh3_rss = "https://www.varzesh3.com/rss/all"
@@ -45,6 +59,52 @@ class SportsHandler:
         
         self.timeout = 15
         self.current_season = datetime.now().year
+    
+    def get_current_api_key(self) -> str:
+        """دریافت کلید API فعلی با بررسی محدودیت"""
+        if not self.api_keys:
+            return ''
+        
+        # پیدا کردن اولین کلیدی که به محدودیت نخورده
+        for i in range(len(self.api_keys)):
+            if not self.api_limits[i]['exhausted']:
+                return self.api_keys[i]
+        
+        return ''  # همه کلیدها به محدودیت خوردن
+    
+    def handle_api_response(self, response):
+        """بررسی پاسخ API و مدیریت محدودیت"""
+        if response.status_code == 429:  # Too Many Requests
+            # علامت گذاری کلید فعلی به عنوان محدودیت خورده
+            self.api_limits[self.current_api_index]['exhausted'] = True
+            logger.warning(f"API Key {self.current_api_index} به محدودیت خورد")
+            return False  # خطای محدودیت
+        
+        elif response.status_code == 200:
+            # بررسی هدر مصرف
+            try:
+                remaining = response.headers.get('x-ratelimit-requests-remaining', '100')
+                remaining = int(remaining)
+                
+                if remaining <= 5:  # نزدیک به محدودیت
+                    self.api_limits[self.current_api_index]['exhausted'] = True
+                    logger.warning(f"API Key {self.current_api_index} نزدیک به محدودیت (موجود: {remaining})")
+                    return False
+                
+                return True  # موفقیت
+            except:
+                return True  # اگر هدر نبود، فرض موفقیت
+        
+        return True  # سایر خطاها محدودیت نیست
+    
+    def get_rate_limit_message(self) -> str:
+        """پیام مناسب برای محدودیت مصرف"""
+        exhausted_count = sum(1 for limit in self.api_limits.values() if limit['exhausted'])
+        
+        if exhausted_count == len(self.api_keys):
+            return "❌ **محدودیت API مصرف شد!**\n\n📊 هر دو کلید API به محدودیت روزانه (100 درخواست) رسیدن.\n\n🔄 لطفاً فردا دوباره تلاش کنید.\n\n⏰ محدودیت‌ها در نیمه‌شب به وقت UTC ریست میشن."
+        else:
+            return "❌ **یک کلید API به محدودیت رسید!**\n\n🔄 در حال استفاده از کلید دیگر..."
     
     async def get_persian_news(self, limit: int = 10) -> Dict[str, Any]:
         """دریافت اخبار ورزشی از منابع فارسی"""
@@ -120,12 +180,14 @@ class SportsHandler:
         try:
             logger.info("🔄 درخواست فیکسچرهای هفتگی همه لیگ‌ها...")
             
-            if not self.football_api_key:
+            # بررسی آیا کلید API در دسترس هست
+            current_key = self.get_current_api_key()
+            if not current_key:
                 return {
                     'success': False,
-                    'error': 'نیاز به کلید API',
+                    'error': 'هیچ کلید API در دسترس نیست',
                     'leagues': {},
-                    'info': 'لطفاً FOOTBALL_DATA_API_KEY را تنظیم کنید'
+                    'info': self.get_rate_limit_message()
                 }
             
             # محاسبه تاریخ شروع و پایان هفته
@@ -137,11 +199,50 @@ class SportsHandler:
             date_from = saturday.strftime('%Y-%m-%d')
             date_to = friday.strftime('%Y-%m-%d')
             
-            headers = {
-                'x-rapidapi-key': self.football_api_key,
-                'x-rapidapi-host': 'v3.football.api-sports.io'
-            }
+            # تلاش با کلیدهای مختلف در صورت خطا
+            for api_index in range(len(self.api_keys)):
+                if self.api_limits[api_index]['exhausted']:
+                    continue
+                    
+                current_key = self.api_keys[api_index]
+                self.current_api_index = api_index
+                self.football_api_key = current_key
+                
+                headers = {
+                    'x-rapidapi-key': current_key,
+                    'x-rapidapi-host': 'v3.football.api-sports.io'
+                }
+                
+                logger.info(f"🔄 استفاده از API Key {api_index}")
+                
+                # تلاش برای دریافت داده‌ها
+                try:
+                    result = await self._fetch_all_fixtures_data(saturday, friday, headers)
+                    if result:
+                        return result
+                except Exception as e:
+                    logger.warning(f"API Key {api_index} خطا داد: {e}")
+                    continue
             
+            # اگر به اینجا رسیدیم، همه کلیدها خراب بودن
+            return {
+                'success': False,
+                'error': 'تمام کلیدهای API در دسترس نیستند',
+                'leagues': {},
+                'info': self.get_rate_limit_message()
+            }
+        
+        except Exception as e:
+            logger.error(f"❌ خطا در get_all_weekly_fixtures: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'leagues': {}
+            }
+    
+    async def _fetch_all_fixtures_data(self, saturday, friday, headers):
+        """دریافت داده‌های فیکسچر با هدر مشخص"""
+        try:
             # لیگ‌های مهم به ترتیب اولویت
             important_leagues = [
                 ('iran', 290, '🇮🇷 لیگ برتر ایران'),
@@ -167,9 +268,19 @@ class SportsHandler:
                         timeout=self.timeout
                     )
                     
+                    # بررسی پاسخ و محدودیت
+                    if not self.handle_api_response(response):
+                        # اگر به محدودیت خورد، این کلید رو غیرفعال کن و None برگردون
+                        self.api_limits[self.current_api_index]['exhausted'] = True
+                        return None
+                    
                     if response.status_code == 200:
                         data = response.json()
                         all_day_matches[date_str] = data.get('response', [])
+                    else:
+                        logger.warning(f"خطای API برای {date_str}: {response.status_code}")
+                        all_day_matches[date_str] = []
+                        
                 except Exception as e:
                     logger.warning(f"خطا در دریافت بازی‌های {date_str}: {e}")
                     all_day_matches[date_str] = []
@@ -217,6 +328,9 @@ class SportsHandler:
             
             total_matches = sum(data['count'] for data in leagues_data.values())
             
+            date_from = saturday.strftime('%Y-%m-%d')
+            date_to = friday.strftime('%Y-%m-%d')
+            
             logger.info(f"✅ {total_matches} بازی از {len(leagues_data)} لیگ دریافت شد")
             return {
                 'success': True,
@@ -226,12 +340,8 @@ class SportsHandler:
             }
         
         except Exception as e:
-            logger.error(f"❌ خطا در get_all_weekly_fixtures: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'leagues': {}
-            }
+            logger.error(f"❌ خطا در _fetch_all_fixtures_data: {e}")
+            return None
     
     async def get_weekly_fixtures(self, league: str = 'iran') -> Dict[str, Any]:
         """دریافت برنامه بازی‌های هفتگی (شنبه تا جمعه)"""
@@ -340,85 +450,113 @@ class SportsHandler:
         try:
             logger.info("🔄 درخواست بازی‌های زنده...")
             
-            if not self.football_api_key:
+            # بررسی آیا کلید API در دسترس هست
+            current_key = self.get_current_api_key()
+            if not current_key:
                 return {
                     'success': False,
-                    'error': 'نیاز به کلید API',
+                    'error': 'هیچ کلید API در دسترس نیست',
                     'live_matches': [],
-                    'info': 'لطفاً FOOTBALL_DATA_API_KEY را تنظیم کنید'
+                    'info': self.get_rate_limit_message()
                 }
             
             url = f"{self.football_api_base}/fixtures"
             params = {'live': 'all'}  # همه بازی‌های زنده
             
-            headers = {
-                'x-rapidapi-key': self.football_api_key,
-                'x-rapidapi-host': 'v3.football.api-sports.io'
-            }
-            
-            response = requests.get(
-                url,
-                params=params,
-                headers=headers,
-                timeout=self.timeout
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                live_matches = []
-                
-                # فیلتر برای لیگ‌های مهم (ایران و اروپا)
-                important_leagues = [290, 140, 39, 78, 135, 61, 2]  # Iran, La Liga, PL, Bundesliga, Serie A, Ligue 1, UCL
-                
-                for match in data.get('response', []):
-                    league_id = match['league']['id']
+            # تلاش با کلیدهای مختلف در صورت خطا
+            for api_index in range(len(self.api_keys)):
+                if self.api_limits[api_index]['exhausted']:
+                    continue
                     
-                    # فقط لیگ‌های مهم
-                    if league_id not in important_leagues:
+                current_key = self.api_keys[api_index]
+                self.current_api_index = api_index
+                self.football_api_key = current_key
+
+                headers = {
+                    'x-rapidapi-key': current_key,
+                    'x-rapidapi-host': 'v3.football.api-sports.io'
+                }
+                
+                logger.info(f"🔄 استفاده از API Key {api_index} برای بازی‌های زنده")
+                
+                try:
+                    response = requests.get(
+                        url,
+                        params=params,
+                        headers=headers,
+                        timeout=self.timeout
+                    )
+                    
+                    # بررسی پاسخ و محدودیت
+                    if not self.handle_api_response(response):
+                        # اگر به محدودیت خورد، کلید رو غیرفعال کن و کلید بعدی رو امتحان کن
+                        self.api_limits[api_index]['exhausted'] = True
                         continue
                     
-                    fixture = match['fixture']
-                    teams = match['teams']
-                    goals = match['goals']
-                    league = match['league']
+                    if response.status_code == 200:
+                        data = response.json()
+                        live_matches = []
+                        
+                        # فیلتر برای لیگ‌های مهم (ایران و اروپا)
+                        important_leagues = [290, 140, 39, 78, 135, 61, 2]  # Iran, La Liga, PL, Bundesliga, Serie A, Ligue 1, UCL
+                        
+                        for match in data.get('response', []):
+                            league_id = match['league']['id']
+                            
+                            # فقط لیگ‌های مهم
+                            if league_id not in important_leagues:
+                                continue
+                            
+                            fixture = match['fixture']
+                            teams = match['teams']
+                            goals = match['goals']
+                            league = match['league']
+                            
+                            match_info = {
+                                'home_team': teams['home']['name'],
+                                'away_team': teams['away']['name'],
+                                'league': league['name'],
+                                'country': league['country'],
+                                'score': {
+                                    'home': goals['home'] if goals['home'] is not None else 0,
+                                    'away': goals['away'] if goals['away'] is not None else 0
+                                },
+                                'minute': fixture['status']['elapsed'],
+                                'status': fixture['status']['short']
+                            }
+                            live_matches.append(match_info)
+                        
+                        if live_matches:
+                            logger.info(f"✅ {len(live_matches)} بازی زنده یافت شد")
+                            return {
+                                'success': True,
+                                'live_matches': live_matches,
+                                'count': len(live_matches)
+                            }
+                        else:
+                            logger.info("ℹ️ بازی زنده‌ای یافت نشد")
+                            return {
+                                'success': True,
+                                'live_matches': [],
+                                'count': 0,
+                                'message': 'در حال حاضر بازی زنده‌ای در جریان نیست'
+                            }
                     
-                    match_info = {
-                        'home_team': teams['home']['name'],
-                        'away_team': teams['away']['name'],
-                        'league': league['name'],
-                        'country': league['country'],
-                        'score': {
-                            'home': goals['home'] if goals['home'] is not None else 0,
-                            'away': goals['away'] if goals['away'] is not None else 0
-                        },
-                        'minute': fixture['status']['elapsed'],
-                        'status': fixture['status']['short']
-                    }
-                    live_matches.append(match_info)
-                
-                if live_matches:
-                    logger.info(f"✅ {len(live_matches)} بازی زنده یافت شد")
-                    return {
-                        'success': True,
-                        'live_matches': live_matches,
-                        'count': len(live_matches)
-                    }
-                else:
-                    logger.info("ℹ️ بازی زنده‌ای یافت نشد")
-                    return {
-                        'success': True,
-                        'live_matches': [],
-                        'count': 0,
-                        'message': 'در حال حاضر بازی زنده‌ای در جریان نیست'
-                    }
+                    else:
+                        logger.error(f"❌ خطای API: {response.status_code} - {response.text[:200]}")
+                        continue  # امتحان کلید بعدی
+                    
+                except Exception as e:
+                    logger.warning(f"API Key {api_index} خطا داد: {e}")
+                    continue  # امتحان کلید بعدی
             
-            else:
-                logger.error(f"❌ خطای API: {response.status_code} - {response.text[:200]}")
-                return {
-                    'success': False,
-                    'error': f'خطای API: {response.status_code}',
-                    'live_matches': []
-                }
+            # اگر به اینجا رسیدیم، همه کلیدها خراب بودن
+            return {
+                'success': False,
+                'error': 'تمام کلیدهای API در دسترس نیستند',
+                'live_matches': [],
+                'info': self.get_rate_limit_message()
+            }
         
         except Exception as e:
             logger.error(f"❌ خطا در get_live_matches: {e}")
