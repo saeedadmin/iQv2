@@ -58,9 +58,18 @@ def get_crypto_menu_markup() -> ReplyKeyboardMarkup:
 def get_sports_menu_markup() -> ReplyKeyboardMarkup:
     """کیبورد منوی ورزش"""
     keyboard = [
-        [KeyboardButton("📰 اخبار ورزشی")],
-        [KeyboardButton("📅 بازی‌های هفتگی")],
-        [KeyboardButton("🔴 بازی‌های زنده")],
+        [KeyboardButton("📰 اخبار ورزشی"), KeyboardButton("📅 بازی‌های هفتگی")],
+        [KeyboardButton("🔴 بازی‌های زنده"), KeyboardButton("⏰ یادآوری بازی")],
         [KeyboardButton("🔙 بازگشت به منوی اصلی")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+
+
+def get_sports_reminder_menu_markup() -> ReplyKeyboardMarkup:
+    """کیبورد زیرمنوی یادآوری بازی"""
+    keyboard = [
+        [KeyboardButton("⚙️ تنظیمات یادآوری")],
+        [KeyboardButton("📋 یادآوری‌های من")],
+        [KeyboardButton("🔙 بازگشت به ورزش")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)

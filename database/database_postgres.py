@@ -225,6 +225,158 @@ class PostgreSQLManager:
                 cursor.close()
                 self.return_connection(conn)
 
+    def delete_match_reminders_for_team(self, user_id: int, team_id: int) -> bool:
+        """حذف یادآوری‌های مرتبط با یک تیم برای کاربر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                'DELETE FROM sports_match_reminders WHERE user_id = %s AND team_id = %s',
+                (user_id, team_id)
+            )
+
+            conn.commit()
+            return True
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در حذف یادآوری‌های تیم {team_id} برای کاربر {user_id}: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def delete_user_match_reminders(self, user_id: int) -> bool:
+        """حذف تمام یادآوری‌های یک کاربر (مثلاً هنگام پاک کردن همه تیم‌ها)"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                'DELETE FROM sports_match_reminders WHERE user_id = %s',
+                (user_id,)
+            )
+
+            conn.commit()
+            return True
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در حذف یادآوری‌های کاربر {user_id}: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def get_user_match_reminders(self, user_id: int, include_sent: bool = False) -> List[Dict[str, Any]]:
+        """دریافت یادآوری‌های کاربر (تنها pending یا همراه با ارسال شده‌ها)"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+            if include_sent:
+                cursor.execute(
+                    '''
+                    SELECT * FROM sports_match_reminders
+                    WHERE user_id = %s
+                    ORDER BY reminder_datetime ASC
+                    ''',
+                    (user_id,)
+                )
+            else:
+                cursor.execute(
+                    '''
+                    SELECT * FROM sports_match_reminders
+                    WHERE user_id = %s AND status = 'pending'
+                    ORDER BY reminder_datetime ASC
+                    ''',
+                    (user_id,)
+                )
+
+            reminders = cursor.fetchall()
+            return [dict(row) for row in reminders]
+
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت یادآوری‌های کاربر {user_id}: {e}")
+            return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def upsert_weekly_fixtures_cache(self, week_start: datetime.date, week_end: datetime.date,
+                                     payload: Dict[str, Any]) -> bool:
+        """ذخیره یا به‌روزرسانی کش فیکسچر هفتگی"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                '''
+                INSERT INTO sports_weekly_fixtures_cache (week_start, week_end, payload)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (week_start, week_end)
+                DO UPDATE SET payload = EXCLUDED.payload,
+                              fetched_at = NOW()
+                ''',
+                (week_start, week_end, payload)
+            )
+
+            conn.commit()
+            return True
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در ذخیره کش فیکسچر هفتگی: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def get_weekly_fixtures_cache(self, week_start: datetime.date,
+                                  week_end: datetime.date) -> Optional[Dict[str, Any]]:
+        """دریافت کش فیکسچر هفتگی"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+            cursor.execute(
+                '''
+                SELECT payload, fetched_at
+                FROM sports_weekly_fixtures_cache
+                WHERE week_start = %s AND week_end = %s
+                ''',
+                (week_start, week_end)
+            )
+
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            return {
+                'payload': row['payload'],
+                'fetched_at': row['fetched_at']
+            }
+
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت کش فیکسچر هفتگی: {e}")
+            return None
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
     def is_first_database_run(self) -> bool:
         """بررسی اینکه آیا این اولین بار اجرای دیتابیس است یا نه"""
         try:
@@ -408,6 +560,309 @@ class PostgreSQLManager:
         except Exception as e:
             logger.error(f"❌ خطا در دریافت کاربران: {e}")
             return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    # -----------------------------
+    # 📌 مدیریت تیم‌های مورد علاقه ورزشی
+    # -----------------------------
+
+    def get_sports_favorite_teams(self, user_id: int) -> List[Dict[str, Any]]:
+        """دریافت تیم‌های مورد علاقه یک کاربر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+            cursor.execute(
+                '''
+                SELECT id, league_id, league_name, team_id, team_name, created_at
+                FROM sports_favorite_teams
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+                ''',
+                (user_id,)
+            )
+
+            teams = cursor.fetchall()
+            return [dict(row) for row in teams]
+
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت تیم‌های مورد علاقه کاربر {user_id}: {e}")
+            return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def add_sports_favorite_team(self, user_id: int, league_id: int, league_name: str,
+                                 team_id: int, team_name: str, max_teams: int = 10,
+                                 bypass_limit: bool = False) -> Tuple[bool, str]:
+        """افزودن تیم مورد علاقه برای کاربر (با محدودیت ۱۰ تیم)"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            if not bypass_limit:
+                cursor.execute(
+                    'SELECT COUNT(*) FROM sports_favorite_teams WHERE user_id = %s',
+                    (user_id,)
+                )
+                count = cursor.fetchone()[0]
+                if count >= max_teams:
+                    return False, "شما حداکثر تعداد تیم مجاز را ثبت کرده‌اید"
+
+            try:
+                cursor.execute(
+                    '''
+                    INSERT INTO sports_favorite_teams
+                        (user_id, league_id, league_name, team_id, team_name)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (user_id, team_id) DO NOTHING
+                    ''',
+                    (user_id, league_id, league_name, team_id, team_name)
+                )
+                if cursor.rowcount == 0:
+                    return False, "این تیم قبلاً در لیست شما وجود دارد"
+
+                conn.commit()
+                return True, "تیم با موفقیت به لیست اضافه شد"
+
+            except Exception as e:
+                conn.rollback()
+                logger.error(f"❌ خطا در افزودن تیم مورد علاقه برای کاربر {user_id}: {e}")
+                return False, "خطا در ذخیره تیم"
+
+        except Exception as e:
+            logger.error(f"❌ خطای اتصال در افزودن تیم مورد علاقه: {e}")
+            return False, "مشکل در ارتباط با دیتابیس"
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def remove_sports_favorite_team(self, user_id: int, team_name: str) -> Tuple[bool, str]:
+        """حذف تیم مورد علاقه کاربر بر اساس نام"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                '''
+                DELETE FROM sports_favorite_teams
+                WHERE user_id = %s AND team_name = %s
+                ''',
+                (user_id, team_name)
+            )
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return False, "این تیم در لیست شما پیدا نشد"
+
+            conn.commit()
+            return True, "تیم از لیست شما حذف شد"
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در حذف تیم کاربر {user_id}: {e}")
+            return False, "خطا در حذف تیم"
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def clear_sports_favorites(self, user_id: int) -> bool:
+        """حذف تمام تیم‌های مورد علاقه کاربر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                'DELETE FROM sports_favorite_teams WHERE user_id = %s',
+                (user_id,)
+            )
+
+            conn.commit()
+            return True
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در پاک کردن تیم‌های کاربر {user_id}: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def get_users_with_sports_favorites(self) -> List[int]:
+        """کاربرانی که حداقل یک تیم مورد علاقه دارند"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                'SELECT DISTINCT user_id FROM sports_favorite_teams'
+            )
+
+            rows = cursor.fetchall()
+            return [row[0] for row in rows]
+
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت کاربران دارای تیم مورد علاقه: {e}")
+            return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    # -----------------------------
+    # 🕒 مدیریت یادآوری بازی‌ها
+    # -----------------------------
+
+    def create_match_reminder(self, user_id: int, fixture_id: int, team_id: int,
+                              team_name: str, opponent_team_id: int,
+                              opponent_team_name: str, league_id: int,
+                              league_name: str, match_datetime: datetime.datetime,
+                              reminder_datetime: datetime.datetime,
+                              extra_info: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
+        """ایجاد یادآور بازی برای یک کاربر"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                '''
+                INSERT INTO sports_match_reminders
+                    (user_id, fixture_id, team_id, team_name, opponent_team_id,
+                     opponent_team_name, league_id, league_name, match_datetime,
+                     reminder_datetime, extra_info)
+                VALUES
+                    (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (user_id, fixture_id) DO NOTHING
+                ''',
+                (
+                    user_id, fixture_id, team_id, team_name,
+                    opponent_team_id, opponent_team_name,
+                    league_id, league_name,
+                    match_datetime, reminder_datetime,
+                    extra_info or {}
+                )
+            )
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return False, "این بازی قبلاً در لیست یادآور شما ثبت شده است"
+
+            conn.commit()
+            return True, "یادآوری بازی ثبت شد"
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در ایجاد یادآوری بازی برای کاربر {user_id}: {e}")
+            return False, "خطا در ثبت یادآوری"
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def get_pending_match_reminders(self, before_datetime: datetime.datetime) -> List[Dict[str, Any]]:
+        """دریافت یادآوری‌های در انتظار تا زمان مشخص"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+            cursor.execute(
+                '''
+                SELECT * FROM sports_match_reminders
+                WHERE status = 'pending' AND reminder_datetime <= %s
+                ORDER BY reminder_datetime ASC
+                ''',
+                (before_datetime,)
+            )
+
+            reminders = cursor.fetchall()
+            return [dict(row) for row in reminders]
+
+        except Exception as e:
+            logger.error(f"❌ خطا در دریافت یادآوری‌های در انتظار: {e}")
+            return []
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def mark_match_reminder_sent(self, reminder_id: int) -> bool:
+        """علامت‌گذاری یادآوری به عنوان ارسال‌شده"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                '''
+                UPDATE sports_match_reminders
+                SET status = 'sent', sent_at = NOW()
+                WHERE id = %s
+                ''',
+                (reminder_id,)
+            )
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return False
+
+            conn.commit()
+            return True
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در به‌روزرسانی وضعیت یادآوری {reminder_id}: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def cancel_match_reminder(self, reminder_id: int) -> bool:
+        """لغو یادآوری"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                '''
+                UPDATE sports_match_reminders
+                SET status = 'cancelled'
+                WHERE id = %s
+                ''',
+                (reminder_id,)  # Fixed the parameter tuple here
+            )
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return False
+
+            conn.commit()
+            return True
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در لغو یادآوری {reminder_id}: {e}")
+            return False
         finally:
             if conn:
                 cursor.close()

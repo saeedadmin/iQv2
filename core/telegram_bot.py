@@ -13,8 +13,10 @@ Telegram Bot پیشرفته با پنل ادمین و مدیریت کاربرا�
 import logging
 import asyncio
 import datetime
+import json
 import os
 import re
+import difflib
 import requests
 import weakref
 from aiohttp import web, ClientSession
@@ -25,6 +27,7 @@ from telegram.ext import (Application, CommandHandler, ContextTypes,
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
+from typing import Any, Dict, List, Optional
 
 # Load environment variables
 load_dotenv()
@@ -44,6 +47,7 @@ from handlers.public import (
     get_ai_chat_mode_markup,
     get_crypto_menu_markup,
     get_sports_menu_markup,
+    get_sports_reminder_menu_markup,
     PublicMenuManager
 )
 from core.logger_system import bot_logger
@@ -122,6 +126,10 @@ if TRADINGVIEW_AVAILABLE and TradingViewAnalysisFetcher:
     tradingview_fetcher = TradingViewAnalysisFetcher()
 else:
     tradingview_fetcher = None
+
+SPORTS_REMINDER_STATE_KEY = "sports_reminder_state"
+SPORTS_REMINDER_CANCEL_WORDS = {"انصراف", "لغو", "cancel", "Cancel"}
+TEHRAN_TZ = pytz.timezone('Asia/Tehran')
 
 # متغیرهای مکالمه
 (BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION, TRADINGVIEW_ANALYSIS) = range(4)
@@ -462,7 +470,51 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         else:
             await update.message.reply_text("🔧 ربات در حال تعمیر است. لطفاً بعداً تلاش کنید.")
         return
-    
+
+    elif message_text == "⏰ یادآوری بازی":
+        bot_logger.log_user_action(user.id, "SPORTS_REMINDER_MENU", "باز کردن منوی یادآوری")
+        await send_sports_reminder_menu(update, context)
+        return
+
+    elif message_text == "⚙️ تنظیمات یادآوری":
+        bot_logger.log_user_action(user.id, "SPORTS_REMINDER_SETTINGS", "نمایش تنظیمات یادآوری")
+        await handle_sports_reminder_settings(update, context)
+        return
+
+    elif message_text == "📋 یادآوری‌های من":
+        bot_logger.log_user_action(user.id, "SPORTS_REMINDER_LIST", "درخواست لیست یادآوری‌ها")
+        await handle_sports_reminder_list(update, context)
+        return
+
+    elif message_text == "🔙 بازگشت به ورزش":
+        context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+        await send_sports_main_menu(update)
+        return
+
+    reminder_state = context.user_data.get(SPORTS_REMINDER_STATE_KEY)
+    if reminder_state:
+        mode = reminder_state.get('mode')
+        if mode == 'await_team_name':
+            processed = await process_team_selection(update, context, reminder_state, user_data)
+            if processed:
+                return
+
+    if message_text.startswith("حذف "):
+        team_to_remove = message_text.replace("حذف ", "", 1).strip()
+        if team_to_remove:
+            success, msg = db_manager.remove_sports_favorite_team(user.id, team_to_remove)
+            if success:
+                bot_logger.log_user_action(user.id, "SPORTS_TEAM_REMOVED", team_to_remove)
+            await update.message.reply_text(msg)
+
+            if success:
+                favorites = db_manager.get_sports_favorite_teams(user.id)
+                await update.message.reply_text(
+                    build_sports_settings_message(favorites),
+                    reply_markup=build_sports_league_keyboard()
+                )
+            return
+
     # اضافه/به‌روزرسانی کاربر در دیتابیس
     db_manager.add_user(
         user_id=user.id,
@@ -1017,6 +1069,420 @@ async def send_scheduled_news(context: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         logger.error(f"❌ خطای کلی در ارسال خودکار اخبار: {e}")
 
+
+def _chunk_list(items: List[Any], size: int) -> List[List[Any]]:
+    return [items[i:i + size] for i in range(0, len(items), size)]
+
+
+def build_sports_league_keyboard() -> InlineKeyboardMarkup:
+    league_keys = sports_handler.league_order + ['champions_league']
+    buttons: List[List[InlineKeyboardButton]] = []
+    current_row: List[InlineKeyboardButton] = []
+
+    for key in league_keys:
+        if key not in sports_handler.league_ids:
+            continue
+        label = sports_handler.league_display_names.get(key, key)
+        current_row.append(InlineKeyboardButton(label, callback_data=f"sports_reminder_league_{key}"))
+        if len(current_row) == 2:
+            buttons.append(current_row)
+            current_row = []
+
+    if current_row:
+        buttons.append(current_row)
+
+    return InlineKeyboardMarkup(buttons)
+
+
+def build_sports_settings_message(favorites: List[Dict[str, Any]]) -> str:
+    if not favorites:
+        summary = "📭 لیست یادآوری شما خالی است."
+    else:
+        lines = ["📋 تیم‌های ثبت‌شده در یادآوری:"]
+        for idx, fav in enumerate(favorites, start=1):
+            created_at = fav.get('created_at')
+            created_str = ''
+            if created_at:
+                try:
+                    if isinstance(created_at, datetime.datetime):
+                        created_local = created_at.astimezone(TEHRAN_TZ) if created_at.tzinfo else TEHRAN_TZ.localize(created_at)
+                        created_str = created_local.strftime('%Y/%m/%d')
+                except Exception:
+                    created_str = ''
+            date_part = f" - ثبت: {created_str}" if created_str else ''
+            lines.append(f"{idx}. {fav['team_name']} ({fav['league_name']}){date_part}")
+        summary = "\n".join(lines)
+
+    instructions = (
+        "\n\n➕ برای افزودن تیم: یکی از لیگ‌های زیر را انتخاب کنید و سپس نام تیم را دقیقاً مطابق نمایش ارسال کنید."
+        "\n➖ برای حذف تیم: پیام را به شکل `حذف نام تیم` ارسال کنید."
+        "\n❌ برای لغو افزودن تیم، عبارت 'لغو' را بفرستید."
+    )
+
+    return summary + instructions
+
+
+def build_user_reminders_message(reminders: List[Dict[str, Any]]) -> str:
+    if not reminders:
+        return "📭 هیچ یادآوری فعالی برای شما ثبت نشده است."
+
+    lines = ["⏰ یادآوری‌های فعال:"]
+    for idx, reminder in enumerate(reminders, start=1):
+        match_dt = reminder.get('match_datetime')
+        reminder_dt = reminder.get('reminder_datetime')
+
+        try:
+            if match_dt:
+                if match_dt.tzinfo is None:
+                    match_dt = pytz.UTC.localize(match_dt)
+                match_dt = match_dt.astimezone(TEHRAN_TZ)
+        except Exception:
+            pass
+
+        try:
+            if reminder_dt:
+                if reminder_dt.tzinfo is None:
+                    reminder_dt = pytz.UTC.localize(reminder_dt)
+                reminder_dt = reminder_dt.astimezone(TEHRAN_TZ)
+        except Exception:
+            pass
+
+        match_str = match_dt.strftime('%Y/%m/%d %H:%M') if match_dt else 'نامشخص'
+        reminder_str = reminder_dt.strftime('%Y/%m/%d %H:%M') if reminder_dt else match_str
+
+        lines.append(
+            f"{idx}. {reminder['team_name']} vs {reminder['opponent_team_name']}"
+            f"\n   لیگ: {reminder['league_name']}"
+            f"\n   شروع بازی: {match_str}"
+            f"\n   زمان یادآوری: {reminder_str}"
+        )
+
+    return "\n\n".join(lines)
+
+
+async def send_sports_main_menu(update: Update) -> None:
+    message = (
+        "⚽ **بخش ورزش**\n\n"
+        "به دنیای فوتبال خوش آمدید! ⚽️\n\n"
+        "🔍 **خدمات موجود:**\n"
+        "• 📰 **اخبار ورزشی:** آخرین اخبار فوتبال ایران و جهان\n"
+        "• 📅 **بازی‌های هفتگی:** برنامه بازی‌های لیگ ایران و اروپا\n"
+        "• 🔴 **بازی‌های زنده:** نتایج لحظه‌ای بازی‌ها"
+    )
+
+    await update.message.reply_text(
+        message,
+        reply_markup=get_sports_menu_markup(),
+        parse_mode='Markdown'
+    )
+
+
+async def send_sports_reminder_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+    message = (
+        "⏰ *یادآوری بازی*"
+        "\n\nبا این بخش می‌توانید تیم‌های محبوب خود را اضافه کنید تا ربات شروع بازی‌های آن‌ها را به شما یادآوری کند."
+        "\n\nاز دکمه‌های زیر برای مدیریت استفاده کنید."
+    )
+    await update.message.reply_text(
+        message,
+        reply_markup=get_sports_reminder_menu_markup(),
+        parse_mode='Markdown'
+    )
+
+
+async def handle_sports_reminder_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+    user = update.effective_user
+    favorites = db_manager.get_sports_favorite_teams(user.id)
+    message = build_sports_settings_message(favorites)
+    await update.message.reply_text(
+        message,
+        reply_markup=build_sports_league_keyboard()
+    )
+
+
+async def handle_sports_reminder_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user = update.effective_user
+    reminders = db_manager.get_user_match_reminders(user.id, include_sent=False)
+    message = build_user_reminders_message(reminders)
+    await update.message.reply_text(message)
+
+
+async def handle_sports_league_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    user = update.effective_user
+    data = query.data.replace('sports_reminder_league_', '', 1)
+    league_key = data
+
+    await query.answer()
+
+    if league_key not in sports_handler.league_ids:
+        await query.message.reply_text("❌ لیگ انتخابی معتبر نیست.")
+        return
+
+    league_name = sports_handler.league_display_names.get(league_key, league_key)
+
+    team_data = await sports_handler.get_league_teams(league_key)
+    if not team_data.get('success'):
+        error_message = team_data.get('error', 'خطا در دریافت تیم‌ها')
+        await query.message.reply_text(f"❌ {error_message}")
+        return
+
+    teams = team_data.get('teams', [])
+    if not teams:
+        await query.message.reply_text("⚠️ هیچ تیمی برای این لیگ یافت نشد.")
+        return
+
+    team_names = [team['team_name'] for team in teams]
+    chunks = _chunk_list(team_names, 25)
+    for chunk in chunks:
+        await query.message.reply_text("\n".join(chunk))
+
+    context.user_data[SPORTS_REMINDER_STATE_KEY] = {
+        'mode': 'await_team_name',
+        'league_key': league_key,
+        'league_name': league_name,
+        'teams': teams,
+        'requested_at': datetime.datetime.now().isoformat()
+    }
+
+    await query.message.reply_text(
+        "✍️ لطفاً نام تیم مورد نظر را دقیقاً همان‌طور که در فهرست مشاهده کردید ارسال کنید."
+        "\nبرای لغو، عبارت 'لغو' را بفرستید."
+    )
+
+
+async def process_team_selection(update: Update, context: ContextTypes.DEFAULT_TYPE, state: Dict[str, Any], user_record: Optional[Dict[str, Any]]) -> bool:
+    message_text = update.message.text.strip()
+
+    if message_text in SPORTS_REMINDER_CANCEL_WORDS:
+        context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+        await update.message.reply_text("✅ عملیات افزودن تیم لغو شد.")
+        return True
+
+    teams = state.get('teams', [])
+    team_match = next((team for team in teams if team['team_name'].lower() == message_text.lower()), None)
+
+    if not team_match:
+        suggestions = difflib.get_close_matches(message_text, [team['team_name'] for team in teams], n=3, cutoff=0.7)
+        suggestion_text = "\n".join(f"• {sugg}" for sugg in suggestions) if suggestions else ""
+        extra_hint = f"\n\nشاید منظور شما یکی از موارد زیر باشد:\n{suggestion_text}" if suggestion_text else ""
+        await update.message.reply_text(
+            "❌ تیم وارد شده در فهرست وجود ندارد. لطفاً دقیقاً مطابق فهرست ارسال کنید یا 'لغو' را بفرستید." + extra_hint
+        )
+        return True
+
+    league_key = state.get('league_key')
+    league_id = sports_handler.league_ids.get(league_key)
+    league_name = state.get('league_name', league_key)
+
+    if not league_id:
+        await update.message.reply_text("❌ خطا در تشخیص لیگ. لطفاً دوباره گزینه لیگ را انتخاب کنید.")
+        context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+        return True
+
+    is_admin = bool(user_record and user_record.get('is_admin'))
+    success, msg = db_manager.add_sports_favorite_team(
+        update.effective_user.id,
+        league_id,
+        league_name,
+        team_match['team_id'],
+        team_match['team_name'],
+        max_teams=10,
+        bypass_limit=is_admin
+    )
+
+    await update.message.reply_text(msg)
+
+    if success:
+        bot_logger.log_user_action(update.effective_user.id, "SPORTS_TEAM_ADDED", team_match['team_name'])
+        context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+        favorites = db_manager.get_sports_favorite_teams(update.effective_user.id)
+        settings_message = build_sports_settings_message(favorites)
+        await update.message.reply_text(
+            settings_message,
+            reply_markup=build_sports_league_keyboard()
+        )
+
+    return True
+
+
+def serialize_weekly_fixtures_for_cache(fixtures: Dict[str, Any]) -> Dict[str, Any]:
+    leagues = {}
+    for key, league in fixtures.get('leagues', {}).items():
+        matches_serialized = []
+        for match in league.get('matches', []):
+            match_dt = match.get('datetime')
+            match_iso = match_dt.isoformat() if isinstance(match_dt, datetime.datetime) else None
+            matches_serialized.append({
+                'fixture_id': match.get('fixture_id'),
+                'home_team_id': match.get('home_team_id'),
+                'home_team': match.get('home_team'),
+                'away_team_id': match.get('away_team_id'),
+                'away_team': match.get('away_team'),
+                'league_id': match.get('league_id'),
+                'league_name': match.get('league_name'),
+                'datetime': match_iso,
+                'status': match.get('status'),
+                'venue': match.get('venue')
+            })
+
+        leagues[key] = {
+            'name': league.get('name'),
+            'count': league.get('count'),
+            'matches': matches_serialized
+        }
+
+    return {
+        'success': fixtures.get('success', False),
+        'total_matches': fixtures.get('total_matches', 0),
+        'period': fixtures.get('period', ''),
+        'leagues': leagues
+    }
+
+
+def format_match_reminder_message(reminder: Dict[str, Any]) -> str:
+    match_dt = reminder.get('match_datetime')
+    if match_dt:
+        if match_dt.tzinfo is None:
+            match_dt = pytz.UTC.localize(match_dt)
+        match_dt_local = match_dt.astimezone(TEHRAN_TZ)
+        match_time_str = match_dt_local.strftime('%Y/%m/%d %H:%M')
+    else:
+        match_time_str = 'نامشخص'
+
+    league_name = reminder.get('league_name', 'نامشخص')
+    team_name = reminder.get('team_name', 'تیم شما')
+    opponent = reminder.get('opponent_team_name', 'حریف')
+
+    message = (
+        f"⏰ *یادآوری بازی*\n\n"
+        f"🏆 لیگ: {league_name}\n"
+        f"⚔️ {team_name} vs {opponent}\n"
+        f"🕒 زمان شروع: {match_time_str}\n\n"
+        f"موفق باشید!"
+    )
+
+    return message
+
+
+async def refresh_weekly_sports_reminders(app: Application) -> None:
+    try:
+        utc_now = datetime.datetime.now(pytz.UTC)
+        tehran_now = utc_now.astimezone(TEHRAN_TZ)
+
+        base_date = tehran_now
+        days_since_saturday = (base_date.weekday() + 2) % 7
+        week_start_dt = (base_date - datetime.timedelta(days=days_since_saturday)).date()
+        week_end_dt = week_start_dt + datetime.timedelta(days=6)
+
+        fixtures = await sports_handler.get_all_weekly_fixtures(base_date=tehran_now)
+        cache_payload = None
+
+        if not fixtures.get('success'):
+            logger.warning(f"⚠️ عدم موفقیت در دریافت فیکسچرهای هفتگی: {fixtures.get('error')}")
+            cached = db_manager.get_weekly_fixtures_cache(week_start_dt, week_end_dt)
+            if cached and cached.get('payload'):
+                fixtures = cached['payload']
+                logger.info("♻️ استفاده از کش فیکسچرهای هفتگی قبلی")
+            else:
+                return
+        else:
+            cache_payload = serialize_weekly_fixtures_for_cache(fixtures)
+            db_manager.upsert_weekly_fixtures_cache(week_start_dt, week_end_dt, cache_payload)
+
+        users = db_manager.get_users_with_sports_favorites()
+        if not users:
+            logger.info("ℹ️ کاربری برای یادآوری‌های ورزشی ثبت نشده است.")
+            return
+
+        leagues_data = fixtures.get('leagues', {})
+
+        for user_id in users:
+            favorites = db_manager.get_sports_favorite_teams(user_id)
+            if not favorites:
+                continue
+
+            for fav in favorites:
+                db_manager.delete_match_reminders_for_team(user_id, fav['team_id'])
+
+            created_count = 0
+
+            for league_key, league_info in leagues_data.items():
+                matches = league_info.get('matches', [])
+                for match in matches:
+                    match_dt = match.get('datetime')
+                    match_dt_utc = None
+                    if isinstance(match_dt, str):
+                        try:
+                            match_dt_utc = datetime.datetime.fromisoformat(match_dt)
+                            if match_dt_utc.tzinfo is None:
+                                match_dt_utc = pytz.UTC.localize(match_dt_utc)
+                        except Exception:
+                            match_dt_utc = None
+                    elif isinstance(match_dt, datetime.datetime):
+                        match_dt_utc = match_dt if match_dt.tzinfo else pytz.UTC.localize(match_dt)
+
+                    for fav in favorites:
+                        team_id = fav['team_id']
+                        if match.get('home_team_id') != team_id and match.get('away_team_id') != team_id:
+                            continue
+
+                        opponent_team_id = match['away_team_id'] if match.get('home_team_id') == team_id else match.get('home_team_id')
+                        opponent_team_name = match['away_team'] if match.get('home_team_id') == team_id else match['home_team']
+
+                        extra_info = {
+                            'league_key': league_key,
+                            'opponent_id': opponent_team_id
+                        }
+
+                        reminder_dt = match_dt_utc
+
+                        success, _ = db_manager.create_match_reminder(
+                            user_id=user_id,
+                            fixture_id=match.get('fixture_id'),
+                            team_id=team_id,
+                            team_name=fav['team_name'],
+                            opponent_team_id=opponent_team_id,
+                            opponent_team_name=opponent_team_name,
+                            league_id=match.get('league_id'),
+                            league_name=match.get('league_name'),
+                            match_datetime=match_dt_utc,
+                            reminder_datetime=reminder_dt,
+                            extra_info=extra_info
+                        )
+
+                        if success:
+                            created_count += 1
+
+            logger.info(f"✅ یادآوری‌های جدید برای کاربر {user_id} ثبت شد: {created_count}")
+
+    except Exception as e:
+        logger.error(f"❌ خطا در به‌روزرسانی یادآوری‌های ورزشی: {e}")
+
+
+async def process_due_sports_reminders(app: Application) -> None:
+    try:
+        now_utc = datetime.datetime.now(pytz.UTC)
+        due_reminders = db_manager.get_pending_match_reminders(now_utc)
+        if not due_reminders:
+            return
+
+        for reminder in due_reminders:
+            message = format_match_reminder_message(reminder)
+            try:
+                await app.bot.send_message(
+                    chat_id=reminder['user_id'],
+                    text=message,
+                    parse_mode='Markdown'
+                )
+                db_manager.mark_match_reminder_sent(reminder['id'])
+            except Exception as send_error:
+                logger.error(f"❌ خطا در ارسال یادآوری بازی برای کاربر {reminder['user_id']}: {send_error}")
+
+    except Exception as e:
+        logger.error(f"❌ خطا در پردازش یادآوری‌های ورزشی: {e}")
 # Handler برای پیام‌های متنی (echo)
 async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """راهنمایی برای پیام‌های ناشناخته"""
@@ -1051,7 +1517,10 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         "🔙 بازگشت به منوی اصلی", "📺 اخبار عمومی", "📰 مدیریت اشتراک اخبار",
         "💬 چت با هوش مصنوعی", "📰 اخبار هوش مصنوعی", "🔙 بازگشت به منوی AI",
         "📊 قیمت‌های لحظه‌ای", "📰 اخبار کریپتو", "📈 تحلیل TradingView",
-        "😨 شاخص ترس و طمع", "❌ خروج از چت"
+        "😨 شاخص ترس و طمع", "❌ خروج از چت",
+        "⚽ بخش ورزش", "📰 اخبار ورزشی", "📅 بازی‌های هفتگی",
+        "🔴 بازی‌های زنده", "⏰ یادآوری بازی", "⚙️ تنظیمات یادآوری",
+        "📋 یادآوری‌های من", "🔙 بازگشت به ورزش"
     ]
     
     # 🚨 بررسی حالت چت با AI - اگر کاربر در چت است، پیام را به AI بفرستید
@@ -1392,29 +1861,8 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
     
     elif message_text == "⚽ بخش ورزش":
-        # نمایش منوی ورزش
         bot_logger.log_user_action(user.id, "SPORTS_MENU_ACCESS", "ورود به بخش ورزش")
-        
-        message = """
-⚽ **بخش ورزش**
-
-به دنیای فوتبال خوش آمدید! ⚽️
-
-🔍 **خدمات موجود:**
-• 📰 **اخبار ورزشی:** آخرین اخبار فوتبال ایران و جهان
-• 📅 **بازی‌های هفتگی:** برنامه بازی‌های لیگ ایران و اروپا
-• 🔴 **بازی‌های زنده:** نتایج لحظه‌ای بازی‌ها
-
-از دکمه‌های زیر استفاده کنید:
-        """
-        
-        reply_markup = get_sports_menu_markup()
-        
-        await update.message.reply_text(
-            message,
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
-        )
+        await send_sports_main_menu(update)
         return
     
     elif message_text == "📰 اخبار ورزشی":
@@ -2142,6 +2590,9 @@ async def main() -> None:
     
     # Handler برای منوی عمومی (callback queries)  
     application.add_handler(CallbackQueryHandler(public_menu.handle_public_callback, pattern="^(public_|crypto_)"))
+
+    # Handler برای لیگ‌های یادآوری ورزشی
+    application.add_handler(CallbackQueryHandler(handle_sports_league_callback, pattern="^sports_reminder_league_"))
     
     # Handler برای اشتراک اخبار (callback queries)
     application.add_handler(CallbackQueryHandler(news_subscription_callback, pattern="^news_sub_"))
@@ -2356,6 +2807,26 @@ async def main() -> None:
         args=[application],
         id='evening_news',
         name='ارسال اخبار شب',
+        replace_existing=True
+    )
+
+    # اضافه کردن job هفتگی برای به‌روزرسانی یادآوری بازی‌ها (جمعه ساعت 02:00 به وقت تهران)
+    scheduler.add_job(
+        refresh_weekly_sports_reminders,
+        trigger=CronTrigger(day_of_week='fri', hour=2, minute=0, timezone='Asia/Tehran'),
+        args=[application],
+        id='sports_weekly_refresh',
+        name='به‌روزرسانی یادآوری‌های ورزشی',
+        replace_existing=True
+    )
+
+    # اضافه کردن job دوره‌ای برای ارسال یادآوری‌های رسیده (هر 5 دقیقه)
+    scheduler.add_job(
+        process_due_sports_reminders,
+        trigger=CronTrigger(minute='*/5', timezone='Asia/Tehran'),
+        args=[application],
+        id='sports_reminder_dispatch',
+        name='ارسال یادآوری‌های ورزشی',
         replace_existing=True
     )
     

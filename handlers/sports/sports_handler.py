@@ -13,7 +13,7 @@ import logging
 import requests
 import feedparser
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import os
 from bs4 import BeautifulSoup
 import pytz
@@ -56,10 +56,28 @@ class SportsHandler:
             'ligue_1': 61,           # Ligue 1 (فرانسه)
             'champions_league': 2    # UEFA Champions League
         }
+
+        self.league_display_names = {
+            'iran': '🇮🇷 لیگ برتر ایران',
+            'la_liga': '🇪🇸 لالیگا (اسپانیا)',
+            'premier_league': '🏴 لیگ برتر (انگلیس)',
+            'serie_a': '🇮🇹 سری آ (ایتالیا)',
+            'bundesliga': '🇩🇪 بوندسلیگا (آلمان)',
+            'ligue_1': '🇫🇷 لیگ یک (فرانسه)',
+            'champions_league': '🏆 لیگ قهرمانان اروپا'
+        }
+
+        self.league_order = ['iran', 'la_liga', 'premier_league', 'serie_a', 'bundesliga', 'ligue_1']
         
         self.timeout = 15
-        self.current_season = datetime.now().year
-    
+        self.current_season = self._get_current_season()
+        self.team_cache: Dict[str, Dict[str, Any]] = {}
+
+    def _get_current_season(self) -> int:
+        """محاسبه فصل جاری برای لیگ‌ها (لیگ‌های اروپایی از تابستان آغاز می‌شوند)"""
+        now = datetime.now()
+        return now.year - 1 if now.month < 7 else now.year
+
     def get_current_api_key(self) -> str:
         """دریافت کلید API فعلی با بررسی محدودیت"""
         if not self.api_keys:
@@ -72,6 +90,12 @@ class SportsHandler:
         
         return ''  # همه کلیدها به محدودیت خوردن
     
+    def _invalidate_team_cache(self, league_key: Optional[str] = None) -> None:
+        if league_key:
+            self.team_cache.pop(league_key, None)
+        else:
+            self.team_cache.clear()
+
     def handle_api_response(self, response):
         """بررسی پاسخ API و مدیریت محدودیت"""
         if response.status_code == 429:  # Too Many Requests
@@ -106,6 +130,103 @@ class SportsHandler:
         else:
             return "❌ **یک کلید API به محدودیت رسید!**\n\n🔄 در حال استفاده از کلید دیگر..."
     
+    async def get_league_teams(self, league_key: str) -> Dict[str, Any]:
+        """دریافت تیم‌های یک لیگ با استفاده از API (همراه با کش)"""
+        league_id = self.league_ids.get(league_key)
+        if not league_id:
+            return {
+                'success': False,
+                'error': f'لیگ {league_key} پشتیبانی نمی‌شود'
+            }
+
+        # استفاده از کش 12 ساعته
+        cached = self.team_cache.get(league_key)
+        if cached:
+            fetched_at: datetime = cached['fetched_at']
+            if (datetime.now() - fetched_at).total_seconds() <= 12 * 3600:
+                return {
+                    'success': True,
+                    'teams': cached['teams'],
+                    'cached': True
+                }
+
+        if not self.api_keys:
+            return {
+                'success': False,
+                'error': 'هیچ کلید API برای دریافت تیم‌ها موجود نیست'
+            }
+
+        # تلاش با کلیدهای مختلف
+        for api_index in range(len(self.api_keys)):
+            if self.api_limits[api_index]['exhausted']:
+                continue
+
+            current_key = self.api_keys[api_index]
+            self.current_api_index = api_index
+            self.football_api_key = current_key
+
+            headers = {
+                'x-rapidapi-key': current_key,
+                'x-rapidapi-host': 'v3.football.api-sports.io'
+            }
+
+            params = {
+                'league': league_id,
+                'season': self.current_season
+            }
+
+            try:
+                response = requests.get(
+                    f"{self.football_api_base}/teams",
+                    headers=headers,
+                    params=params,
+                    timeout=self.timeout
+                )
+
+                if not self.handle_api_response(response):
+                    self.api_limits[self.current_api_index]['exhausted'] = True
+                    continue
+
+                if response.status_code == 200:
+                    data = response.json()
+                    teams_raw = data.get('response', [])
+
+                    teams = []
+                    for entry in teams_raw:
+                        team_info = entry.get('team') or {}
+                        team_id = team_info.get('id')
+                        name = team_info.get('name')
+                        if not team_id or not name:
+                            continue
+                        teams.append({
+                            'team_id': team_id,
+                            'team_name': name
+                        })
+
+                    teams.sort(key=lambda t: t['team_name'])
+
+                    self.team_cache[league_key] = {
+                        'teams': teams,
+                        'fetched_at': datetime.now()
+                    }
+
+                    return {
+                        'success': True,
+                        'teams': teams,
+                        'cached': False
+                    }
+                else:
+                    logger.warning(f"❌ خطا در دریافت تیم‌های لیگ {league_key}: {response.status_code}")
+
+            except Exception as e:
+                logger.error(f"❌ استثنا در دریافت تیم‌های لیگ {league_key}: {e}")
+                continue
+
+        return {
+            'success': False,
+            'error': 'امکان دریافت لیست تیم‌ها وجود ندارد. لطفاً بعداً امتحان کنید.'
+        }
+
     async def get_persian_news(self, limit: int = 10) -> Dict[str, Any]:
         """دریافت اخبار ورزشی از منابع فارسی"""
         try:
@@ -175,7 +296,7 @@ class SportsHandler:
                 'news': []
             }
     
-    async def get_all_weekly_fixtures(self) -> Dict[str, Any]:
+    async def get_all_weekly_fixtures(self, base_date: Optional[datetime] = None) -> Dict[str, Any]:
         """دریافت برنامه بازی‌های هفتگی همه لیگ‌های مهم"""
         try:
             logger.info("🔄 درخواست فیکسچرهای هفتگی همه لیگ‌ها...")
@@ -191,7 +312,7 @@ class SportsHandler:
                 }
             
             # محاسبه تاریخ شروع و پایان هفته
-            today = datetime.now()
+            today = base_date or datetime.now()
             days_since_saturday = (today.weekday() + 2) % 7
             saturday = today - timedelta(days=days_since_saturday)
             friday = saturday + timedelta(days=6)
@@ -304,7 +425,12 @@ class SportsHandler:
                             match_date = datetime.fromisoformat(fixture['date'].replace('Z', '+00:00'))
                             
                             match_info = {
+                                'fixture_id': fixture['id'],
+                                'league_id': match['league']['id'],
+                                'league_name': match['league']['name'],
+                                'home_team_id': teams['home']['id'],
                                 'home_team': teams['home']['name'],
+                                'away_team_id': teams['away']['id'],
                                 'away_team': teams['away']['name'],
                                 'date': fixture['date'],
                                 'datetime': match_date,
