@@ -13,9 +13,10 @@ import logging
 import requests
 import feedparser
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, List
 import os
 from bs4 import BeautifulSoup
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,124 @@ class SportsHandler:
                 'success': False,
                 'error': str(e),
                 'news': []
+            }
+    
+    async def get_all_weekly_fixtures(self) -> Dict[str, Any]:
+        """دریافت برنامه بازی‌های هفتگی همه لیگ‌های مهم"""
+        try:
+            logger.info("🔄 درخواست فیکسچرهای هفتگی همه لیگ‌ها...")
+            
+            if not self.football_api_key:
+                return {
+                    'success': False,
+                    'error': 'نیاز به کلید API',
+                    'leagues': {},
+                    'info': 'لطفاً FOOTBALL_DATA_API_KEY را تنظیم کنید'
+                }
+            
+            # محاسبه تاریخ شروع و پایان هفته
+            today = datetime.now()
+            days_since_saturday = (today.weekday() + 2) % 7
+            saturday = today - timedelta(days=days_since_saturday)
+            friday = saturday + timedelta(days=6)
+            
+            date_from = saturday.strftime('%Y-%m-%d')
+            date_to = friday.strftime('%Y-%m-%d')
+            
+            headers = {
+                'x-rapidapi-key': self.football_api_key,
+                'x-rapidapi-host': 'v3.football.api-sports.io'
+            }
+            
+            # لیگ‌های مهم به ترتیب اولویت
+            important_leagues = [
+                ('iran', 290, '🇮🇷 لیگ برتر ایران'),
+                ('la_liga', 140, '🇪🇸 لالیگا (اسپانیا)'),
+                ('premier_league', 39, '🏴󠁧󠁢󠁥󠁮󠁧󠁿 لیگ برتر (انگلیس)'),
+                ('serie_a', 135, '🇮🇹 سری آ (ایتالیا)'),
+                ('bundesliga', 78, '🇩🇪 بوندسلیگا (آلمان)'),
+                ('ligue_1', 61, '🇫🇷 لیگ یک (فرانسه)'),
+            ]
+            
+            # دریافت بازی‌ها برای هر روز
+            all_day_matches = {}
+            current_date = saturday
+            
+            while current_date <= friday:
+                date_str = current_date.strftime('%Y-%m-%d')
+                
+                try:
+                    response = requests.get(
+                        f"{self.football_api_base}/fixtures",
+                        headers=headers,
+                        params={'date': date_str},
+                        timeout=self.timeout
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        all_day_matches[date_str] = data.get('response', [])
+                except Exception as e:
+                    logger.warning(f"خطا در دریافت بازی‌های {date_str}: {e}")
+                    all_day_matches[date_str] = []
+                
+                current_date += timedelta(days=1)
+            
+            # سازماندهی بازی‌ها به تفکیک لیگ
+            leagues_data = {}
+            
+            for league_key, league_id, league_name in important_leagues:
+                league_matches = []
+                
+                for date_str, day_matches in all_day_matches.items():
+                    for match in day_matches:
+                        if match['league']['id'] == league_id:
+                            fixture = match['fixture']
+                            teams = match['teams']
+                            goals = match['goals']
+                            
+                            # تبدیل به datetime برای روز هفته
+                            match_date = datetime.fromisoformat(fixture['date'].replace('Z', '+00:00'))
+                            
+                            match_info = {
+                                'home_team': teams['home']['name'],
+                                'away_team': teams['away']['name'],
+                                'date': fixture['date'],
+                                'datetime': match_date,
+                                'status': fixture['status']['short'],
+                                'venue': fixture['venue']['name'] if fixture.get('venue') else 'نامشخص',
+                                'score': {
+                                    'home': goals['home'],
+                                    'away': goals['away']
+                                } if goals['home'] is not None else None
+                            }
+                            league_matches.append(match_info)
+                
+                if league_matches:
+                    # مرتب کردن بر اساس تاریخ
+                    league_matches.sort(key=lambda x: x['datetime'])
+                    leagues_data[league_key] = {
+                        'name': league_name,
+                        'matches': league_matches,
+                        'count': len(league_matches)
+                    }
+            
+            total_matches = sum(data['count'] for data in leagues_data.values())
+            
+            logger.info(f"✅ {total_matches} بازی از {len(leagues_data)} لیگ دریافت شد")
+            return {
+                'success': True,
+                'leagues': leagues_data,
+                'total_matches': total_matches,
+                'period': f'{date_from} تا {date_to}'
+            }
+        
+        except Exception as e:
+            logger.error(f"❌ خطا در get_all_weekly_fixtures: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'leagues': {}
             }
     
     async def get_weekly_fixtures(self, league: str = 'iran') -> Dict[str, Any]:
@@ -328,6 +447,75 @@ class SportsHandler:
                 message += f"   🔗 [مطالعه بیشتر]({item['link']})\n"
             message += "\n"
         
+        return message
+    
+    def format_all_fixtures_message(self, all_fixtures_data: Dict[str, Any]) -> str:
+        """فرمت کردن پیام برنامه بازی‌های همه لیگ‌ها"""
+        if not all_fixtures_data.get('success'):
+            error = all_fixtures_data.get('error', 'خطای ناشناخته')
+            message = f"❌ خطا در دریافت برنامه بازی‌ها:\n{error}"
+            if all_fixtures_data.get('info'):
+                message += f"\n\n💡 {all_fixtures_data['info']}"
+            return message
+        
+        leagues_data = all_fixtures_data.get('leagues', {})
+        if not leagues_data:
+            return "❌ هیچ بازی‌ای در این هفته یافت نشد"
+        
+        # نقشه روزهای هفته به فارسی
+        weekday_fa = {
+            0: 'دوشنبه',
+            1: 'سه‌شنبه',
+            2: 'چهارشنبه',
+            3: 'پنج‌شنبه',
+            4: 'جمعه',
+            5: 'شنبه',
+            6: 'یک‌شنبه'
+        }
+        
+        message = f"⚽ **برنامه بازی‌های هفتگی**\n"
+        message += f"📅 {all_fixtures_data.get('period', '')}\n"
+        message += f"🎯 جمع: {all_fixtures_data.get('total_matches', 0)} بازی\n"
+        message += "\n" + "=" * 40 + "\n\n"
+        
+        # نمایش به ترتیب اولویت (ایران اول)
+        league_order = ['iran', 'la_liga', 'premier_league', 'serie_a', 'bundesliga', 'ligue_1']
+        
+        for league_key in league_order:
+            if league_key not in leagues_data:
+                continue
+            
+            league_info = leagues_data[league_key]
+            message += f"{league_info['name']}\n"
+            message += f"🎯 {league_info['count']} بازی\n\n"
+            
+            for match in league_info['matches']:
+                # تبدیل به تایم‌زون تهران
+                match_dt_utc = match['datetime']
+                tehran_tz = pytz.timezone('Asia/Tehran')
+                match_dt = match_dt_utc.astimezone(tehran_tz)
+                
+                weekday = weekday_fa[match_dt.weekday()]
+                date_str = match_dt.strftime('%m/%d')
+                time_str = match_dt.strftime('%H:%M')
+                
+                # نمایش بازی
+                if match.get('score'):
+                    # بازی انجام شده
+                    score_h = match['score']['home']
+                    score_a = match['score']['away']
+                    message += f"🟢 {match['home_team']} {score_h}-{score_a} {match['away_team']}\n"
+                    message += f"   📅 {weekday} {date_str} - ✅ تمام شده\n"
+                else:
+                    # بازی آینده
+                    message += f"⚪ {match['home_team']} vs {match['away_team']}\n"
+                    message += f"   📅 {weekday} {date_str} - ⏰ {time_str}\n"
+                
+                message += "\n"
+            
+            message += "=" * 40 + "\n\n"
+        
+        message += "📊 منبع: API-Football"
         return message
     
     def format_fixtures_message(self, fixtures_data: Dict[str, Any]) -> str:

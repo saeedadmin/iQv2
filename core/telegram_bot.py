@@ -1442,28 +1442,18 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     elif message_text == "📅 بازی‌های هفتگی":
         bot_logger.log_user_action(user.id, "SPORTS_FIXTURES_REQUEST", "درخواست برنامه بازی‌ها")
         
-        loading_message = await update.message.reply_text("🔄 در حال دریافت برنامه بازی‌ها...")
+        loading_message = await update.message.reply_text("🔄 در حال دریافت برنامه بازی‌های همه لیگ‌ها...")
         
         try:
-            # دریافت لیگ ایران
-            iran_result = await sports_handler.get_weekly_fixtures('iran')
-            iran_message = sports_handler.format_fixtures_message(iran_result)
-            
-            # دریافت لالیگا
-            laliga_result = await sports_handler.get_weekly_fixtures('la_liga')
-            laliga_message = sports_handler.format_fixtures_message(laliga_result)
+            # دریافت همه لیگ‌ها یکجا
+            all_fixtures = await sports_handler.get_all_weekly_fixtures()
+            fixtures_message = sports_handler.format_all_fixtures_message(all_fixtures)
             
             await loading_message.delete()
             
-            # ارسال لیگ ایران
+            # ارسال در یک پیام
             await update.message.reply_text(
-                iran_message,
-                parse_mode='Markdown'
-            )
-            
-            # ارسال لالیگا
-            await update.message.reply_text(
-                laliga_message,
+                fixtures_message,
                 parse_mode='Markdown'
             )
         except Exception as e:
