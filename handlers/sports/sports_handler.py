@@ -24,24 +24,26 @@ class SportsHandler:
     
     def __init__(self):
         """مقداردهی handler ورزش"""
-        # Football-Data.org API (کاملاً رایگان - 10 req/min)
+        # API-Football (100 req/day - رایگان)
         self.football_api_key = os.getenv('FOOTBALL_DATA_API_KEY', '')
-        self.football_api_base = "https://api.football-data.org/v4"
+        self.football_api_base = "https://v3.football.api-sports.io"
         
         # RSS Feeds برای اخبار فارسی
         self.varzesh3_rss = "https://www.varzesh3.com/rss/all"
         
-        # League IDs
+        # League IDs (API-Football)
         self.league_ids = {
-            'la_liga': 'PD',      # La Liga (اسپانیا)
-            'iran': None,         # لیگ برتر ایران (در API های بین‌المللی نیست)
-            'premier_league': 'PL',  # لیگ برتر انگلیس
-            'bundesliga': 'BL1',     # بوندسلیگا
-            'serie_a': 'SA',         # سری آ
-            'ligue_1': 'FL1'         # لیگ یک فرانسه
+            'iran': 290,             # Persian Gulf Pro League
+            'la_liga': 140,          # La Liga (اسپانیا)
+            'premier_league': 39,    # Premier League (انگلیس)
+            'bundesliga': 78,        # Bundesliga (آلمان)
+            'serie_a': 135,          # Serie A (ایتالیا)
+            'ligue_1': 61,           # Ligue 1 (فرانسه)
+            'champions_league': 2    # UEFA Champions League
         }
         
         self.timeout = 15
+        self.current_season = datetime.now().year
     
     async def get_persian_news(self, limit: int = 10) -> Dict[str, Any]:
         """دریافت اخبار ورزشی از منابع فارسی"""
@@ -112,7 +114,7 @@ class SportsHandler:
                 'news': []
             }
     
-    async def get_weekly_fixtures(self, league: str = 'la_liga') -> Dict[str, Any]:
+    async def get_weekly_fixtures(self, league: str = 'iran') -> Dict[str, Any]:
         """دریافت برنامه بازی‌های هفتگی (شنبه تا جمعه)"""
         try:
             logger.info(f"🔄 درخواست فیکسچرهای هفتگی {league}...")
@@ -125,26 +127,35 @@ class SportsHandler:
                     'matches': []
                 }
             
+            if not self.football_api_key:
+                return {
+                    'success': False,
+                    'error': 'نیاز به کلید API',
+                    'matches': [],
+                    'info': 'لطفاً FOOTBALL_DATA_API_KEY را تنظیم کنید'
+                }
+            
             # محاسبه تاریخ شروع و پایان هفته (شنبه تا جمعه)
             today = datetime.now()
-            # پیدا کردن شنبه این هفته
-            days_since_saturday = (today.weekday() + 2) % 7  # شنبه = 0
+            days_since_saturday = (today.weekday() + 2) % 7
             saturday = today - timedelta(days=days_since_saturday)
             friday = saturday + timedelta(days=6)
             
-            # فرمت تاریخ برای API
             date_from = saturday.strftime('%Y-%m-%d')
             date_to = friday.strftime('%Y-%m-%d')
             
-            url = f"{self.football_api_base}/competitions/{league_id}/matches"
+            url = f"{self.football_api_base}/fixtures"
             params = {
-                'dateFrom': date_from,
-                'dateTo': date_to
+                'league': str(league_id),
+                'season': str(self.current_season),
+                'from': date_from,
+                'to': date_to
             }
             
-            headers = {}
-            if self.football_api_key:
-                headers['X-Auth-Token'] = self.football_api_key
+            headers = {
+                'x-rapidapi-key': self.football_api_key,
+                'x-rapidapi-host': 'v3.football.api-sports.io'
+            }
             
             response = requests.get(
                 url,
@@ -157,16 +168,21 @@ class SportsHandler:
                 data = response.json()
                 matches = []
                 
-                for match in data.get('matches', []):
+                for match in data.get('response', []):
+                    fixture = match['fixture']
+                    teams = match['teams']
+                    goals = match['goals']
+                    
                     match_info = {
-                        'home_team': match['homeTeam']['name'],
-                        'away_team': match['awayTeam']['name'],
-                        'date': match['utcDate'],
-                        'status': match['status'],
+                        'home_team': teams['home']['name'],
+                        'away_team': teams['away']['name'],
+                        'date': fixture['date'],
+                        'status': fixture['status']['short'],
+                        'venue': fixture['venue']['name'] if fixture.get('venue') else 'نامشخص',
                         'score': {
-                            'home': match['score']['fullTime']['home'],
-                            'away': match['score']['fullTime']['away']
-                        } if match['score']['fullTime']['home'] is not None else None
+                            'home': goals['home'],
+                            'away': goals['away']
+                        } if goals['home'] is not None else None
                     }
                     matches.append(match_info)
                 
@@ -179,15 +195,8 @@ class SportsHandler:
                     'period': f'{date_from} تا {date_to}'
                 }
             
-            elif response.status_code == 403:
-                return {
-                    'success': False,
-                    'error': 'نیاز به کلید API. لطفاً FOOTBALL_DATA_API_KEY را در .env تنظیم کنید',
-                    'matches': [],
-                    'info': 'برای دریافت کلید رایگان به https://www.football-data.org مراجعه کنید'
-                }
-            
             else:
+                logger.error(f"❌ خطای API: {response.status_code} - {response.text[:200]}")
                 return {
                     'success': False,
                     'error': f'خطای API: {response.status_code}',
@@ -207,12 +216,21 @@ class SportsHandler:
         try:
             logger.info("🔄 درخواست بازی‌های زنده...")
             
-            url = f"{self.football_api_base}/matches"
-            params = {'status': 'IN_PLAY'}  # فقط بازی‌های در حال انجام
+            if not self.football_api_key:
+                return {
+                    'success': False,
+                    'error': 'نیاز به کلید API',
+                    'live_matches': [],
+                    'info': 'لطفاً FOOTBALL_DATA_API_KEY را تنظیم کنید'
+                }
             
-            headers = {}
-            if self.football_api_key:
-                headers['X-Auth-Token'] = self.football_api_key
+            url = f"{self.football_api_base}/fixtures"
+            params = {'live': 'all'}  # همه بازی‌های زنده
+            
+            headers = {
+                'x-rapidapi-key': self.football_api_key,
+                'x-rapidapi-host': 'v3.football.api-sports.io'
+            }
             
             response = requests.get(
                 url,
@@ -225,17 +243,32 @@ class SportsHandler:
                 data = response.json()
                 live_matches = []
                 
-                for match in data.get('matches', []):
+                # فیلتر برای لیگ‌های مهم (ایران و اروپا)
+                important_leagues = [290, 140, 39, 78, 135, 61, 2]  # Iran, La Liga, PL, Bundesliga, Serie A, Ligue 1, UCL
+                
+                for match in data.get('response', []):
+                    league_id = match['league']['id']
+                    
+                    # فقط لیگ‌های مهم
+                    if league_id not in important_leagues:
+                        continue
+                    
+                    fixture = match['fixture']
+                    teams = match['teams']
+                    goals = match['goals']
+                    league = match['league']
+                    
                     match_info = {
-                        'home_team': match['homeTeam']['name'],
-                        'away_team': match['awayTeam']['name'],
-                        'competition': match['competition']['name'],
+                        'home_team': teams['home']['name'],
+                        'away_team': teams['away']['name'],
+                        'league': league['name'],
+                        'country': league['country'],
                         'score': {
-                            'home': match['score']['fullTime']['home'],
-                            'away': match['score']['fullTime']['away']
+                            'home': goals['home'] if goals['home'] is not None else 0,
+                            'away': goals['away'] if goals['away'] is not None else 0
                         },
-                        'minute': match.get('minute', 'نامشخص'),
-                        'status': match['status']
+                        'minute': fixture['status']['elapsed'],
+                        'status': fixture['status']['short']
                     }
                     live_matches.append(match_info)
                 
@@ -255,15 +288,8 @@ class SportsHandler:
                         'message': 'در حال حاضر بازی زنده‌ای در جریان نیست'
                     }
             
-            elif response.status_code == 403:
-                return {
-                    'success': False,
-                    'error': 'نیاز به کلید API. لطفاً FOOTBALL_DATA_API_KEY را در .env تنظیم کنید',
-                    'live_matches': [],
-                    'info': 'برای دریافت کلید رایگان به https://www.football-data.org مراجعه کنید'
-                }
-            
             else:
+                logger.error(f"❌ خطای API: {response.status_code} - {response.text[:200]}")
                 return {
                     'success': False,
                     'error': f'خطای API: {response.status_code}',

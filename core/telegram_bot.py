@@ -43,12 +43,14 @@ from handlers.public import (
     get_ai_menu_markup, 
     get_ai_chat_mode_markup,
     get_crypto_menu_markup,
+    get_sports_menu_markup,
     PublicMenuManager
 )
 from core.logger_system import bot_logger
 from handlers.ai.ai_chat_handler import GeminiChatHandler, AIChatStateManager
 from handlers.ai.ai_image_generator import AIImageGenerator
 from handlers.ai.ocr_handler import OCRHandler
+from handlers.sports import SportsHandler
 from services.crypto_service import (
     fetch_fear_greed_index,
     download_fear_greed_chart,
@@ -111,6 +113,9 @@ gemini_chat = GeminiChatHandler(db_manager=db_manager)
 ai_chat_state = AIChatStateManager(db_manager)
 ai_image_gen = AIImageGenerator()
 ocr_handler = OCRHandler()
+
+# Initialize Sports Handler
+sports_handler = SportsHandler()
 
 # Initialize TradingView fetcher if available
 if TRADINGVIEW_AVAILABLE and TradingViewAnalysisFetcher:
@@ -1384,6 +1389,109 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
+        return
+    
+    elif message_text == "⚽ بخش ورزش":
+        # نمایش منوی ورزش
+        bot_logger.log_user_action(user.id, "SPORTS_MENU_ACCESS", "ورود به بخش ورزش")
+        
+        message = """
+⚽ **بخش ورزش**
+
+به دنیای فوتبال خوش آمدید! ⚽️
+
+🔍 **خدمات موجود:**
+• 📰 **اخبار ورزشی:** آخرین اخبار فوتبال ایران و جهان
+• 📅 **بازی‌های هفتگی:** برنامه بازی‌های لیگ ایران و اروپا
+• 🔴 **بازی‌های زنده:** نتایج لحظه‌ای بازی‌ها
+
+از دکمه‌های زیر استفاده کنید:
+        """
+        
+        reply_markup = get_sports_menu_markup()
+        
+        await update.message.reply_text(
+            message,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return
+    
+    elif message_text == "📰 اخبار ورزشی":
+        bot_logger.log_user_action(user.id, "SPORTS_NEWS_REQUEST", "درخواست اخبار ورزشی")
+        
+        loading_message = await update.message.reply_text("🔄 در حال دریافت آخرین اخبار ورزشی...")
+        
+        try:
+            news_result = await sports_handler.get_persian_news(limit=10)
+            news_message = sports_handler.format_news_message(news_result)
+            
+            await loading_message.delete()
+            await update.message.reply_text(
+                news_message,
+                parse_mode='Markdown',
+                disable_web_page_preview=True
+            )
+        except Exception as e:
+            await loading_message.delete()
+            await update.message.reply_text(
+                f"❌ خطا در دریافت اخبار:\n{str(e)}"
+            )
+        return
+    
+    elif message_text == "📅 بازی‌های هفتگی":
+        bot_logger.log_user_action(user.id, "SPORTS_FIXTURES_REQUEST", "درخواست برنامه بازی‌ها")
+        
+        loading_message = await update.message.reply_text("🔄 در حال دریافت برنامه بازی‌ها...")
+        
+        try:
+            # دریافت لیگ ایران
+            iran_result = await sports_handler.get_weekly_fixtures('iran')
+            iran_message = sports_handler.format_fixtures_message(iran_result)
+            
+            # دریافت لالیگا
+            laliga_result = await sports_handler.get_weekly_fixtures('la_liga')
+            laliga_message = sports_handler.format_fixtures_message(laliga_result)
+            
+            await loading_message.delete()
+            
+            # ارسال لیگ ایران
+            await update.message.reply_text(
+                iran_message,
+                parse_mode='Markdown'
+            )
+            
+            # ارسال لالیگا
+            await update.message.reply_text(
+                laliga_message,
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            await loading_message.delete()
+            await update.message.reply_text(
+                f"❌ خطا در دریافت برنامه بازی‌ها:\n{str(e)}"
+            )
+        return
+    
+    elif message_text == "🔴 بازی‌های زنده":
+        bot_logger.log_user_action(user.id, "SPORTS_LIVE_REQUEST", "درخواست بازی‌های زنده")
+        
+        loading_message = await update.message.reply_text("🔄 در حال بررسی بازی‌های زنده...")
+        
+        try:
+            live_result = await sports_handler.get_live_matches()
+            live_message = sports_handler.format_live_matches_message(live_result)
+            
+            await loading_message.delete()
+            await update.message.reply_text(
+                live_message,
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            await loading_message.delete()
+            await update.message.reply_text(
+                f"❌ خطا در دریافت بازی‌های زنده:\n{str(e)}"
+            )
         return
     
     elif message_text == "📺 اخبار عمومی":
