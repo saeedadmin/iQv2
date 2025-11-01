@@ -144,64 +144,69 @@ class SportsHandler:
             date_from = saturday.strftime('%Y-%m-%d')
             date_to = friday.strftime('%Y-%m-%d')
             
-            url = f"{self.football_api_base}/fixtures"
-            params = {
-                'league': str(league_id),
-                'season': str(self.current_season),
-                'from': date_from,
-                'to': date_to
-            }
-            
+            # API-Football فقط با date کار می‌کنه نه from/to
+            # باید هر روز رو جداگونه چک کنیم
             headers = {
                 'x-rapidapi-key': self.football_api_key,
                 'x-rapidapi-host': 'v3.football.api-sports.io'
             }
             
-            response = requests.get(
-                url,
-                params=params,
-                headers=headers,
-                timeout=self.timeout
-            )
+            all_matches = []
             
-            if response.status_code == 200:
-                data = response.json()
-                matches = []
+            # چک کردن هر روز از شنبه تا جمعه
+            current_date = saturday
+            while current_date <= friday:
+                date_str = current_date.strftime('%Y-%m-%d')
                 
-                for match in data.get('response', []):
-                    fixture = match['fixture']
-                    teams = match['teams']
-                    goals = match['goals']
+                url = f"{self.football_api_base}/fixtures"
+                params = {'date': date_str}
+                
+                try:
+                    response = requests.get(
+                        url,
+                        params=params,
+                        headers=headers,
+                        timeout=self.timeout
+                    )
                     
-                    match_info = {
-                        'home_team': teams['home']['name'],
-                        'away_team': teams['away']['name'],
-                        'date': fixture['date'],
-                        'status': fixture['status']['short'],
-                        'venue': fixture['venue']['name'] if fixture.get('venue') else 'نامشخص',
-                        'score': {
-                            'home': goals['home'],
-                            'away': goals['away']
-                        } if goals['home'] is not None else None
-                    }
-                    matches.append(match_info)
+                    if response.status_code == 200:
+                        data = response.json()
+                        day_matches = data.get('response', [])
+                        
+                        # فیلتر برای این لیگ خاص
+                        for match in day_matches:
+                            if match['league']['id'] == league_id:
+                                fixture = match['fixture']
+                                teams = match['teams']
+                                goals = match['goals']
+                                
+                                match_info = {
+                                    'home_team': teams['home']['name'],
+                                    'away_team': teams['away']['name'],
+                                    'date': fixture['date'],
+                                    'status': fixture['status']['short'],
+                                    'venue': fixture['venue']['name'] if fixture.get('venue') else 'نامشخص',
+                                    'score': {
+                                        'home': goals['home'],
+                                        'away': goals['away']
+                                    } if goals['home'] is not None else None
+                                }
+                                all_matches.append(match_info)
+                except Exception as e:
+                    logger.warning(f"خطا در دریافت بازی‌های {date_str}: {e}")
                 
-                logger.info(f"✅ {len(matches)} بازی دریافت شد")
-                return {
-                    'success': True,
-                    'matches': matches,
-                    'count': len(matches),
-                    'league': league,
-                    'period': f'{date_from} تا {date_to}'
-                }
+                current_date += timedelta(days=1)
             
-            else:
-                logger.error(f"❌ خطای API: {response.status_code} - {response.text[:200]}")
-                return {
-                    'success': False,
-                    'error': f'خطای API: {response.status_code}',
-                    'matches': []
-                }
+            matches = all_matches
+            
+            logger.info(f"✅ {len(matches)} بازی دریافت شد")
+            return {
+                'success': True,
+                'matches': matches,
+                'count': len(matches),
+                'league': league,
+                'period': f'{date_from} تا {date_to}'
+            }
         
         except Exception as e:
             logger.error(f"❌ خطا در get_weekly_fixtures: {e}")
