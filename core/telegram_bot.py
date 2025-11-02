@@ -1204,6 +1204,7 @@ async def handle_sports_league_callback(update: Update, context: ContextTypes.DE
     data = query.data
 
     if data == "sports_reminder_back_to_leagues":
+        context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
         favorites = db_manager.get_sports_favorite_teams(user.id)
         message = build_sports_settings_message(favorites)
         await query.answer()
@@ -1219,13 +1220,13 @@ async def handle_sports_league_callback(update: Update, context: ContextTypes.DE
         return
 
     if data.startswith('sports_reminder_team_'):
-        parts = data.split('_')
-        if len(parts) < 5:
+        payload = data.replace('sports_reminder_team_', '', 1)
+        if '_' not in payload:
             await query.answer(text="داده نامعتبر است", show_alert=True)
             return
-        league_key = parts[3]
+        league_key, team_id_str = payload.rsplit('_', 1)
         try:
-            team_id = int(parts[4])
+            team_id = int(team_id_str)
         except ValueError:
             await query.answer(text="شناسه تیم نامعتبر است", show_alert=True)
             return
@@ -1259,18 +1260,14 @@ async def handle_sports_league_callback(update: Update, context: ContextTypes.DE
             bypass_limit=is_admin
         )
 
-        await query.answer()
+        await query.answer(text="تیم ثبت شد" if success else None, show_alert=False)
         await query.message.reply_text(msg)
 
         if success:
             bot_logger.log_user_action(user.id, "SPORTS_TEAM_ADDED", team_match['team_name'])
-            context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
             favorites = db_manager.get_sports_favorite_teams(user.id)
             settings_message = build_sports_settings_message(favorites)
-            await query.message.reply_text(
-                settings_message,
-                reply_markup=build_sports_league_keyboard(include_back=False)
-            )
+            await query.message.reply_text(settings_message)
         return
 
     if not data.startswith('sports_reminder_league_'):
