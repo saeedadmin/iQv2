@@ -733,6 +733,7 @@ class SportsHandler:
                             match_info = {
                                 'home_team': teams['home']['name'],
                                 'away_team': teams['away']['name'],
+                                'competition': league.get('name') or league.get('round') or 'نامشخص',
                                 'league': league['name'],
                                 'country': league['country'],
                                 'score': {
