@@ -72,11 +72,72 @@ class SportsHandler:
         self.timeout = 15
         self.current_season = self._get_current_season()
         self.team_cache: Dict[str, Dict[str, Any]] = {}
+        self.season_cache: Dict[int, Dict[str, Any]] = {}
 
     def _get_current_season(self) -> int:
         """محاسبه فصل جاری برای لیگ‌ها (لیگ‌های اروپایی از تابستان آغاز می‌شوند)"""
         now = datetime.now()
         return now.year - 1 if now.month < 7 else now.year
+
+    async def _get_league_seasons(self, league_id: int) -> List[int]:
+        """دریافت فصل‌های موجود برای یک لیگ"""
+        cached = self.season_cache.get(league_id)
+        if cached:
+            fetched_at: datetime = cached['fetched_at']
+            if (datetime.now() - fetched_at).total_seconds() <= 12 * 3600:
+                return cached['seasons']
+
+        if not self.api_keys:
+            return []
+
+        for api_index in range(len(self.api_keys)):
+            if self.api_limits[api_index]['exhausted']:
+                continue
+
+            current_key = self.api_keys[api_index]
+            self.current_api_index = api_index
+
+            headers = {
+                'x-rapidapi-key': current_key,
+                'x-rapidapi-host': 'v3.football.api-sports.io'
+            }
+
+            try:
+                response = requests.get(
+                    f"{self.football_api_base}/leagues/seasons",
+                    headers=headers,
+                    params={'league': league_id},
+                    timeout=self.timeout
+                )
+
+                if not self.handle_api_response(response):
+                    self.api_limits[self.current_api_index]['exhausted'] = True
+                    continue
+
+                if response.status_code == 200:
+                    data = response.json()
+                    seasons_raw = data.get('response', [])
+                    try:
+                        seasons = sorted({int(season) for season in seasons_raw}, reverse=True)
+                    except Exception:
+                        seasons = []
+
+                    if seasons:
+                        self.season_cache[league_id] = {
+                            'seasons': seasons,
+                            'fetched_at': datetime.now()
+                        }
+                        return seasons
+                    else:
+                        logger.warning(f"⚠️ فصل فعالی برای لیگ {league_id} یافت نشد")
+                else:
+                    logger.warning(f"❌ خطا در دریافت فصل‌های لیگ {league_id} (کد {response.status_code})")
+
+            except Exception as e:
+                logger.error(f"❌ استثنا در دریافت فصل‌های لیگ {league_id}: {e}")
+                continue
+
+        return []
 
     def get_current_api_key(self) -> str:
         """دریافت کلید API فعلی با بررسی محدودیت"""
@@ -156,10 +217,12 @@ class SportsHandler:
                 'error': 'هیچ کلید API برای دریافت تیم‌ها موجود نیست'
             }
 
-        seasons_to_try = [self.current_season]
-        previous_season = self.current_season - 1
-        if previous_season >= 2015 and previous_season not in seasons_to_try:
-            seasons_to_try.append(previous_season)
+        seasons_to_try = await self._get_league_seasons(league_id)
+        if not seasons_to_try:
+            seasons_to_try = [self.current_season]
+            previous_season = self.current_season - 1
+            if previous_season >= 2015 and previous_season not in seasons_to_try:
+                seasons_to_try.append(previous_season)
 
         # تلاش با کلیدهای مختلف و فصل‌های متفاوت
         for api_index in range(len(self.api_keys)):
