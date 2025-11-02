@@ -21,7 +21,7 @@ import requests
 import weakref
 from aiohttp import web, ClientSession
 from dotenv import load_dotenv
-from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, ContextTypes, 
                           MessageHandler, filters, CallbackQueryHandler, ConversationHandler)
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -1032,7 +1032,7 @@ def _chunk_list(items: List[Any], size: int) -> List[List[Any]]:
     return [items[i:i + size] for i in range(0, len(items), size)]
 
 
-def build_sports_league_keyboard() -> InlineKeyboardMarkup:
+def build_sports_league_keyboard(include_back: bool = True) -> InlineKeyboardMarkup:
     league_keys = sports_handler.league_order + ['champions_league']
     buttons: List[List[InlineKeyboardButton]] = []
     current_row: List[InlineKeyboardButton] = []
@@ -1048,6 +1048,37 @@ def build_sports_league_keyboard() -> InlineKeyboardMarkup:
 
     if current_row:
         buttons.append(current_row)
+
+    if include_back:
+        buttons.append([InlineKeyboardButton("⬅️ انتخاب لیگ دیگر", callback_data="sports_reminder_back_to_leagues")])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+def build_sports_team_keyboard(league_key: str, teams: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    buttons: List[List[InlineKeyboardButton]] = []
+    current_row: List[InlineKeyboardButton] = []
+
+    for team in teams:
+        team_id = team.get('team_id')
+        team_name = team.get('team_name')
+        if not team_id or not team_name:
+            continue
+
+        callback_data = f"sports_reminder_team_{league_key}_{team_id}"
+        current_row.append(InlineKeyboardButton(team_name, callback_data=callback_data))
+
+        if len(current_row) == 2:
+            buttons.append(current_row)
+            current_row = []
+
+    if current_row:
+        buttons.append(current_row)
+
+    buttons.append([
+        InlineKeyboardButton("⬅️ بازگشت به انتخاب لیگ", callback_data="sports_reminder_back_to_leagues"),
+        InlineKeyboardButton("❌ انصراف", callback_data="sports_reminder_cancel")
+    ])
 
     return InlineKeyboardMarkup(buttons)
 
@@ -1156,7 +1187,7 @@ async def handle_sports_reminder_settings(update: Update, context: ContextTypes.
     message = build_sports_settings_message(favorites)
     await update.message.reply_text(
         message,
-        reply_markup=build_sports_league_keyboard()
+        reply_markup=build_sports_league_keyboard(include_back=False)
     )
 
 
@@ -1170,8 +1201,83 @@ async def handle_sports_reminder_list(update: Update, context: ContextTypes.DEFA
 async def handle_sports_league_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     user = update.effective_user
-    data = query.data.replace('sports_reminder_league_', '', 1)
-    league_key = data
+    data = query.data
+
+    if data == "sports_reminder_back_to_leagues":
+        favorites = db_manager.get_sports_favorite_teams(user.id)
+        message = build_sports_settings_message(favorites)
+        await query.answer()
+        await query.message.edit_text(
+            message,
+            reply_markup=build_sports_league_keyboard(include_back=False)
+        )
+        return
+
+    if data == "sports_reminder_cancel":
+        context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+        await query.answer(text="عملیات لغو شد.", show_alert=False)
+        return
+
+    if data.startswith('sports_reminder_team_'):
+        parts = data.split('_')
+        if len(parts) < 5:
+            await query.answer(text="داده نامعتبر است", show_alert=True)
+            return
+        league_key = parts[3]
+        try:
+            team_id = int(parts[4])
+        except ValueError:
+            await query.answer(text="شناسه تیم نامعتبر است", show_alert=True)
+            return
+
+        state = context.user_data.get(SPORTS_REMINDER_STATE_KEY)
+        if not state or state.get('league_key') != league_key:
+            await query.answer(text="ابتدا لیگ را انتخاب کنید", show_alert=True)
+            return
+
+        teams = state.get('teams', [])
+        team_match = next((team for team in teams if team.get('team_id') == team_id), None)
+        if not team_match:
+            await query.answer(text="تیم پیدا نشد", show_alert=True)
+            return
+
+        league_name = state.get('league_name', league_key)
+        league_id = sports_handler.league_ids.get(league_key)
+        if not league_id:
+            await query.answer(text="لیگ نامعتبر است", show_alert=True)
+            return
+
+        user_record = db_manager.get_user(user.id)
+        is_admin = bool(user_record and user_record.get('is_admin'))
+        success, msg = db_manager.add_sports_favorite_team(
+            user.id,
+            league_id,
+            league_name,
+            team_match['team_id'],
+            team_match['team_name'],
+            max_teams=10,
+            bypass_limit=is_admin
+        )
+
+        await query.answer()
+        await query.message.reply_text(msg)
+
+        if success:
+            bot_logger.log_user_action(user.id, "SPORTS_TEAM_ADDED", team_match['team_name'])
+            context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+            favorites = db_manager.get_sports_favorite_teams(user.id)
+            settings_message = build_sports_settings_message(favorites)
+            await query.message.reply_text(
+                settings_message,
+                reply_markup=build_sports_league_keyboard(include_back=False)
+            )
+        return
+
+    if not data.startswith('sports_reminder_league_'):
+        await query.answer(text="دستور نامعتبر", show_alert=True)
+        return
+
+    league_key = data.replace('sports_reminder_league_', '', 1)
 
     await query.answer()
 
@@ -1192,22 +1298,16 @@ async def handle_sports_league_callback(update: Update, context: ContextTypes.DE
         await query.message.reply_text("⚠️ هیچ تیمی برای این لیگ یافت نشد.")
         return
 
-    team_names = [team['team_name'] for team in teams]
-    chunks = _chunk_list(team_names, 25)
-    for chunk in chunks:
-        await query.message.reply_text("\n".join(chunk))
-
     context.user_data[SPORTS_REMINDER_STATE_KEY] = {
-        'mode': 'await_team_name',
         'league_key': league_key,
         'league_name': league_name,
         'teams': teams,
         'requested_at': datetime.datetime.now().isoformat()
     }
 
-    await query.message.reply_text(
-        "✍️ لطفاً نام تیم مورد نظر را دقیقاً همان‌طور که در فهرست مشاهده کردید ارسال کنید."
-        "\nبرای لغو، عبارت 'لغو' را بفرستید."
+    await query.message.edit_text(
+        f"✅ لیگ انتخاب شد: {league_name}\n\nیکی از تیم‌های زیر را انتخاب کنید:",
+        reply_markup=build_sports_team_keyboard(league_key, teams)
     )
 
 
@@ -2571,7 +2671,7 @@ async def main() -> None:
     application.add_handler(CallbackQueryHandler(public_menu.handle_public_callback, pattern="^(public_|crypto_)"))
 
     # Handler برای لیگ‌های یادآوری ورزشی
-    application.add_handler(CallbackQueryHandler(handle_sports_league_callback, pattern="^sports_reminder_league_"))
+    application.add_handler(CallbackQueryHandler(handle_sports_league_callback, pattern=r"^sports_reminder_(league|team|back|cancel)"))
     
     # Handler برای اشتراک اخبار (callback queries)
     application.add_handler(CallbackQueryHandler(news_subscription_callback, pattern="^news_sub_"))
