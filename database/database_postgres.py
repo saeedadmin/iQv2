@@ -10,7 +10,7 @@ import os
 import logging
 import asyncio
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, Json
 from psycopg2 import pool
 import datetime
 from typing import Optional, List, Tuple, Dict, Any
@@ -157,6 +157,18 @@ class PostgreSQLManager:
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_chat_history_user_time
                 ON ai_chat_history(user_id, timestamp DESC)
+            ''')
+
+            # جدول کش برنامه هفتگی بازی‌ها
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS sports_weekly_fixtures_cache (
+                    week_start DATE NOT NULL,
+                    week_end DATE NOT NULL,
+                    payload JSONB NOT NULL,
+                    fetched_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (week_start, week_end)
+                )
             ''')
             
             # تنظیمات پیش‌فرض
@@ -360,7 +372,7 @@ class PostgreSQLManager:
                 DO UPDATE SET payload = EXCLUDED.payload,
                               fetched_at = NOW()
                 ''',
-                (week_start, week_end, payload)
+                (week_start, week_end, Json(payload))
             )
 
             conn.commit()

@@ -11,6 +11,7 @@ import datetime
 import logging
 import os
 import tempfile
+import json
 from typing import Optional, List, Tuple, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -90,6 +91,17 @@ class DatabaseManager:
                     ('maintenance_mode', '0'),
                     ('welcome_message', 'سلام! به ربات خوش آمدید'),
                     ('total_messages', '0')
+                ''')
+
+                # جدول کش برنامه بازی‌های هفتگی
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS sports_weekly_fixtures_cache (
+                        week_start TEXT NOT NULL,
+                        week_end TEXT NOT NULL,
+                        payload TEXT NOT NULL,
+                        fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (week_start, week_end)
+                    )
                 ''')
                 
                 conn.commit()
@@ -355,6 +367,51 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"خطا در دریافت لیست مشترکان اخبار: {e}")
             return []
+
+    def upsert_weekly_fixtures_cache(self, week_start: datetime.date, week_end: datetime.date,
+                                     payload: Dict[str, Any]) -> bool:
+        """ذخیره یا بروزرسانی کش فیکسچر هفتگی (SQLite)"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                payload_json = json.dumps(payload, ensure_ascii=False)
+                cursor.execute('''
+                    INSERT INTO sports_weekly_fixtures_cache (week_start, week_end, payload, fetched_at)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(week_start, week_end)
+                    DO UPDATE SET payload = excluded.payload,
+                                  fetched_at = CURRENT_TIMESTAMP
+                ''', (week_start.isoformat(), week_end.isoformat(), payload_json))
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"خطا در ذخیره کش فیکسچر هفتگی: {e}")
+            return False
+
+    def get_weekly_fixtures_cache(self, week_start: datetime.date,
+                                  week_end: datetime.date) -> Optional[Dict[str, Any]]:
+        """دریافت کش فیکسچر هفتگی (SQLite)"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT payload, fetched_at
+                    FROM sports_weekly_fixtures_cache
+                    WHERE week_start = ? AND week_end = ?
+                ''', (week_start.isoformat(), week_end.isoformat()))
+
+                row = cursor.fetchone()
+                if not row:
+                    return None
+
+                payload = json.loads(row['payload']) if row['payload'] else None
+                return {
+                    'payload': payload,
+                    'fetched_at': row['fetched_at']
+                }
+        except Exception as e:
+            logger.error(f"خطا در دریافت کش فیکسچر هفتگی: {e}")
+            return None
 
 # نمونه سیستم لاگ سفارشی
 class DatabaseLogger:
