@@ -11,7 +11,7 @@ import platform
 import os
 import asyncio
 import datetime
-from typing import Dict, List
+from typing import Any, Dict, List, Optional, Callable, Awaitable
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, CallbackQueryHandler
 from database.database import DatabaseManager, DatabaseLogger
@@ -19,12 +19,25 @@ from core.logger_system import bot_logger
 from handlers.ai.multi_provider_handler import MultiProviderHandler
 
 class AdminPanel:
-    def __init__(self, db_manager: DatabaseManager, admin_user_id: int):
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        admin_user_id: int,
+        refresh_weekly_cache: Optional[Callable[[], Awaitable[Optional[Dict[str, Any]]]]] = None
+    ):
         """مقداردهی پنل ادمین"""
         self.db = db_manager
         self.admin_id = admin_user_id
         self.logger = DatabaseLogger(db_manager)
         self.bot_start_time = datetime.datetime.now()
+        self.refresh_weekly_cache = refresh_weekly_cache
+
+    def set_weekly_cache_refresher(
+        self,
+        callback: Optional[Callable[[], Awaitable[Optional[Dict[str, Any]]]]]
+    ) -> None:
+        """تنظیم تابع بروزرسانی کش برنامه بازی‌های هفتگی"""
+        self.refresh_weekly_cache = callback
     
     def create_main_menu_keyboard(self) -> InlineKeyboardMarkup:
         """ساخت کیبورد منوی اصلی ادمین - بهینه شده"""
@@ -52,6 +65,9 @@ class AdminPanel:
             [
                 InlineKeyboardButton("💾 منابع", callback_data="sys_resources"),
                 InlineKeyboardButton("📈 وضعیت", callback_data="sys_bot_status")
+            ],
+            [
+                InlineKeyboardButton("🔄 بروزرسانی کش بازی‌ها", callback_data="sys_refresh_weekly_cache")
             ],
             [
                 InlineKeyboardButton(f"{bot_status} {toggle_text} کردن", callback_data=toggle_action),
@@ -319,6 +335,9 @@ class AdminPanel:
             
             elif data == "sys_system_logs":
                 await self.show_system_logs(query)
+
+            elif data == "sys_refresh_weekly_cache":
+                await self.refresh_weekly_cache_manual(query)
             
             elif data == "users_stats":
                 await self.show_users_stats(query)
@@ -383,6 +402,7 @@ class AdminPanel:
 در این بخش می‌توانید:
 • وضعیت منابع سیستم را مشاهده کنید
 • ربات را خاموش/روشن کنید  
+• کش برنامه بازی‌های هفتگی را دستی بروزرسانی کنید
 • لاگ‌های سیستم را بررسی کنید
 • ربات را ری‌استارت کنید
 
@@ -391,6 +411,49 @@ class AdminPanel:
         await query.edit_message_text(
             message,
             reply_markup=self.create_system_menu_keyboard(),
+            parse_mode='Markdown'
+        )
+
+    async def refresh_weekly_cache_manual(self, query):
+        """بروزرسانی دستی کش بازی‌های هفتگی"""
+        keyboard = self.create_back_keyboard("admin_system", "sys_refresh_weekly_cache")
+
+        if not self.refresh_weekly_cache:
+            await query.edit_message_text(
+                "⚠️ قابلیت بروزرسانی دستی کش فعال نشده است.",
+                reply_markup=keyboard,
+                parse_mode='Markdown'
+            )
+            return
+
+        await query.edit_message_text("⏳ در حال بروزرسانی کش برنامه بازی‌های هفتگی...", parse_mode='Markdown')
+
+        try:
+            fixtures = await self.refresh_weekly_cache()
+            if fixtures:
+                leagues_data = fixtures.get('leagues', {})
+                total_leagues = len(leagues_data)
+                total_matches = fixtures.get('total_matches')
+                if total_matches is None:
+                    total_matches = sum(len(league.get('matches', [])) for league in leagues_data.values())
+                period = fixtures.get('period') or "هفته جاری"
+                source = "داده تازه" if fixtures.get('success') else "کش قبلی"
+
+                message = (
+                    "✅ کش برنامه بازی‌های هفتگی با موفقیت بروزرسانی شد.\n\n"
+                    f"📅 بازه: {period}\n"
+                    f"🏆 تعداد لیگ‌ها: {total_leagues}\n"
+                    f"⚔️ تعداد بازی‌ها: {total_matches}\n"
+                    f"🗂️ منبع: {source}"
+                )
+            else:
+                message = "❌ دریافت برنامه بازی‌های هفتگی ناموفق بود و کشی نیز در دسترس نیست."
+        except Exception as e:
+            message = f"❌ خطا در بروزرسانی کش:\n{str(e)}"
+
+        await query.edit_message_text(
+            message,
+            reply_markup=keyboard,
             parse_mode='Markdown'
         )
     

@@ -27,7 +27,7 @@ from telegram.ext import (Application, CommandHandler, ContextTypes,
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Load environment variables
 load_dotenv()
@@ -1526,7 +1526,7 @@ def format_match_reminder_message(reminder: Dict[str, Any]) -> str:
     return message
 
 
-async def _compute_week_range(base_date: datetime.datetime) -> Tuple[datetime.date, datetime.date]:
+def _compute_week_range(base_date: datetime.datetime) -> Tuple[datetime.date, datetime.date]:
     base_date_local = base_date
     days_since_saturday = (base_date_local.weekday() + 2) % 7
     week_start_dt = (base_date_local - datetime.timedelta(days=days_since_saturday)).date()
@@ -1565,6 +1565,10 @@ def _get_cached_weekly_fixtures(base_date: Optional[datetime.datetime] = None) -
     if cached and cached.get('payload'):
         return cached['payload']
     return None
+
+
+# ثبت تابع بروزرسانی کش برای استفاده در پنل ادمین
+admin_panel.set_weekly_cache_refresher(_upsert_weekly_fixtures_cache)
 
 
 def _hydrate_match_datetime(match: Dict[str, Any]) -> Optional[datetime.datetime]:
