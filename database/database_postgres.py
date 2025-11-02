@@ -225,6 +225,38 @@ class PostgreSQLManager:
                 cursor.close()
                 self.return_connection(conn)
 
+    def remove_sports_favorite_team_by_id(self, user_id: int, team_id: int) -> Tuple[bool, str]:
+        """حذف تیم مورد علاقه کاربر بر اساس شناسه تیم"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                '''
+                DELETE FROM sports_favorite_teams
+                WHERE user_id = %s AND team_id = %s
+                ''',
+                (user_id, team_id)
+            )
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return False, "این تیم در لیست شما پیدا نشد"
+
+            conn.commit()
+            return True, "تیم از لیست شما حذف شد"
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در حذف تیم کاربر {user_id} با شناسه {team_id}: {e}")
+            return False, "خطا در حذف تیم"
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
     def delete_match_reminders_for_team(self, user_id: int, team_id: int) -> bool:
         """حذف یادآوری‌های مرتبط با یک تیم برای کاربر"""
         conn = None

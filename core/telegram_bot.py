@@ -1032,6 +1032,64 @@ def _chunk_list(items: List[Any], size: int) -> List[List[Any]]:
     return [items[i:i + size] for i in range(0, len(items), size)]
 
 
+def _format_favorites_summary(favorites: List[Dict[str, Any]]) -> str:
+    if not favorites:
+        return "📭 هیچ تیمی در لیست یادآوری نیست."
+
+    lines = ["📋 تیم‌های ثبت‌شده:"]
+    for idx, fav in enumerate(favorites, start=1):
+        created_at = fav.get('created_at')
+        created_str = ''
+        if created_at:
+            try:
+                if isinstance(created_at, datetime.datetime):
+                    created_local = created_at.astimezone(TEHRAN_TZ) if created_at.tzinfo else TEHRAN_TZ.localize(created_at)
+                    created_str = created_local.strftime('%Y/%m/%d')
+            except Exception:
+                created_str = ''
+        date_part = f" - ثبت: {created_str}" if created_str else ''
+        lines.append(f"{idx}. {fav.get('team_name')} ({fav.get('league_name')}){date_part}")
+
+    return "\n".join(lines)
+
+
+def _format_upcoming_reminders(reminders: List[Dict[str, Any]]) -> str:
+    if not reminders:
+        return "⏰ هنوز یادآوری فعالی ثبت نشده است."
+
+    lines = ["⏰ بازی‌های آتی:"]
+    for idx, reminder in enumerate(reminders[:5], start=1):
+        match_dt = reminder.get('match_datetime')
+        if match_dt:
+            try:
+                if match_dt.tzinfo is None:
+                    match_dt = pytz.UTC.localize(match_dt)
+                match_local = match_dt.astimezone(TEHRAN_TZ)
+                match_str = match_local.strftime('%Y/%m/%d %H:%M')
+            except Exception:
+                match_str = 'نامشخص'
+        else:
+            match_str = 'نامشخص'
+
+        opponent = reminder.get('opponent_team_name') or 'حریف'
+        league_name = reminder.get('league_name') or 'لیگ'
+        lines.append(f"{idx}. {reminder.get('team_name')} vs {opponent} ({league_name}) - {match_str}")
+
+    if len(reminders) > 5:
+        lines.append("...")
+
+    return "\n".join(lines)
+
+
+def _build_reminder_panel_text(header: Optional[str], favorites: List[Dict[str, Any]], reminders: List[Dict[str, Any]]) -> str:
+    sections: List[str] = []
+    if header:
+        sections.append(header)
+    sections.append(_format_favorites_summary(favorites))
+    sections.append(_format_upcoming_reminders(reminders))
+    return "\n\n".join(sections)
+
+
 def build_sports_league_keyboard(include_back: bool = True) -> InlineKeyboardMarkup:
     league_keys = sports_handler.league_order + ['champions_league']
     buttons: List[List[InlineKeyboardButton]] = []
@@ -1079,6 +1137,22 @@ def build_sports_team_keyboard(league_key: str, teams: List[Dict[str, Any]]) -> 
         InlineKeyboardButton("⬅️ بازگشت به انتخاب لیگ", callback_data="sports_reminder_back_to_leagues"),
         InlineKeyboardButton("❌ انصراف", callback_data="sports_reminder_cancel")
     ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+def build_sports_favorites_keyboard(favorites: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    buttons: List[List[InlineKeyboardButton]] = []
+
+    for fav in favorites:
+        team_id = fav.get('team_id')
+        team_name = fav.get('team_name')
+        if not team_id or not team_name:
+            continue
+        callback_data = f"sports_reminder_remove_{team_id}"
+        buttons.append([InlineKeyboardButton(f"❌ حذف {team_name}", callback_data=callback_data)])
+
+    buttons.append([InlineKeyboardButton("⬅️ بازگشت", callback_data="sports_reminder_back_to_leagues")])
 
     return InlineKeyboardMarkup(buttons)
 
@@ -1184,7 +1258,8 @@ async def handle_sports_reminder_settings(update: Update, context: ContextTypes.
     context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
     user = update.effective_user
     favorites = db_manager.get_sports_favorite_teams(user.id)
-    message = build_sports_settings_message(favorites)
+    reminders = db_manager.get_user_match_reminders(user.id, include_sent=False)
+    message = _build_reminder_panel_text("⚙️ تنظیمات یادآوری", favorites, reminders)
     await update.message.reply_text(
         message,
         reply_markup=build_sports_league_keyboard(include_back=False)
@@ -1194,8 +1269,10 @@ async def handle_sports_reminder_settings(update: Update, context: ContextTypes.
 async def handle_sports_reminder_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     reminders = db_manager.get_user_match_reminders(user.id, include_sent=False)
-    message = build_user_reminders_message(reminders)
-    await update.message.reply_text(message)
+    favorites = db_manager.get_sports_favorite_teams(user.id)
+    message = _build_reminder_panel_text("📋 یادآوری‌های من", favorites, reminders)
+    reply_markup = build_sports_favorites_keyboard(favorites) if favorites else None
+    await update.message.reply_text(message, reply_markup=reply_markup)
 
 
 async def handle_sports_league_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1206,7 +1283,8 @@ async def handle_sports_league_callback(update: Update, context: ContextTypes.DE
     if data == "sports_reminder_back_to_leagues":
         context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
         favorites = db_manager.get_sports_favorite_teams(user.id)
-        message = build_sports_settings_message(favorites)
+        reminders = db_manager.get_user_match_reminders(user.id, include_sent=False)
+        message = _build_reminder_panel_text("⚙️ تنظیمات یادآوری", favorites, reminders)
         await query.answer()
         await query.message.edit_text(
             message,
@@ -1260,14 +1338,40 @@ async def handle_sports_league_callback(update: Update, context: ContextTypes.DE
             bypass_limit=is_admin
         )
 
+        favorites = db_manager.get_sports_favorite_teams(user.id)
+        upcoming_reminders = db_manager.get_user_match_reminders(user.id, include_sent=False)
+        header = f"✅ تیم ثبت شد: {team_match['team_name']}" if success else f"⚠️ {msg}"
+        body = _build_reminder_panel_text(header, favorites, upcoming_reminders)
+
         await query.answer(text="تیم ثبت شد" if success else None, show_alert=False)
-        await query.message.reply_text(msg)
+        await query.message.edit_text(
+            body,
+            reply_markup=build_sports_team_keyboard(league_key, teams)
+        )
 
         if success:
             bot_logger.log_user_action(user.id, "SPORTS_TEAM_ADDED", team_match['team_name'])
-            favorites = db_manager.get_sports_favorite_teams(user.id)
-            settings_message = build_sports_settings_message(favorites)
-            await query.message.reply_text(settings_message)
+        return
+
+    if data.startswith('sports_reminder_remove_'):
+        team_id_raw = data.replace('sports_reminder_remove_', '', 1)
+        try:
+            team_id = int(team_id_raw)
+        except ValueError:
+            await query.answer(text="شناسه نامعتبر است", show_alert=True)
+            return
+
+        success, msg = db_manager.remove_sports_favorite_team_by_id(user.id, team_id)
+        if success:
+            db_manager.delete_match_reminders_for_team(user.id, team_id)
+
+        favorites = db_manager.get_sports_favorite_teams(user.id)
+        reminders = db_manager.get_user_match_reminders(user.id, include_sent=False)
+        message = _build_reminder_panel_text(msg if success else "⚠️ " + msg, favorites, reminders)
+        reply_markup = build_sports_favorites_keyboard(favorites) if favorites else None
+
+        await query.answer()
+        await query.message.edit_text(message, reply_markup=reply_markup)
         return
 
     if not data.startswith('sports_reminder_league_'):
