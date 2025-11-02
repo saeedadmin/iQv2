@@ -471,49 +471,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await update.message.reply_text("🔧 ربات در حال تعمیر است. لطفاً بعداً تلاش کنید.")
         return
 
-    elif message_text == "⏰ یادآوری بازی":
-        bot_logger.log_user_action(user.id, "SPORTS_REMINDER_MENU", "باز کردن منوی یادآوری")
-        await send_sports_reminder_menu(update, context)
-        return
-
-    elif message_text == "⚙️ تنظیمات یادآوری":
-        bot_logger.log_user_action(user.id, "SPORTS_REMINDER_SETTINGS", "نمایش تنظیمات یادآوری")
-        await handle_sports_reminder_settings(update, context)
-        return
-
-    elif message_text == "📋 یادآوری‌های من":
-        bot_logger.log_user_action(user.id, "SPORTS_REMINDER_LIST", "درخواست لیست یادآوری‌ها")
-        await handle_sports_reminder_list(update, context)
-        return
-
-    elif message_text == "🔙 بازگشت به ورزش":
-        context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
-        await send_sports_main_menu(update)
-        return
-
-    reminder_state = context.user_data.get(SPORTS_REMINDER_STATE_KEY)
-    if reminder_state:
-        mode = reminder_state.get('mode')
-        if mode == 'await_team_name':
-            processed = await process_team_selection(update, context, reminder_state, user_data)
-            if processed:
-                return
-
-    if message_text.startswith("حذف "):
-        team_to_remove = message_text.replace("حذف ", "", 1).strip()
-        if team_to_remove:
-            success, msg = db_manager.remove_sports_favorite_team(user.id, team_to_remove)
-            if success:
-                bot_logger.log_user_action(user.id, "SPORTS_TEAM_REMOVED", team_to_remove)
-            await update.message.reply_text(msg)
-
-            if success:
-                favorites = db_manager.get_sports_favorite_teams(user.id)
-                await update.message.reply_text(
-                    build_sports_settings_message(favorites),
-                    reply_markup=build_sports_league_keyboard()
-                )
-            return
+    # پاک کردن هر وضعیت ناتمام مربوط به یادآوری
+    context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
 
     # اضافه/به‌روزرسانی کاربر در دیتابیس
     db_manager.add_user(
@@ -547,7 +506,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         welcome_message,
         reply_markup=reply_markup
     )
-
 # Handler برای دستور /help
 # Help command removed - not needed
 
