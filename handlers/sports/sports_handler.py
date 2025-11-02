@@ -73,15 +73,16 @@ class SportsHandler:
         self.current_season = self._get_current_season()
         self.team_cache: Dict[str, Dict[str, Any]] = {}
         self.season_cache: Dict[int, Dict[str, Any]] = {}
+        self.league_meta_cache: Dict[int, Dict[str, Any]] = {}
 
     def _get_current_season(self) -> int:
         """محاسبه فصل جاری برای لیگ‌ها (لیگ‌های اروپایی از تابستان آغاز می‌شوند)"""
         now = datetime.now()
         return now.year - 1 if now.month < 7 else now.year
 
-    async def _get_league_seasons(self, league_id: int) -> List[int]:
-        """دریافت فصل‌های موجود برای یک لیگ"""
-        cached = self.season_cache.get(league_id)
+    async def _get_league_season_metadata(self, league_id: int) -> List[Dict[str, Any]]:
+        """دریافت اطلاعات فصول یک لیگ همراه با پوشش"""
+        cached = self.league_meta_cache.get(league_id)
         if cached:
             fetched_at: datetime = cached['fetched_at']
             if (datetime.now() - fetched_at).total_seconds() <= 12 * 3600:
@@ -104,9 +105,9 @@ class SportsHandler:
 
             try:
                 response = requests.get(
-                    f"{self.football_api_base}/leagues/seasons",
+                    f"{self.football_api_base}/leagues",
                     headers=headers,
-                    params={'league': league_id},
+                    params={'id': league_id},
                     timeout=self.timeout
                 )
 
@@ -116,25 +117,27 @@ class SportsHandler:
 
                 if response.status_code == 200:
                     data = response.json()
-                    seasons_raw = data.get('response', [])
+                    seasons = []
                     try:
-                        seasons = sorted({int(season) for season in seasons_raw}, reverse=True)
+                        league_info = data.get('response', [])[0]
+                        seasons = league_info.get('seasons', []) if league_info else []
                     except Exception:
                         seasons = []
 
                     if seasons:
-                        self.season_cache[league_id] = {
-                            'seasons': seasons,
+                        seasons_sorted = sorted(seasons, key=lambda s: s.get('year', 0), reverse=True)
+                        self.league_meta_cache[league_id] = {
+                            'seasons': seasons_sorted,
                             'fetched_at': datetime.now()
                         }
-                        return seasons
+                        return seasons_sorted
                     else:
-                        logger.warning(f"⚠️ فصل فعالی برای لیگ {league_id} یافت نشد")
+                        logger.warning(f"⚠️ هیچ فصلی برای لیگ {league_id} یافت نشد")
                 else:
-                    logger.warning(f"❌ خطا در دریافت فصل‌های لیگ {league_id} (کد {response.status_code})")
+                    logger.warning(f"❌ خطا در دریافت اطلاعات لیگ {league_id} (کد {response.status_code})")
 
             except Exception as e:
-                logger.error(f"❌ استثنا در دریافت فصل‌های لیگ {league_id}: {e}")
+                logger.error(f"❌ استثنا در دریافت اطلاعات لیگ {league_id}: {e}")
                 continue
 
         return []
@@ -217,7 +220,15 @@ class SportsHandler:
                 'error': 'هیچ کلید API برای دریافت تیم‌ها موجود نیست'
             }
 
-        seasons_to_try = await self._get_league_seasons(league_id)
+        seasons_meta = await self._get_league_season_metadata(league_id)
+        seasons_to_try: List[int] = []
+        for season in seasons_meta:
+            coverage = season.get('coverage', {}) or {}
+            coverage_valid = bool(coverage.get('standings') or coverage.get('teams'))
+            season_year = season.get('year')
+            if coverage_valid and isinstance(season_year, int):
+                seasons_to_try.append(season_year)
+
         if not seasons_to_try:
             seasons_to_try = [self.current_season]
             previous_season = self.current_season - 1
@@ -258,6 +269,12 @@ class SportsHandler:
 
                     if response.status_code == 200:
                         data = response.json()
+
+                        errors = data.get('errors') or {}
+                        if errors.get('plan'):
+                            logger.warning(f"⚠️ محدودیت پلن برای لیگ {league_key} در فصل {season}: {errors.get('plan')}")
+                            continue
+
                         teams_raw = data.get('response', [])
 
                         teams = []
