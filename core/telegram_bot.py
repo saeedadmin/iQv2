@@ -1526,30 +1526,111 @@ def format_match_reminder_message(reminder: Dict[str, Any]) -> str:
     return message
 
 
+async def _compute_week_range(base_date: datetime.datetime) -> Tuple[datetime.date, datetime.date]:
+    base_date_local = base_date
+    days_since_saturday = (base_date_local.weekday() + 2) % 7
+    week_start_dt = (base_date_local - datetime.timedelta(days=days_since_saturday)).date()
+    week_end_dt = week_start_dt + datetime.timedelta(days=6)
+    return week_start_dt, week_end_dt
+
+
+async def _upsert_weekly_fixtures_cache(base_date: Optional[datetime.datetime] = None) -> Optional[Dict[str, Any]]:
+    utc_now = datetime.datetime.now(pytz.UTC)
+    tehran_now = base_date or utc_now.astimezone(TEHRAN_TZ)
+
+    week_start_dt, week_end_dt = _compute_week_range(tehran_now)
+
+    fixtures = await sports_handler.get_all_weekly_fixtures(base_date=tehran_now)
+
+    if fixtures.get('success'):
+        cache_payload = serialize_weekly_fixtures_for_cache(fixtures)
+        db_manager.upsert_weekly_fixtures_cache(week_start_dt, week_end_dt, cache_payload)
+        return fixtures
+
+    logger.warning(f"⚠️ عدم موفقیت در دریافت فیکسچرهای هفتگی: {fixtures.get('error')}")
+    cached = db_manager.get_weekly_fixtures_cache(week_start_dt, week_end_dt)
+    if cached and cached.get('payload'):
+        logger.info("♻️ استفاده از کش فیکسچرهای هفتگی قبلی")
+        return cached['payload']
+
+    return None
+
+
+def _get_cached_weekly_fixtures(base_date: Optional[datetime.datetime] = None) -> Optional[Dict[str, Any]]:
+    utc_now = datetime.datetime.now(pytz.UTC)
+    tehran_now = base_date or utc_now.astimezone(TEHRAN_TZ)
+
+    week_start_dt, week_end_dt = _compute_week_range(tehran_now)
+    cached = db_manager.get_weekly_fixtures_cache(week_start_dt, week_end_dt)
+    if cached and cached.get('payload'):
+        return cached['payload']
+    return None
+
+
+def _hydrate_match_datetime(match: Dict[str, Any]) -> Optional[datetime.datetime]:
+    match_dt = match.get('datetime')
+    if isinstance(match_dt, str):
+        try:
+            match_dt_utc = datetime.datetime.fromisoformat(match_dt)
+            if match_dt_utc.tzinfo is None:
+                match_dt_utc = pytz.UTC.localize(match_dt_utc)
+            return match_dt_utc
+        except Exception:
+            return None
+    if isinstance(match_dt, datetime.datetime):
+        return match_dt if match_dt.tzinfo else pytz.UTC.localize(match_dt)
+    return None
+
+
+def _generate_user_team_reminders(user_id: int, favorites: List[Dict[str, Any]], leagues_data: Dict[str, Any]) -> int:
+    created_count = 0
+
+    for fav in favorites:
+        db_manager.delete_match_reminders_for_team(user_id, fav['team_id'])
+
+    for league_key, league_info in leagues_data.items():
+        matches = league_info.get('matches', [])
+        for match in matches:
+            match_dt_utc = _hydrate_match_datetime(match)
+
+            for fav in favorites:
+                team_id = fav['team_id']
+                if match.get('home_team_id') != team_id and match.get('away_team_id') != team_id:
+                    continue
+
+                opponent_team_id = match['away_team_id'] if match.get('home_team_id') == team_id else match.get('home_team_id')
+                opponent_team_name = match['away_team'] if match.get('home_team_id') == team_id else match['home_team']
+
+                extra_info = {
+                    'league_key': league_key,
+                    'opponent_id': opponent_team_id
+                }
+
+                success, _ = db_manager.create_match_reminder(
+                    user_id=user_id,
+                    fixture_id=match.get('fixture_id'),
+                    team_id=team_id,
+                    team_name=fav['team_name'],
+                    opponent_team_id=opponent_team_id,
+                    opponent_team_name=opponent_team_name,
+                    league_id=match.get('league_id'),
+                    league_name=match.get('league_name'),
+                    match_datetime=match_dt_utc,
+                    reminder_datetime=match_dt_utc,
+                    extra_info=extra_info
+                )
+
+                if success:
+                    created_count += 1
+
+    return created_count
+
+
 async def refresh_weekly_sports_reminders(app: Application) -> None:
     try:
-        utc_now = datetime.datetime.now(pytz.UTC)
-        tehran_now = utc_now.astimezone(TEHRAN_TZ)
-
-        base_date = tehran_now
-        days_since_saturday = (base_date.weekday() + 2) % 7
-        week_start_dt = (base_date - datetime.timedelta(days=days_since_saturday)).date()
-        week_end_dt = week_start_dt + datetime.timedelta(days=6)
-
-        fixtures = await sports_handler.get_all_weekly_fixtures(base_date=tehran_now)
-        cache_payload = None
-
-        if not fixtures.get('success'):
-            logger.warning(f"⚠️ عدم موفقیت در دریافت فیکسچرهای هفتگی: {fixtures.get('error')}")
-            cached = db_manager.get_weekly_fixtures_cache(week_start_dt, week_end_dt)
-            if cached and cached.get('payload'):
-                fixtures = cached['payload']
-                logger.info("♻️ استفاده از کش فیکسچرهای هفتگی قبلی")
-            else:
-                return
-        else:
-            cache_payload = serialize_weekly_fixtures_for_cache(fixtures)
-            db_manager.upsert_weekly_fixtures_cache(week_start_dt, week_end_dt, cache_payload)
+        fixtures = await _upsert_weekly_fixtures_cache()
+        if not fixtures:
+            return
 
         users = db_manager.get_users_with_sports_favorites()
         if not users:
@@ -1563,62 +1644,36 @@ async def refresh_weekly_sports_reminders(app: Application) -> None:
             if not favorites:
                 continue
 
-            for fav in favorites:
-                db_manager.delete_match_reminders_for_team(user_id, fav['team_id'])
-
-            created_count = 0
-
-            for league_key, league_info in leagues_data.items():
-                matches = league_info.get('matches', [])
-                for match in matches:
-                    match_dt = match.get('datetime')
-                    match_dt_utc = None
-                    if isinstance(match_dt, str):
-                        try:
-                            match_dt_utc = datetime.datetime.fromisoformat(match_dt)
-                            if match_dt_utc.tzinfo is None:
-                                match_dt_utc = pytz.UTC.localize(match_dt_utc)
-                        except Exception:
-                            match_dt_utc = None
-                    elif isinstance(match_dt, datetime.datetime):
-                        match_dt_utc = match_dt if match_dt.tzinfo else pytz.UTC.localize(match_dt)
-
-                    for fav in favorites:
-                        team_id = fav['team_id']
-                        if match.get('home_team_id') != team_id and match.get('away_team_id') != team_id:
-                            continue
-
-                        opponent_team_id = match['away_team_id'] if match.get('home_team_id') == team_id else match.get('home_team_id')
-                        opponent_team_name = match['away_team'] if match.get('home_team_id') == team_id else match['home_team']
-
-                        extra_info = {
-                            'league_key': league_key,
-                            'opponent_id': opponent_team_id
-                        }
-
-                        reminder_dt = match_dt_utc
-
-                        success, _ = db_manager.create_match_reminder(
-                            user_id=user_id,
-                            fixture_id=match.get('fixture_id'),
-                            team_id=team_id,
-                            team_name=fav['team_name'],
-                            opponent_team_id=opponent_team_id,
-                            opponent_team_name=opponent_team_name,
-                            league_id=match.get('league_id'),
-                            league_name=match.get('league_name'),
-                            match_datetime=match_dt_utc,
-                            reminder_datetime=reminder_dt,
-                            extra_info=extra_info
-                        )
-
-                        if success:
-                            created_count += 1
-
+            created_count = _generate_user_team_reminders(user_id, favorites, leagues_data)
             logger.info(f"✅ یادآوری‌های جدید برای کاربر {user_id} ثبت شد: {created_count}")
 
     except Exception as e:
         logger.error(f"❌ خطا در به‌روزرسانی یادآوری‌های ورزشی: {e}")
+
+
+async def refresh_daily_sports_reminders(app: Application) -> None:
+    try:
+        fixtures = _get_cached_weekly_fixtures()
+        if not fixtures:
+            logger.warning("⚠️ کش فیکسچرهای هفتگی یافت نشد؛ یادآوری روزانه اجرا نشد")
+            return
+
+        users = db_manager.get_users_with_sports_favorites()
+        if not users:
+            return
+
+        leagues_data = fixtures.get('leagues', {})
+
+        for user_id in users:
+            favorites = db_manager.get_sports_favorite_teams(user_id)
+            if not favorites:
+                continue
+
+            created_count = _generate_user_team_reminders(user_id, favorites, leagues_data)
+            logger.info(f"🔁 یادآوری‌های روزانه برای کاربر {user_id} به‌روزرسانی شد: {created_count}")
+
+    except Exception as e:
+        logger.error(f"❌ خطا در به‌روزرسانی روزانه یادآوری‌های ورزشی: {e}")
 
 
 async def process_due_sports_reminders(app: Application) -> None:
@@ -2995,9 +3050,15 @@ async def main() -> None:
         refresh_weekly_sports_reminders,
         trigger=CronTrigger(day_of_week='fri', hour=2, minute=0, timezone='Asia/Tehran'),
         args=[application],
-        id='sports_weekly_refresh',
-        name='به‌روزرسانی یادآوری‌های ورزشی',
-        replace_existing=True
+        name="weekly_sports_reminder_refresh"
+    )
+
+    # اضافه کردن job روزانه برای به‌روزرسانی یادآوری تیم‌ها
+    scheduler.add_job(
+        refresh_daily_sports_reminders,
+        trigger=CronTrigger(hour=3, minute=0, timezone='Asia/Tehran'),
+        args=[application],
+        name="daily_sports_reminder_refresh"
     )
 
     # اضافه کردن job دوره‌ای برای ارسال یادآوری‌های رسیده (هر 5 دقیقه)
