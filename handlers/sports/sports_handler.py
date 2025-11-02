@@ -156,7 +156,12 @@ class SportsHandler:
                 'error': 'هیچ کلید API برای دریافت تیم‌ها موجود نیست'
             }
 
-        # تلاش با کلیدهای مختلف
+        seasons_to_try = [self.current_season]
+        previous_season = self.current_season - 1
+        if previous_season >= 2015 and previous_season not in seasons_to_try:
+            seasons_to_try.append(previous_season)
+
+        # تلاش با کلیدهای مختلف و فصل‌های متفاوت
         for api_index in range(len(self.api_keys)):
             if self.api_limits[api_index]['exhausted']:
                 continue
@@ -170,57 +175,64 @@ class SportsHandler:
                 'x-rapidapi-host': 'v3.football.api-sports.io'
             }
 
-            params = {
-                'league': league_id,
-                'season': self.current_season
-            }
+            for season in seasons_to_try:
+                params = {
+                    'league': league_id,
+                    'season': season
+                }
 
-            try:
-                response = requests.get(
-                    f"{self.football_api_base}/teams",
-                    headers=headers,
-                    params=params,
-                    timeout=self.timeout
-                )
+                try:
+                    response = requests.get(
+                        f"{self.football_api_base}/teams",
+                        headers=headers,
+                        params=params,
+                        timeout=self.timeout
+                    )
 
-                if not self.handle_api_response(response):
-                    self.api_limits[self.current_api_index]['exhausted'] = True
+                    if not self.handle_api_response(response):
+                        self.api_limits[self.current_api_index]['exhausted'] = True
+                        break
+
+                    if response.status_code == 200:
+                        data = response.json()
+                        teams_raw = data.get('response', [])
+
+                        teams = []
+                        for entry in teams_raw:
+                            team_info = entry.get('team') or {}
+                            team_id = team_info.get('id')
+                            name = team_info.get('name')
+                            if not team_id or not name:
+                                continue
+                            teams.append({
+                                'team_id': team_id,
+                                'team_name': name
+                            })
+
+                        if teams:
+                            teams.sort(key=lambda t: t['team_name'])
+
+                            self.team_cache[league_key] = {
+                                'teams': teams,
+                                'fetched_at': datetime.now(),
+                                'season': season
+                            }
+
+                            logger.info(f"✅ {len(teams)} تیم برای لیگ {league_key} و فصل {season} دریافت شد")
+                            return {
+                                'success': True,
+                                'teams': teams,
+                                'season': season,
+                                'cached': False
+                            }
+                        else:
+                            logger.warning(f"⚠️ تیمی برای لیگ {league_key} در فصل {season} یافت نشد")
+                    else:
+                        logger.warning(f"❌ خطا در دریافت تیم‌های لیگ {league_key} (کد {response.status_code})")
+
+                except Exception as e:
+                    logger.error(f"❌ استثنا در دریافت تیم‌های لیگ {league_key}: {e}")
                     continue
-
-                if response.status_code == 200:
-                    data = response.json()
-                    teams_raw = data.get('response', [])
-
-                    teams = []
-                    for entry in teams_raw:
-                        team_info = entry.get('team') or {}
-                        team_id = team_info.get('id')
-                        name = team_info.get('name')
-                        if not team_id or not name:
-                            continue
-                        teams.append({
-                            'team_id': team_id,
-                            'team_name': name
-                        })
-
-                    teams.sort(key=lambda t: t['team_name'])
-
-                    self.team_cache[league_key] = {
-                        'teams': teams,
-                        'fetched_at': datetime.now()
-                    }
-
-                    return {
-                        'success': True,
-                        'teams': teams,
-                        'cached': False
-                    }
-                else:
-                    logger.warning(f"❌ خطا در دریافت تیم‌های لیگ {league_key}: {response.status_code}")
-
-            except Exception as e:
-                logger.error(f"❌ استثنا در دریافت تیم‌های لیگ {league_key}: {e}")
-                continue
 
         return {
             'success': False,
