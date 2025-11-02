@@ -2772,7 +2772,7 @@ async def main() -> None:
     application.add_handler(CallbackQueryHandler(public_menu.handle_public_callback, pattern="^(public_|crypto_)"))
 
     # Handler برای لیگ‌های یادآوری ورزشی
-    application.add_handler(CallbackQueryHandler(handle_sports_league_callback, pattern=r"^sports_reminder_(league|team|back|cancel)"))
+    application.add_handler(CallbackQueryHandler(handle_sports_league_callback, pattern=r"^sports_reminder_(league|team|back|cancel|remove)"))
     
     # Handler برای اشتراک اخبار (callback queries)
     application.add_handler(CallbackQueryHandler(news_subscription_callback, pattern="^news_sub_"))
