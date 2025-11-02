@@ -1822,6 +1822,27 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         bot_logger.log_user_action(user.id, "SPORTS_MENU_ACCESS", "ورود به بخش ورزش")
         await send_sports_main_menu(update)
         return
+
+    elif message_text == "⏰ یادآوری بازی":
+        bot_logger.log_user_action(user.id, "SPORTS_REMINDER_MENU", "باز کردن منوی یادآوری")
+        await send_sports_reminder_menu(update, context)
+        return
+
+    elif message_text == "⚙️ تنظیمات یادآوری":
+        bot_logger.log_user_action(user.id, "SPORTS_REMINDER_SETTINGS", "نمایش تنظیمات یادآوری")
+        await handle_sports_reminder_settings(update, context)
+        return
+
+    elif message_text == "📋 یادآوری‌های من":
+        bot_logger.log_user_action(user.id, "SPORTS_REMINDER_LIST", "درخواست لیست یادآوری‌ها")
+        await handle_sports_reminder_list(update, context)
+        return
+
+    elif message_text == "🔙 بازگشت به ورزش":
+        context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+        await send_sports_main_menu(update)
+        return
+
     
     elif message_text == "📰 اخبار ورزشی":
         bot_logger.log_user_action(user.id, "SPORTS_NEWS_REQUEST", "درخواست اخبار ورزشی")
