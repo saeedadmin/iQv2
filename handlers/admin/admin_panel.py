@@ -604,9 +604,6 @@ class AdminPanel:
             parse_mode='Markdown'
         )
     
-            parse_mode='Markdown'
-        )
-    
     async def show_users_stats(self, query):
         """نمایش آمار تفصیلی کاربران"""
         stats = self.db.get_user_stats()
