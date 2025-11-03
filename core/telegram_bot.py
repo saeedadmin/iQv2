@@ -19,7 +19,8 @@ import re
 import difflib
 import requests
 import weakref
-from aiohttp import web, ClientSession
+import aiohttp
+from aiohttp import web
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, ContextTypes, 
@@ -2975,31 +2976,31 @@ async def main() -> None:
         logger.info(f"🏥 AsyncIO HTTP server در پورت {port}")
         return runner
     
-    # Async Keep-Alive Mechanism 
-    async def async_keep_alive():
-        """AsyncIO keep-alive mechanism - بهینه شده برای کاهش بار"""
-        app_url = os.getenv('KOYEB_PUBLIC_DOMAIN')
-        if not app_url:
-            return
-            
-        if not app_url.startswith('http'):
-            app_url = f"https://{app_url}"
-        
-        async with ClientSession() as session:
-            ping_count = 0
-            while True:
-                try:
-                    await asyncio.sleep(600)  # هر 10 دقیقه (کاهش از 4 دقیقه)
-                    async with session.get(f"{app_url}/ping", timeout=10) as response:
-                        if response.status == 200:
-                            ping_count += 1
-                            # فقط هر 6 بار (یعنی هر 1 ساعت) لاگ کن
-                            if ping_count % 6 == 0:
-                                logger.info(f"✅ Keep-alive فعال است ({ping_count} ping موفق)")
-                        else:
-                            logger.warning(f"⚠️ Keep-alive ناموفق: {response.status}")
-                except Exception as e:
-                    logger.error(f"❌ خطا در keep-alive: {e}")
+    # Async Keep-Alive Mechanism (disabled per user request)
+    # async def async_keep_alive():
+    #     """AsyncIO keep-alive mechanism - بهینه شده برای کاهش بار"""
+    #     app_url = os.getenv('KOYEB_PUBLIC_DOMAIN')
+    #     if not app_url:
+    #         return
+    #     
+    #     if not app_url.startswith('http'):
+    #         app_url = f"https://{app_url}"
+    #     
+    #     async with aiohttp.ClientSession() as session:
+    #         ping_count = 0
+    #         while True:
+    #             try:
+    #                 await asyncio.sleep(600)  # هر 10 دقیقه (کاهش از 4 دقیقه)
+    #                 async with session.get(f"{app_url}/ping", timeout=10) as response:
+    #                     if response.status == 200:
+    #                         ping_count += 1
+    #                         # فقط هر 6 بار (یعنی هر 1 ساعت) لاگ کن
+    #                         if ping_count % 6 == 0:
+    #                             logger.info(f"✅ Keep-alive فعال است ({ping_count} ping موفق)")
+    #                     else:
+    #                         logger.warning(f"⚠️ Keep-alive ناموفق: {response.status}")
+    #             except Exception as e:
+    #                 logger.error(f"❌ خطا در keep-alive: {e}")
     
     # شروع HTTP server در event loop
     def start_http_in_thread():
@@ -3011,10 +3012,9 @@ async def main() -> None:
             # شروع HTTP server
             runner = await start_aiohttp_server()
             
-            # شروع keep-alive اگر DOMAIN تنظیم شده
-            if os.getenv('KOYEB_PUBLIC_DOMAIN'):
-                asyncio.create_task(async_keep_alive())
-                logger.info("🏓 Async keep-alive فعال شد")
+            # if os.getenv('KOYEB_PUBLIC_DOMAIN'):
+            #     asyncio.create_task(async_keep_alive())
+            #     logger.info("🏓 Async keep-alive فعال شد")
             
             # نگهداری server
             try:
@@ -3125,13 +3125,10 @@ async def main() -> None:
             logger.info("✅ Webhook تنظیم شد!")
             logger.info("🏃‍♂️ سرویس در حالت Webhook اجرا می‌شود...")
             logger.info("💡 Health check در /health فعال است")
-            
-            # نگهداری سرویس زنده (Koyeb خودش /health را می‌زند)
-            heartbeat_count = 0
-            while True:
-                await asyncio.sleep(1800)  # هر 30 دقیقه (کاهش از 30 ثانیه)
-                heartbeat_count += 1
-                logger.info(f"💚 Webhook Mode: فعال است ({heartbeat_count * 30} دقیقه uptime)")
+            logger.info("🕒 در حالت webhook، برنامه در انتظار درخواست‌های تلگرام می‌ماند")
+
+            shutdown_event = asyncio.Event()
+            await shutdown_event.wait()
                 
         except KeyboardInterrupt:
             logger.info("🛑 ربات متوقف شد")

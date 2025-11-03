@@ -17,7 +17,8 @@ from core.logger_system import bot_logger
 from handlers.ai.ai_chat_handler import GeminiChatHandler
 import html
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -266,15 +267,24 @@ class PublicMenuManager:
                         desc_text = re.sub(r'<[^>]+>', '', desc_text)
                         description = desc_text.strip()[:120] + '...' if len(desc_text) > 120 else desc_text.strip()
                     
-                    # تاریخ انتشار
-                    published = pub_date_elem.text if pub_date_elem is not None else ''
+                    # تاریخ انتشار - تبدیل به datetime و ISO
+                    published_text = pub_date_elem.text.strip() if pub_date_elem is not None and pub_date_elem.text else ''
+                    published_dt = None
+                    if published_text:
+                        try:
+                            published_dt = parsedate_to_datetime(published_text)
+                            if published_dt.tzinfo is None:
+                                published_dt = published_dt.replace(tzinfo=timezone.utc)
+                        except (TypeError, ValueError, IndexError):
+                            published_dt = None
                     
                     news_list.append({
                         'title': title,
                         'link': link,
                         'description': description,
                         'source': source_name,
-                        'published': published
+                        'published': published_dt.isoformat() if published_dt else published_text,
+                        'published_dt': published_dt
                     })
             
             return news_list
@@ -428,8 +438,19 @@ class PublicMenuManager:
             logger.info(f"📰 مجموع {len(all_news)} خبر از تمام منابع دریافت شد")
             logger.info(f"📰 {len(foreign_news)} خبر خارجی برای ترجمه آماده")
             
-            # مرتب‌سازی بر اساس زمان (جدیدترین اول)
-            all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
+            fallback_dt = datetime.min.replace(tzinfo=timezone.utc)
+
+            def sort_news(items: List[Dict[str, Any]]):
+                """مرتب‌سازی اخبار بر اساس تاریخ انتشار"""
+                if not items:
+                    return
+                items.sort(
+                    key=lambda item: item.get('published_dt') or fallback_dt,
+                    reverse=True
+                )
+            
+            # مرتب‌سازی اولیه بر اساس زمان (جدیدترین اول)
+            sort_news(all_news)
             
             # اگر اخبار خارجی موجود باشد، آنها را ترجمه می‌کنیم
             if foreign_news:
@@ -470,11 +491,9 @@ class PublicMenuManager:
                     else:
                         logger.error(f"❌ خطا در ترجمه اخبار عمومی: {e}")
             
-            # مرتب‌سازی نهایی و انتخاب 10 خبر
-            all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
-            all_news = all_news[:10]
-            
-            return all_news
+            # مرتب‌سازی نهایی و بازگشت حداکثر 8 خبر
+            sort_news(all_news)
+            return all_news[:8]
             
         except Exception as e:
             logger.error(f"❌ خطای کلی در fetch_general_news: {str(e)}", exc_info=True)
