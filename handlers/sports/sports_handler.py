@@ -457,12 +457,8 @@ class SportsHandler:
                         # ذخیره در کش دیتابیس
                         try:
                             if self.db and hasattr(self.db, 'upsert_weekly_fixtures_cache'):
-                                payload = {
-                                    'leagues': result.get('leagues', {}),
-                                    'total_matches': result.get('total_matches', 0),
-                                    'period': result.get('period', f'{date_from} تا {date_to}')
-                                }
-                                self.db.upsert_weekly_fixtures_cache(saturday.date(), friday.date(), payload)
+                                cache_payload = self._serialize_weekly_fixtures_for_cache(result)
+                                self.db.upsert_weekly_fixtures_cache(saturday.date(), friday.date(), cache_payload)
                         except Exception as ce:
                             logger.warning(f"⚠️ خطا در ذخیره کش دیتابیس: {ce}")
                         # برگرداندن با منبع API
@@ -980,6 +976,48 @@ class SportsHandler:
             message += f"⏱️ دقیقه: {match['minute']}\n\n"
         
         return message
+
+    def _serialize_weekly_fixtures_for_cache(self, fixtures: Dict[str, Any]) -> Dict[str, Any]:
+        """سریال‌سازی داده‌های فیکسچر برای ذخیره در کش دیتابیس"""
+        leagues_serialized: Dict[str, Any] = {}
+
+        for key, league in fixtures.get('leagues', {}).items():
+            matches_serialized: List[Dict[str, Any]] = []
+
+            for match in league.get('matches', []):
+                match_dt = match.get('datetime')
+                if isinstance(match_dt, datetime):
+                    match_dt_iso = match_dt.isoformat()
+                else:
+                    match_dt_iso = match_dt
+
+                matches_serialized.append({
+                    'fixture_id': match.get('fixture_id'),
+                    'league_id': match.get('league_id'),
+                    'league_name': match.get('league_name'),
+                    'home_team_id': match.get('home_team_id'),
+                    'home_team': match.get('home_team'),
+                    'away_team_id': match.get('away_team_id'),
+                    'away_team': match.get('away_team'),
+                    'date': match.get('date'),
+                    'datetime': match_dt_iso,
+                    'status': match.get('status'),
+                    'venue': match.get('venue'),
+                    'score': match.get('score')
+                })
+
+            leagues_serialized[key] = {
+                'name': league.get('name'),
+                'count': league.get('count', len(matches_serialized)),
+                'matches': matches_serialized
+            }
+
+        return {
+            'success': fixtures.get('success', False),
+            'total_matches': fixtures.get('total_matches', 0),
+            'period': fixtures.get('period', ''),
+            'leagues': leagues_serialized
+        }
 
     def _hydrate_match_datetime(self, fixture):
         """تبدیل تاریخ بازی به شیء datetime با پشتیبانی از کلیدهای مختلف"""
