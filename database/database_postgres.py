@@ -294,6 +294,64 @@ class PostgreSQLManager:
                 cursor.close()
                 self.return_connection(conn)
 
+    def delete_match_reminder(self, reminder_id: int) -> bool:
+        """حذف کامل یادآوری پس از ارسال"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                '''
+                DELETE FROM sports_match_reminders
+                WHERE id = %s
+                ''',
+                (reminder_id,)
+            )
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return False
+
+            conn.commit()
+            return True
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در حذف یادآوری {reminder_id}: {e}")
+            return False
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
+    def purge_old_weekly_fixtures_cache(self, current_week_start: datetime.date) -> None:
+        """حذف کش‌های قدیمی‌تر از هفته جاری"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                '''
+                DELETE FROM sports_weekly_fixtures_cache
+                WHERE week_start < %s
+                ''',
+                (current_week_start,)
+            )
+
+            conn.commit()
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"❌ خطا در پاکسازی کش فیکسچرهای قدیمی: {e}")
+        finally:
+            if conn:
+                cursor.close()
+                self.return_connection(conn)
+
     def delete_user_match_reminders(self, user_id: int) -> bool:
         """حذف تمام یادآوری‌های یک کاربر (مثلاً هنگام پاک کردن همه تیم‌ها)"""
         conn = None

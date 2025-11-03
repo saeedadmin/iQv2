@@ -1545,6 +1545,10 @@ async def _upsert_weekly_fixtures_cache(base_date: Optional[datetime.datetime] =
     if fixtures.get('success'):
         cache_payload = serialize_weekly_fixtures_for_cache(fixtures)
         db_manager.upsert_weekly_fixtures_cache(week_start_dt, week_end_dt, cache_payload)
+        try:
+            db_manager.purge_old_weekly_fixtures_cache(week_start_dt)
+        except AttributeError:
+            logger.warning("⚠️ متد purge_old_weekly_fixtures_cache در db_manager در دسترس نیست")
         return fixtures
 
     logger.warning(f"⚠️ عدم موفقیت در دریافت فیکسچرهای هفتگی: {fixtures.get('error')}")
@@ -1588,6 +1592,10 @@ def _hydrate_match_datetime(match: Dict[str, Any]) -> Optional[datetime.datetime
 
 def _generate_user_team_reminders(user_id: int, favorites: List[Dict[str, Any]], leagues_data: Dict[str, Any]) -> int:
     created_count = 0
+    now_utc = datetime.datetime.now(pytz.UTC)
+    finished_statuses = {
+        "FT", "AET", "PEN", "PST", "CANC", "ABD", "AWD", "WO"
+    }
 
     for fav in favorites:
         db_manager.delete_match_reminders_for_team(user_id, fav['team_id'])
@@ -1596,6 +1604,13 @@ def _generate_user_team_reminders(user_id: int, favorites: List[Dict[str, Any]],
         matches = league_info.get('matches', [])
         for match in matches:
             match_dt_utc = _hydrate_match_datetime(match)
+            match_status = (match.get('status') or "").upper()
+
+            if match_status in finished_statuses:
+                continue
+
+            if not match_dt_utc or match_dt_utc <= now_utc:
+                continue
 
             for fav in favorites:
                 team_id = fav['team_id']
@@ -1695,7 +1710,16 @@ async def process_due_sports_reminders(app: Application) -> None:
                     text=message,
                     parse_mode='Markdown'
                 )
-                db_manager.mark_match_reminder_sent(reminder['id'])
+                marked = db_manager.mark_match_reminder_sent(reminder['id'])
+                if not marked:
+                    logger.warning(f"⚠️ بروزرسانی وضعیت یادآوری {reminder['id']} ناموفق بود")
+                deleted = False
+                try:
+                    deleted = db_manager.delete_match_reminder(reminder['id'])
+                except AttributeError:
+                    logger.warning("⚠️ متد delete_match_reminder در db_manager در دسترس نیست")
+                if not deleted:
+                    logger.warning(f"⚠️ حذف یادآوری ارسال‌شده {reminder['id']} ناموفق بود")
             except Exception as send_error:
                 logger.error(f"❌ خطا در ارسال یادآوری بازی برای کاربر {reminder['user_id']}: {send_error}")
 

@@ -413,6 +413,43 @@ class DatabaseManager:
             logger.error(f"خطا در دریافت کش فیکسچر هفتگی: {e}")
             return None
 
+    def purge_old_weekly_fixtures_cache(self, current_week_start: datetime.date) -> None:
+        """حذف کش‌های قدیمی‌تر از هفته جاری (SQLite)"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    '''
+                    DELETE FROM sports_weekly_fixtures_cache
+                    WHERE week_start < ?
+                    ''',
+                    (current_week_start.isoformat(),)
+                )
+                conn.commit()
+        except Exception as e:
+            logger.error(f"خطا در پاکسازی کش فیکسچرهای قدیمی: {e}")
+
+    def delete_match_reminder(self, reminder_id: int) -> bool:
+        """حذف کامل یادآوری پس از ارسال (SQLite)"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    '''
+                    DELETE FROM sports_match_reminders
+                    WHERE id = ?
+                    ''',
+                    (reminder_id,)
+                )
+                if cursor.rowcount == 0:
+                    conn.rollback()
+                    return False
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"خطا در حذف یادآوری {reminder_id}: {e}")
+            return False
+
 # نمونه سیستم لاگ سفارشی
 class DatabaseLogger:
     def __init__(self, db_manager: DatabaseManager):
