@@ -17,6 +17,7 @@ from typing import Dict, Any, List, Optional
 import os
 from bs4 import BeautifulSoup
 import pytz
+from dateutil import parser
 
 logger = logging.getLogger(__name__)
 
@@ -981,9 +982,35 @@ class SportsHandler:
         return message
 
     def _hydrate_match_datetime(self, fixture):
-        """تبدیل تاریخ بازی به datetime"""
-        match_date = datetime.fromisoformat(fixture['date'].replace('Z', '+00:00'))
-        return match_date
+        """تبدیل تاریخ بازی به شیء datetime با پشتیبانی از کلیدهای مختلف"""
+        raw_dt = (
+            fixture.get('match_datetime')
+            or fixture.get('datetime')
+            or fixture.get('date')
+        )
+
+        if not raw_dt:
+            return None
+
+        if isinstance(raw_dt, datetime):
+            return raw_dt
+
+        if isinstance(raw_dt, dict) and raw_dt.get('iso'):
+            raw_dt = raw_dt['iso']
+
+        if isinstance(raw_dt, str):
+            normalized = raw_dt.replace('Z', '+00:00').strip()
+            try:
+                return datetime.fromisoformat(normalized)
+            except ValueError:
+                try:
+                    return parser.isoparse(normalized)
+                except (ValueError, TypeError):
+                    logger.warning(f"⚠️ فرمت تاریخ ناشناخته برای فیکسچر: {raw_dt}")
+                    return None
+
+        logger.warning(f"⚠️ فرمت تاریخ پشتیبانی‌نشده برای فیکسچر: {type(raw_dt)}")
+        return None
 
     def format_all_fixtures_message(self, all_fixtures_data: Dict[str, Any]) -> str:
         """فرمت کردن پیام برنامه بازی‌های همه لیگ‌ها"""
@@ -1026,9 +1053,13 @@ class SportsHandler:
             message += f"🎯 {league_info['count']} بازی\n\n"
             
             for match in league_info['matches']:
-                match['match_datetime'] = self._hydrate_match_datetime(match)
+                match_dt_utc = self._hydrate_match_datetime(match)
+                if not match_dt_utc:
+                    message += f"⚪ {match['home_team']} vs {match['away_team']}\n"
+                    message += "   📅 زمان نامشخص\n\n"
+                    continue
+                match['match_datetime'] = match_dt_utc
                 # تبدیل به تایم‌زون تهران
-                match_dt_utc = match['match_datetime']
                 tehran_tz = pytz.timezone('Asia/Tehran')
                 match_dt = match_dt_utc.astimezone(tehran_tz)
                 
