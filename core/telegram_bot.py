@@ -78,7 +78,7 @@ try:
     from handlers.ai.tradingview_analysis import TradingViewAnalysisFetcher
     TRADINGVIEW_AVAILABLE = True
 except ImportError as e:
-    logger.warning(f"TradingView Analysis غیرفعال: {e}")
+    logging.getLogger(__name__).warning(f"TradingView Analysis غیرفعال: {e}")
     TradingViewAnalysisFetcher = None
     TRADINGVIEW_AVAILABLE = False
 
