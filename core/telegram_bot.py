@@ -118,7 +118,7 @@ ai_image_gen = AIImageGenerator()
 ocr_handler = OCRHandler()
 
 # Initialize Sports Handler
-sports_handler = SportsHandler()
+sports_handler = SportsHandler(db_manager=db_manager)
 
 # Initialize TradingView fetcher if available
 if TRADINGVIEW_AVAILABLE and TradingViewAnalysisFetcher:

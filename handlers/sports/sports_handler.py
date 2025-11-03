@@ -23,8 +23,9 @@ logger = logging.getLogger(__name__)
 class SportsHandler:
     """مدیریت اطلاعات ورزشی"""
     
-    def __init__(self):
+    def __init__(self, db_manager = None):
         """مقداردهی handler ورزش"""
+        self.db = db_manager
         # API-Football (100 req/day - رایگان)
         self.api_keys = [
             os.getenv('FOOTBALL_DATA_API_KEY', ''),
@@ -392,17 +393,7 @@ class SportsHandler:
         """دریافت برنامه بازی‌های هفتگی همه لیگ‌های مهم"""
         try:
             logger.info("🔄 درخواست فیکسچرهای هفتگی همه لیگ‌ها...")
-            
-            # بررسی آیا کلید API در دسترس هست
-            current_key = self.get_current_api_key()
-            if not current_key:
-                return {
-                    'success': False,
-                    'error': 'هیچ کلید API در دسترس نیست',
-                    'leagues': {},
-                    'info': self.get_rate_limit_message()
-                }
-            
+
             # محاسبه تاریخ شروع و پایان هفته
             today = base_date or datetime.now()
             days_since_saturday = (today.weekday() + 2) % 7
@@ -411,6 +402,36 @@ class SportsHandler:
             
             date_from = saturday.strftime('%Y-%m-%d')
             date_to = friday.strftime('%Y-%m-%d')
+            
+            # 1) تلاش برای خواندن از کش دیتابیس
+            try:
+                if self.db and hasattr(self.db, 'get_weekly_fixtures_cache'):
+                    cached = self.db.get_weekly_fixtures_cache(saturday.date(), friday.date())
+                    if cached and cached.get('payload'):
+                        payload = cached['payload']
+                        # اطمینان از کلیدهای پایه در payload
+                        leagues = payload.get('leagues', {})
+                        total_matches = payload.get('total_matches', sum(d.get('count', 0) for d in leagues.values()))
+                        period = payload.get('period', f'{date_from} تا {date_to}')
+                        return {
+                            'success': True,
+                            'leagues': leagues,
+                            'total_matches': total_matches,
+                            'period': period,
+                            'source': 'db'
+                        }
+            except Exception as e:
+                logger.warning(f"⚠️ خطا در خواندن کش دیتابیس: {e}")
+            
+            # 2) در صورت نبود کش، فراخوانی API
+            current_key = self.get_current_api_key()
+            if not current_key:
+                return {
+                    'success': False,
+                    'error': 'هیچ کلید API در دسترس نیست',
+                    'leagues': {},
+                    'info': self.get_rate_limit_message()
+                }
             
             # تلاش با کلیدهای مختلف در صورت خطا
             for api_index in range(len(self.api_keys)):
@@ -432,6 +453,19 @@ class SportsHandler:
                 try:
                     result = await self._fetch_all_fixtures_data(saturday, friday, headers)
                     if result:
+                        # ذخیره در کش دیتابیس
+                        try:
+                            if self.db and hasattr(self.db, 'upsert_weekly_fixtures_cache'):
+                                payload = {
+                                    'leagues': result.get('leagues', {}),
+                                    'total_matches': result.get('total_matches', 0),
+                                    'period': result.get('period', f'{date_from} تا {date_to}')
+                                }
+                                self.db.upsert_weekly_fixtures_cache(saturday.date(), friday.date(), payload)
+                        except Exception as ce:
+                            logger.warning(f"⚠️ خطا در ذخیره کش دیتابیس: {ce}")
+                        # برگرداندن با منبع API
+                        result['source'] = 'api'
                         return result
                 except Exception as e:
                     logger.warning(f"API Key {api_index} خطا داد: {e}")
@@ -872,7 +906,10 @@ class SportsHandler:
             
             message += "=" * 40 + "\n\n"
         
-        message += "📊 منبع: API-Football"
+        source = all_fixtures_data.get('source', 'api')
+        source_text = "از دیتابیس" if source == 'db' else "از API"
+        message += "📊 منبع: API-Football\n"
+        message += f"🗂️ داده: {source_text}"
         return message
     
     def format_fixtures_message(self, fixtures_data: Dict[str, Any]) -> str:
