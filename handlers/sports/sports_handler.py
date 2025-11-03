@@ -542,27 +542,53 @@ class SportsHandler:
                         if match['league']['id'] == league_id:
                             fixture = match['fixture']
                             teams = match['teams']
-                            goals = match['goals']
-                            
+                            goals = match.get('goals', {})
+                            score_details = match.get('score', {})
+
                             # تبدیل به datetime برای روز هفته
-                            match_date = datetime.fromisoformat(fixture['date'].replace('Z', '+00:00'))
-                            
+                            fixture_date_raw = fixture.get('date')
+                            match_date = None
+                            if fixture_date_raw:
+                                try:
+                                    match_date = datetime.fromisoformat(fixture_date_raw.replace('Z', '+00:00'))
+                                except ValueError:
+                                    match_date = None
+
+                            # محاسبه نتیجه نهایی بازی
+                            score_home = goals.get('home') if goals else None
+                            score_away = goals.get('away') if goals else None
+
+                            if score_home is None or score_away is None:
+                                for section in ('fulltime', 'extratime', 'penalty', 'halftime'):
+                                    section_data = score_details.get(section, {}) if isinstance(score_details, dict) else {}
+                                    if score_home is None:
+                                        score_home = section_data.get('home', score_home)
+                                    if score_away is None:
+                                        score_away = section_data.get('away', score_away)
+                                    if score_home is not None and score_away is not None:
+                                        break
+
+                            final_score = None
+                            if score_home is not None and score_away is not None:
+                                final_score = {
+                                    'home': score_home,
+                                    'away': score_away
+                                }
+
                             match_info = {
-                                'fixture_id': fixture['id'],
-                                'league_id': match['league']['id'],
-                                'league_name': match['league']['name'],
-                                'home_team_id': teams['home']['id'],
-                                'home_team': teams['home']['name'],
-                                'away_team_id': teams['away']['id'],
-                                'away_team': teams['away']['name'],
-                                'date': fixture['date'],
+                                'fixture_id': fixture.get('id'),
+                                'league_id': match['league'].get('id'),
+                                'league_name': match['league'].get('name'),
+                                'home_team_id': teams['home'].get('id'),
+                                'home_team': teams['home'].get('name'),
+                                'away_team_id': teams['away'].get('id'),
+                                'away_team': teams['away'].get('name'),
+                                'date': fixture_date_raw or (match_date.isoformat() if match_date else None),
                                 'datetime': match_date,
-                                'status': fixture['status']['short'],
-                                'venue': fixture['venue']['name'] if fixture.get('venue') else 'نامشخص',
-                                'score': {
-                                    'home': goals['home'],
-                                    'away': goals['away']
-                                } if goals['home'] is not None else None
+                                'status': fixture.get('status', {}).get('short') if isinstance(fixture.get('status'), dict) else fixture.get('status'),
+                                'venue': fixture.get('venue', {}).get('name') if isinstance(fixture.get('venue'), dict) else fixture.get('venue', 'نامشخص'),
+                                'score': final_score,
+                                'score_details': score_details
                             }
                             league_matches.append(match_info)
                 
