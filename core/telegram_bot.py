@@ -1488,9 +1488,11 @@ def serialize_weekly_fixtures_for_cache(fixtures: Dict[str, Any]) -> Dict[str, A
                 'away_team': match.get('away_team'),
                 'league_id': match.get('league_id'),
                 'league_name': match.get('league_name'),
+                'date': match.get('date'),
                 'datetime': match_iso,
                 'status': match.get('status'),
-                'venue': match.get('venue')
+                'venue': match.get('venue'),
+                'score': match.get('score')
             })
 
         leagues[key] = {
