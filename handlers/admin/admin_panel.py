@@ -71,7 +71,6 @@ class AdminPanel:
             ],
             [
                 InlineKeyboardButton(f"{bot_status} {toggle_text} کردن", callback_data=toggle_action),
-                InlineKeyboardButton("📊 لاگ سیستم", callback_data="sys_system_logs")
             ],
             [
                 InlineKeyboardButton("🏠 منوی اصلی", callback_data="admin_main")
@@ -315,9 +314,6 @@ class AdminPanel:
             elif data == "admin_broadcast":
                 await self.start_broadcast(query, context)
             
-            elif data == "admin_logs":
-                await self.show_logs_menu(query)
-            
             elif data == "sys_resources":
                 await self.show_system_resources(query)
             
@@ -333,9 +329,6 @@ class AdminPanel:
             elif data == "sys_restart":
                 await self.restart_bot(query)
             
-            elif data == "sys_system_logs":
-                await self.show_system_logs(query)
-
             elif data == "sys_refresh_weekly_cache":
                 await self.refresh_weekly_cache_manual(query)
             
@@ -403,7 +396,6 @@ class AdminPanel:
 • وضعیت منابع سیستم را مشاهده کنید
 • ربات را خاموش/روشن کنید  
 • کش برنامه بازی‌های هفتگی را دستی بروزرسانی کنید
-• لاگ‌های سیستم را بررسی کنید
 • ربات را ری‌استارت کنید
 
 یک گزینه را انتخاب کنید:
@@ -506,65 +498,6 @@ class AdminPanel:
         await query.edit_message_text(
             message,
             reply_markup=self.create_back_keyboard("admin_main", "admin_stats"),
-            parse_mode='Markdown'
-        )
-    
-    async def show_recent_logs(self, query):
-        """نمایش خلاصه ۱۰ لاگ اخیر - نسخه ساده"""
-        try:
-            logs = self.db.get_recent_logs(10)  # فقط 10 مورد
-            
-            if not logs:
-                message = "📋 **خلاصه لاگ‌های اخیر**\n\nهیچ لاگی یافت نشد."
-            else:
-                message = "📋 **خلاصه ۱۰ لاگ اخیر:**\n\n"
-                for i, log in enumerate(logs, 1):
-                    try:
-                        # پردازش timestamp با مدیریت خطا
-                        timestamp_str = str(log['timestamp'])
-                        if len(timestamp_str) > 19:
-                            # فقط ساعت و دقیقه را نمایش دهیم
-                            time_part = timestamp_str[11:16]
-                        else:
-                            time_part = timestamp_str[-8:-3] if len(timestamp_str) >= 8 else timestamp_str
-                        
-                        level = str(log.get('level', 'INFO'))
-                        message_text = str(log.get('message', 'پیام خالی'))
-                        
-                        level_emoji = {
-                            "INFO": "ℹ️", 
-                            "WARNING": "⚠️", 
-                            "ERROR": "❌", 
-                            "USER_ACTION": "👤", 
-                            "ADMIN_ACTION": "👨‍💼", 
-                            "SYSTEM": "🖥️"
-                        }.get(level, "📝")
-                        
-                        # محدود کردن طول پیام برای نمایش بهتر
-                        if len(message_text) > 40:
-                            display_message = message_text[:37] + "..."
-                        else:
-                            display_message = message_text
-                        
-                        message += f"{i}. {level_emoji} `{time_part}` {display_message}\n"
-                        
-                    except Exception as e:
-                        message += f"{i}. 📝 `خطا` {str(e)[:25]}...\n"
-                        
-        except Exception as e:
-            message = f"❌ خطا در دریافت لاگ‌ها: {str(e)}"
-        
-        # دکمه ساده برای بازگشت
-        back_keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("🔄 بروزرسانی", callback_data="admin_logs"),
-                InlineKeyboardButton("🏠 منوی اصلی", callback_data="admin_main")
-            ]
-        ])
-        
-        await query.edit_message_text(
-            message,
-            reply_markup=back_keyboard,
             parse_mode='Markdown'
         )
     
@@ -671,61 +604,6 @@ class AdminPanel:
             parse_mode='Markdown'
         )
     
-    async def show_system_logs(self, query):
-        """نمایش لاگ‌های سیستم"""
-        try:
-            # دریافت لاگ‌های سیستم فقط
-            all_logs = self.db.get_recent_logs(50)
-            system_logs = [log for log in all_logs if log.get('level') in ['SYSTEM', 'ERROR', 'ADMIN_ACTION']]
-            
-            if not system_logs:
-                message = "📊 **لاگ‌های سیستم**\n\nهیچ لاگ سیستمی یافت نشد."
-            else:
-                message = f"📊 **لاگ‌های سیستم** ({len(system_logs)} مورد):\n\n"
-                for log in system_logs[:8]:  # فقط 8 مورد آخر
-                    try:
-                        timestamp_str = str(log['timestamp'])
-                        if len(timestamp_str) > 16:
-                            timestamp = timestamp_str[5:16]  # فقط ماه-روز ساعت
-                        else:
-                            timestamp = timestamp_str
-                        
-                        level = str(log.get('level', 'SYSTEM'))
-                        message_text = str(log.get('message', ''))
-                        
-                        level_emoji = {
-                            "SYSTEM": "🖥️", 
-                            "ERROR": "❌", 
-                            "ADMIN_ACTION": "👨‍💼"
-                        }.get(level, "📝")
-                        
-                        # محدود کردن طول پیام
-                        if len(message_text) > 40:
-                            display_message = message_text[:37] + "..."
-                        else:
-                            display_message = message_text
-                        
-                        message += f"{level_emoji} `{timestamp}` {display_message}\n"
-                        
-                    except Exception as e:
-                        message += f"📝 خطا در پردازش لاگ: {str(e)[:20]}...\n"
-                        
-        except Exception as e:
-            message = f"❌ خطا در دریافت لاگ‌های سیستم: {str(e)}"
-        
-        back_keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("🔄 بروزرسانی", callback_data="sys_system_logs"),
-                InlineKeyboardButton("📋 همه لاگ‌ها", callback_data="admin_logs")
-            ],
-            [
-                InlineKeyboardButton("🖥️ منوی سیستم", callback_data="admin_system")
-            ]
-        ])
-        
-        await query.edit_message_text(
-            message,
-            reply_markup=back_keyboard,
             parse_mode='Markdown'
         )
     

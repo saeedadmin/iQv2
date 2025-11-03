@@ -35,9 +35,9 @@ load_dotenv()
 # Choose database based on environment
 DATABASE_URL = os.getenv('DATABASE_URL')
 if DATABASE_URL and DATABASE_URL.startswith('postgresql'):
-    from database.database_postgres import PostgreSQLManager as DatabaseManager, DatabaseLogger
+    from database.database_postgres import PostgreSQLManager as DatabaseManager
 else:
-    from database.database import DatabaseManager, DatabaseLogger
+    from database.database import DatabaseManager
 
 from handlers.admin.admin_panel import AdminPanel
 from handlers.public import (
@@ -107,8 +107,6 @@ if DATABASE_URL and DATABASE_URL.startswith('postgresql'):
     db_manager = DatabaseManager(DATABASE_URL)
 else:
     db_manager = DatabaseManager()
-
-db_logger = DatabaseLogger(db_manager)
 admin_panel = AdminPanel(db_manager, ADMIN_USER_ID)
 public_menu = PublicMenuManager(db_manager)
 
@@ -1043,8 +1041,8 @@ def _format_favorites_summary(favorites: List[Dict[str, Any]]) -> str:
         if created_at:
             try:
                 if isinstance(created_at, datetime.datetime):
-                    created_local = created_at.astimezone(TEHRAN_TZ) if created_at.tzinfo else TEHRAN_TZ.localize(created_at)
-                    created_str = created_local.strftime('%Y/%m/%d')
+                    created_at = created_at.astimezone(TEHRAN_TZ) if created_at.tzinfo else TEHRAN_TZ.localize(created_at)
+                    created_str = created_at.strftime('%Y/%m/%d')
             except Exception:
                 created_str = ''
         date_part = f" - ثبت: {created_str}" if created_str else ''
@@ -1064,8 +1062,8 @@ def _format_upcoming_reminders(reminders: List[Dict[str, Any]]) -> str:
             try:
                 if match_dt.tzinfo is None:
                     match_dt = pytz.UTC.localize(match_dt)
-                match_local = match_dt.astimezone(TEHRAN_TZ)
-                match_str = match_local.strftime('%Y/%m/%d %H:%M')
+                match_dt = match_dt.astimezone(TEHRAN_TZ)
+                match_str = match_dt.strftime('%Y/%m/%d %H:%M')
             except Exception:
                 match_str = 'نامشخص'
         else:
@@ -1078,7 +1076,7 @@ def _format_upcoming_reminders(reminders: List[Dict[str, Any]]) -> str:
     if len(reminders) > 5:
         lines.append("...")
 
-    return "\n".join(lines)
+    return "\n\n".join(lines)
 
 
 def _build_reminder_panel_text(header: Optional[str], favorites: List[Dict[str, Any]], reminders: List[Dict[str, Any]]) -> str:
@@ -1168,8 +1166,8 @@ def build_sports_settings_message(favorites: List[Dict[str, Any]]) -> str:
             if created_at:
                 try:
                     if isinstance(created_at, datetime.datetime):
-                        created_local = created_at.astimezone(TEHRAN_TZ) if created_at.tzinfo else TEHRAN_TZ.localize(created_at)
-                        created_str = created_local.strftime('%Y/%m/%d')
+                        created_at = created_at.astimezone(TEHRAN_TZ) if created_at.tzinfo else TEHRAN_TZ.localize(created_at)
+                        created_str = created_at.strftime('%Y/%m/%d')
                 except Exception:
                     created_str = ''
             date_part = f" - ثبت: {created_str}" if created_str else ''
@@ -1748,7 +1746,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     db_manager.update_user_activity(user.id)
     
     # لاگ پیام
-    db_logger.log_user_action(user.id, "MESSAGE_SENT", f"پیام ارسال شد: {update.message.text[:50]}...")
+    bot_logger.log_user_action(user.id, "MESSAGE_SENT", f"پیام ارسال شد: {update.message.text[:50]}...")
     
     message_text = update.message.text
     user_data = db_manager.get_user(user.id)

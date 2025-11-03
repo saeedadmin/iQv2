@@ -1757,7 +1757,6 @@ class DatabaseLogger:
     def log_user_activity(self, user_id: int, activity: str, details: str = None):
         """ثبت فعالیت کاربر"""
         try:
-            self.db.log_event(user_id, activity, details)
             self.logger.info(f"User: {user_id} | Activity: {activity} | Details: {details}")
         except Exception as e:
             self.logger.error(f"❌ خطا در ثبت فعالیت: {e}")
@@ -1766,7 +1765,6 @@ class DatabaseLogger:
         """لاگ عملیات کاربر (سازگار با SQLite)"""
         try:
             details = f"{message} - Action: {action}" if message else action
-            self.db.log_event(user_id, 'USER_ACTION', details)
             self.logger.info(f"User: {user_id} | Action: {action} | Message: {message}")
         except Exception as e:
             self.logger.error(f"❌ خطا در ثبت عملیات کاربر: {e}")
@@ -1782,7 +1780,6 @@ class DatabaseLogger:
             if details:
                 msg += f" | Details: {details}"
             
-            self.db.log_event(admin_id, 'ADMIN_ACTION', msg)
             self.logger.info(msg)
         except Exception as e:
             self.logger.error(f"❌ خطا در ثبت عملیات ادمین: {e}")
@@ -1790,7 +1787,6 @@ class DatabaseLogger:
     def log_system_event(self, event: str, details: str = None):
         """ثبت رویداد سیستم"""
         try:
-            self.db.log_event(0, event, details)  # user_id=0 برای رویدادهای سیستم
             self.logger.info(f"Event: {event} | Details: {details}")
         except Exception as e:
             self.logger.error(f"❌ خطا در ثبت رویداد: {e}")
@@ -1799,7 +1795,6 @@ class DatabaseLogger:
         """ثبت خطا"""
         try:
             details = f"{error_msg} | Exception: {str(error)}" if error else error_msg
-            self.db.log_event(0, 'ERROR', details)
             self.logger.error(details)
         except Exception as e:
             self.logger.error(f"❌ خطا در ثبت خطا: {e}")
