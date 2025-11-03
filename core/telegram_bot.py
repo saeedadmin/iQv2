@@ -28,6 +28,7 @@ from telegram.ext import (Application, CommandHandler, ContextTypes,
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
+import dateutil.parser as parser  # For datetime conversion
 from typing import Any, Dict, List, Optional, Tuple
 
 # Load environment variables
@@ -854,6 +855,10 @@ async def tradingview_analysis_process(update: Update, context: ContextTypes.DEF
 • `bnbusdt` - بایننس کوین
 • `xrpusdt` - ریپل
 • `dogeusdt` - دوج کوین
+• `linkusdt` - چین لینک
+• `ltcusdt` - لایت کوین
+• `dotusdt` - پولکادات
+• `avaxusdt` - اولانچ
 
 ⚠️ **توجه:** فقط حروف کوچک، بدون فاصله یا نشانه خاص
 
@@ -1197,7 +1202,8 @@ def build_user_reminders_message(reminders: List[Dict[str, Any]]) -> str:
             if match_dt:
                 if match_dt.tzinfo is None:
                     match_dt = pytz.UTC.localize(match_dt)
-                match_dt = match_dt.astimezone(TEHRAN_TZ)
+                match_dt_local = match_dt.astimezone(TEHRAN_TZ)
+                match_time_str = match_dt_local.strftime('%Y/%m/%d %H:%M')
         except Exception:
             pass
 
@@ -1205,12 +1211,13 @@ def build_user_reminders_message(reminders: List[Dict[str, Any]]) -> str:
             if reminder_dt:
                 if reminder_dt.tzinfo is None:
                     reminder_dt = pytz.UTC.localize(reminder_dt)
-                reminder_dt = reminder_dt.astimezone(TEHRAN_TZ)
+                reminder_dt_local = reminder_dt.astimezone(TEHRAN_TZ)
+                reminder_str = reminder_dt_local.strftime('%Y/%m/%d %H:%M')
         except Exception:
             pass
 
-        match_str = match_dt.strftime('%Y/%m/%d %H:%M') if match_dt else 'نامشخص'
-        reminder_str = reminder_dt.strftime('%Y/%m/%d %H:%M') if reminder_dt else match_str
+        match_str = match_time_str if match_dt else 'نامشخص'
+        reminder_str = reminder_str if reminder_dt else match_str
 
         lines.append(
             f"{idx}. {reminder['team_name']} vs {reminder['opponent_team_name']}"
@@ -1578,15 +1585,20 @@ def _hydrate_match_datetime(match: Dict[str, Any]) -> Optional[datetime.datetime
     match_dt = match.get('datetime')
     if isinstance(match_dt, str):
         try:
-            match_dt_utc = datetime.datetime.fromisoformat(match_dt)
-            if match_dt_utc.tzinfo is None:
-                match_dt_utc = pytz.UTC.localize(match_dt_utc)
-            return match_dt_utc
-        except Exception:
-            return None
-    if isinstance(match_dt, datetime.datetime):
-        return match_dt if match_dt.tzinfo else pytz.UTC.localize(match_dt)
-    return None
+            # ISO format with timezone
+            dt = datetime.datetime.fromisoformat(match_dt)
+        except (ValueError, TypeError):
+            try:
+                # Fallback to parser for non-ISO formats
+                dt = dateutil.parser.parse(match_dt)
+            except (ValueError, TypeError):
+                # Final fallback to current time
+                dt = datetime.datetime.now()
+                logger.warning(f"Invalid datetime format: {match_dt}")
+    
+    # Convert to Tehran timezone
+    tehran_tz = pytz.timezone('Asia/Tehran')
+    return dt.astimezone(tehran_tz)
 
 
 def _generate_user_team_reminders(user_id: int, favorites: List[Dict[str, Any]], leagues_data: Dict[str, Any]) -> int:
@@ -1841,7 +1853,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             
             logger.error(f"❌ خطا در پردازش پیام چت AI: {e}")
             await update.message.reply_text(
-                "❌ متاسفانه در پردازش پیام شما خطایی رخ داد. لطفاً دوباره تلاش کنید."
+                "❌ متأسفانه در پردازش پیام شما خطایی رخ داد. لطفاً دوباره تلاش کنید."
             )
         
         return
