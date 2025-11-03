@@ -14,3 +14,4 @@ apscheduler>=3.10.0
 pytz>=2024.1
 elevenlabs>=1.9.0
 cerebras-cloud-sdk>=1.56.0
+python-dateutil==2.9.0
