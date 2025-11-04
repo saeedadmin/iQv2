@@ -56,7 +56,8 @@ class SportsHandler:
             'bundesliga': 78,        # Bundesliga (آلمان)
             'serie_a': 135,          # Serie A (ایتالیا)
             'ligue_1': 61,           # Ligue 1 (فرانسه)
-            'champions_league': 2    # UEFA Champions League
+            'champions_league': 2,   # UEFA Champions League
+            'afc_champions_league': 667  # AFC Champions League
         }
 
         self.league_display_names = {
@@ -66,10 +67,20 @@ class SportsHandler:
             'serie_a': '🇮🇹 سری آ (ایتالیا)',
             'bundesliga': '🇩🇪 بوندسلیگا (آلمان)',
             'ligue_1': '🇫🇷 لیگ یک (فرانسه)',
-            'champions_league': '🏆 لیگ قهرمانان اروپا'
+            'champions_league': '🏆 لیگ قهرمانان اروپا',
+            'afc_champions_league': '🌏 لیگ قهرمانان آسیا'
         }
 
-        self.league_order = ['iran', 'la_liga', 'premier_league', 'serie_a', 'bundesliga', 'ligue_1']
+        self.league_order = [
+            'iran',
+            'la_liga',
+            'premier_league',
+            'serie_a',
+            'bundesliga',
+            'ligue_1',
+            'champions_league',
+            'afc_champions_league'
+        ]
         
         self.timeout = 15
         self.current_season = self._get_current_season()
@@ -408,25 +419,23 @@ class SportsHandler:
             date_to = friday.strftime('%Y-%m-%d')
 
             if use_cache:
-                # 👇 موقتاً خواندن از کش غیرفعال شده تا درخواست‌ها مستقیم به API ارسال شوند
-                # try:
-                #     if self.db and hasattr(self.db, 'get_weekly_fixtures_cache'):
-                #         cached = self.db.get_weekly_fixtures_cache(saturday.date(), friday.date())
-                #         if cached and cached.get('payload'):
-                #             payload = cached['payload']
-                #             leagues = payload.get('leagues', {})
-                #             total_matches = payload.get('total_matches', sum(d.get('count', 0) for d in leagues.values()))
-                #             period = payload.get('period', f'{date_from} تا {date_to}')
-                #             return {
-                #                 'success': True,
-                #                 'leagues': leagues,
-                #                 'total_matches': total_matches,
-                #                 'period': period,
-                #                 'source': 'db'
-                #             }
-                # except Exception as e:
-                #     logger.warning(f"⚠️ خطا در خواندن کش دیتابیس: {e}")
-                pass
+                try:
+                    if self.db and hasattr(self.db, 'get_weekly_fixtures_cache'):
+                        cached = self.db.get_weekly_fixtures_cache(saturday.date(), friday.date())
+                        if cached and cached.get('payload'):
+                            payload = cached['payload']
+                            leagues = payload.get('leagues', {})
+                            total_matches = payload.get('total_matches', sum(d.get('count', 0) for d in leagues.values()))
+                            period = payload.get('period', f'{date_from} تا {date_to}')
+                            return {
+                                'success': True,
+                                'leagues': leagues,
+                                'total_matches': total_matches,
+                                'period': period,
+                                'source': 'db'
+                            }
+                except Exception as e:
+                    logger.warning(f"⚠️ خطا در خواندن کش دیتابیس: {e}")
 
             result = await self._fetch_complete_weekly_fixtures(base_date)
             if result.get('success') and self.db and hasattr(self.db, 'upsert_weekly_fixtures_cache'):
