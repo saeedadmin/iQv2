@@ -426,20 +426,17 @@ class SportsHandler:
                 except Exception as e:
                     logger.warning(f"⚠️ خطا در خواندن کش دیتابیس: {e}")
 
-            today = base_date or datetime.now()
-            days_since_saturday = (today.weekday() + 2) % 7
-            saturday = today - timedelta(days=days_since_saturday)
-            friday = saturday + timedelta(days=6)
-
-            result = await self._fetch_fixtures_with_retry(saturday, friday)
+            result = await self._fetch_complete_weekly_fixtures(base_date)
             if result.get('success') and self.db and hasattr(self.db, 'upsert_weekly_fixtures_cache'):
                 try:
-                    cache_payload = self._serialize_weekly_fixtures_for_cache(result)
-                    self.db.upsert_weekly_fixtures_cache(saturday.date(), friday.date(), cache_payload)
+                    week_start_dt = result['meta']['week_start']
+                    week_end_dt = result['meta']['week_end']
+                    cache_payload = result['payload']
+                    self.db.upsert_weekly_fixtures_cache(week_start_dt, week_end_dt, cache_payload)
                 except Exception as ce:
                     logger.warning(f"⚠️ خطا در ذخیره کش دیتابیس: {ce}")
 
-            return result
+            return result['payload'] if result.get('success') else result
 
         except Exception as e:
             logger.error(f"❌ خطا در get_all_weekly_fixtures: {e}")
@@ -449,14 +446,27 @@ class SportsHandler:
                 'leagues': {}
             }
     
-    async def _fetch_fixtures_with_retry(self, saturday: datetime, friday: datetime) -> Dict[str, Any]:
-        """تابع مادر برای دریافت فیکسچرها از API با گردش کلیدها"""
+    async def _fetch_complete_weekly_fixtures(self, base_date: Optional[datetime] = None) -> Dict[str, Any]:
+        """تابع مادر: دریافت برنامه بازی‌های هفتگی با خروجی کامل برای کش"""
+        today = base_date or datetime.now()
+        days_since_saturday = (today.weekday() + 2) % 7
+        saturday = today - timedelta(days=days_since_saturday)
+        friday = saturday + timedelta(days=6)
+
         current_key = self.get_current_api_key()
         if not current_key:
             return {
                 'success': False,
                 'error': 'هیچ کلید API در دسترس نیست',
-                'leagues': {},
+                'payload': {
+                    'leagues': {},
+                    'total_matches': 0,
+                    'period': '',
+                },
+                'meta': {
+                    'week_start': saturday.date(),
+                    'week_end': friday.date()
+                },
                 'info': self.get_rate_limit_message()
             }
 
@@ -478,8 +488,16 @@ class SportsHandler:
             try:
                 result = await self._fetch_all_fixtures_data(saturday, friday, headers)
                 if result:
-                    result['source'] = 'api'
-                    return result
+                    payload = result
+                    payload['source'] = 'api'
+                    return {
+                        'success': True,
+                        'payload': payload,
+                        'meta': {
+                            'week_start': saturday.date(),
+                            'week_end': friday.date()
+                        }
+                    }
             except Exception as e:
                 logger.warning(f"API Key {api_index} خطا داد: {e}")
                 continue
@@ -487,7 +505,15 @@ class SportsHandler:
         return {
             'success': False,
             'error': 'تمام کلیدهای API در دسترس نیستند',
-            'leagues': {},
+            'payload': {
+                'leagues': {},
+                'total_matches': 0,
+                'period': ''
+            },
+            'meta': {
+                'week_start': saturday.date(),
+                'week_end': friday.date()
+            },
             'info': self.get_rate_limit_message()
         }
 
