@@ -446,7 +446,7 @@ class AdminPanel:
         await query.edit_message_text(
             message,
             reply_markup=keyboard,
-            parse_mode='Markdown'
+            parse_mode=None
         )
     
     async def show_users_menu(self, query):
