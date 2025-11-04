@@ -1548,7 +1548,7 @@ async def _upsert_weekly_fixtures_cache(base_date: Optional[datetime.datetime] =
 
     week_start_dt, week_end_dt = _compute_week_range(tehran_now)
 
-    fixtures = await sports_handler.get_all_weekly_fixtures(base_date=tehran_now)
+    fixtures = await sports_handler.fetch_all_weekly_fixtures_from_api(base_date=tehran_now)
 
     if fixtures.get('success'):
         cache_payload = serialize_weekly_fixtures_for_cache(fixtures)

@@ -390,92 +390,102 @@ class SportsHandler:
                 'news': []
             }
     
-    async def get_all_weekly_fixtures(self, base_date: Optional[datetime] = None) -> Dict[str, Any]:
-        """دریافت برنامه بازی‌های هفتگی همه لیگ‌های مهم"""
-        try:
-            logger.info("🔄 درخواست فیکسچرهای هفتگی همه لیگ‌ها...")
+    async def fetch_all_weekly_fixtures_from_api(
+        self,
+        base_date: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """تابع مادر: دریافت مستقیم برنامه بازی‌های هفتگی از API"""
+        today = base_date or datetime.now()
+        days_since_saturday = (today.weekday() + 2) % 7
+        saturday = today - timedelta(days=days_since_saturday)
+        friday = saturday + timedelta(days=6)
 
-            # محاسبه تاریخ شروع و پایان هفته
+        current_key = self.get_current_api_key()
+        if not current_key:
+            return {
+                'success': False,
+                'error': 'هیچ کلید API در دسترس نیست',
+                'leagues': {},
+                'info': self.get_rate_limit_message()
+            }
+
+        for api_index in range(len(self.api_keys)):
+            if self.api_limits[api_index]['exhausted']:
+                continue
+
+            current_key = self.api_keys[api_index]
+            self.current_api_index = api_index
+            self.football_api_key = current_key
+
+            headers = {
+                'x-rapidapi-key': current_key,
+                'x-rapidapi-host': 'v3.football.api-sports.io'
+            }
+
+            logger.info(f"🔄 استفاده از API Key {api_index} برای دریافت داده‌های خام")
+
+            try:
+                result = await self._fetch_all_fixtures_data(saturday, friday, headers)
+                if result:
+                    result['source'] = 'api'
+                    return result
+            except Exception as e:
+                logger.warning(f"API Key {api_index} خطا داد: {e}")
+                continue
+
+        return {
+            'success': False,
+            'error': 'تمام کلیدهای API در دسترس نیستند',
+            'leagues': {},
+            'info': self.get_rate_limit_message()
+        }
+
+    async def get_all_weekly_fixtures(
+        self,
+        base_date: Optional[datetime] = None,
+        use_cache: bool = True
+    ) -> Dict[str, Any]:
+        """دریافت برنامه بازی‌های هفتگی با اولویت کش"""
+        try:
+            logger.info("🔄 دریافت فیکسچرهای هفتگی با مدیریت کش...")
+
             today = base_date or datetime.now()
             days_since_saturday = (today.weekday() + 2) % 7
             saturday = today - timedelta(days=days_since_saturday)
             friday = saturday + timedelta(days=6)
-            
+
             date_from = saturday.strftime('%Y-%m-%d')
             date_to = friday.strftime('%Y-%m-%d')
-            
-            # 1) تلاش برای خواندن از کش دیتابیس
-            try:
-                if self.db and hasattr(self.db, 'get_weekly_fixtures_cache'):
-                    cached = self.db.get_weekly_fixtures_cache(saturday.date(), friday.date())
-                    if cached and cached.get('payload'):
-                        payload = cached['payload']
-                        # اطمینان از کلیدهای پایه در payload
-                        leagues = payload.get('leagues', {})
-                        total_matches = payload.get('total_matches', sum(d.get('count', 0) for d in leagues.values()))
-                        period = payload.get('period', f'{date_from} تا {date_to}')
-                        return {
-                            'success': True,
-                            'leagues': leagues,
-                            'total_matches': total_matches,
-                            'period': period,
-                            'source': 'db'
-                        }
-            except Exception as e:
-                logger.warning(f"⚠️ خطا در خواندن کش دیتابیس: {e}")
-            
-            # 2) در صورت نبود کش، فراخوانی API
-            current_key = self.get_current_api_key()
-            if not current_key:
-                return {
-                    'success': False,
-                    'error': 'هیچ کلید API در دسترس نیست',
-                    'leagues': {},
-                    'info': self.get_rate_limit_message()
-                }
-            
-            # تلاش با کلیدهای مختلف در صورت خطا
-            for api_index in range(len(self.api_keys)):
-                if self.api_limits[api_index]['exhausted']:
-                    continue
-                    
-                current_key = self.api_keys[api_index]
-                self.current_api_index = api_index
-                self.football_api_key = current_key
-                
-                headers = {
-                    'x-rapidapi-key': current_key,
-                    'x-rapidapi-host': 'v3.football.api-sports.io'
-                }
-                
-                logger.info(f"🔄 استفاده از API Key {api_index}")
-                
-                # تلاش برای دریافت داده‌ها
+
+            if use_cache:
                 try:
-                    result = await self._fetch_all_fixtures_data(saturday, friday, headers)
-                    if result:
-                        # ذخیره در کش دیتابیس
-                        try:
-                            if self.db and hasattr(self.db, 'upsert_weekly_fixtures_cache'):
-                                cache_payload = self._serialize_weekly_fixtures_for_cache(result)
-                                self.db.upsert_weekly_fixtures_cache(saturday.date(), friday.date(), cache_payload)
-                        except Exception as ce:
-                            logger.warning(f"⚠️ خطا در ذخیره کش دیتابیس: {ce}")
-                        # برگرداندن با منبع API
-                        result['source'] = 'api'
-                        return result
+                    if self.db and hasattr(self.db, 'get_weekly_fixtures_cache'):
+                        cached = self.db.get_weekly_fixtures_cache(saturday.date(), friday.date())
+                        if cached and cached.get('payload'):
+                            payload = cached['payload']
+                            leagues = payload.get('leagues', {})
+                            total_matches = payload.get('total_matches', sum(d.get('count', 0) for d in leagues.values()))
+                            period = payload.get('period', f'{date_from} تا {date_to}')
+                            return {
+                                'success': True,
+                                'leagues': leagues,
+                                'total_matches': total_matches,
+                                'period': period,
+                                'source': 'db'
+                            }
                 except Exception as e:
-                    logger.warning(f"API Key {api_index} خطا داد: {e}")
-                    continue
-            
-            # اگر به اینجا رسیدیم، همه کلیدها خراب بودن
-            return {
-                'success': False,
-                'error': 'تمام کلیدهای API در دسترس نیستند',
-                'leagues': {},
-                'info': self.get_rate_limit_message()
-            }
-        
+                    logger.warning(f"⚠️ خطا در خواندن کش دیتابیس: {e}")
+
+            result = await self.fetch_all_weekly_fixtures_from_api(base_date)
+            if result.get('success') and self.db and hasattr(self.db, 'upsert_weekly_fixtures_cache'):
+                try:
+                    cache_payload = self._serialize_weekly_fixtures_for_cache(result)
+                    self.db.upsert_weekly_fixtures_cache(saturday.date(), friday.date(), cache_payload)
+                except Exception as ce:
+                    logger.warning(f"⚠️ خطا در ذخیره کش دیتابیس: {ce}")
+
+            return result
+
         except Exception as e:
             logger.error(f"❌ خطا در get_all_weekly_fixtures: {e}")
             return {
