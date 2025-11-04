@@ -14,7 +14,6 @@ import requests
 import feedparser
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
-from urllib.parse import quote
 import os
 from bs4 import BeautifulSoup
 import pytz
@@ -58,8 +57,8 @@ class SportsHandler:
             'serie_a': 135,          # Serie A (ایتالیا)
             'ligue_1': 61,           # Ligue 1 (فرانسه)
             'champions_league': 2,   # UEFA Champions League
-            'afc_champions_league': 667,  # AFC Champions League Elite
-            'afc_champions_league_2': 668  # AFC Champions League 2
+            'afc_champions_league': 667,  # AFC Champions League Elite (ACL Elite)
+            'afc_champions_league_2': 668  # AFC Champions League Two (ACL Two)
         }
 
         self.league_display_names = {
@@ -70,8 +69,8 @@ class SportsHandler:
             'bundesliga': '🇩🇪 بوندسلیگا (آلمان)',
             'ligue_1': '🇫🇷 لیگ یک (فرانسه)',
             'champions_league': '🏆 لیگ قهرمانان اروپا',
-            'afc_champions_league': '🌏 لیگ قهرمانان آسیا',
-            'afc_champions_league_2': '🌏 لیگ قهرمانان آسیا 2'
+            'afc_champions_league': '🌏 لیگ قهرمانان آسیا (ACL Elite)',
+            'afc_champions_league_2': '🌏 لیگ قهرمانان آسیا 2 (ACL Two)'
         }
 
         self.league_order = [
@@ -86,99 +85,6 @@ class SportsHandler:
             'afc_champions_league_2'
         ]
         
-        # نام فارسی تیم‌های مشهور برای جستجوی لینک پخش زنده
-        self.live_stream_team_names_fa: Dict[str, str] = {
-            # تیم‌های ایرانی
-            'persepolis': 'پرسپولیس',
-            'persepolis fc': 'پرسپولیس',
-            'esteghlal': 'استقلال',
-            'esteghlal fc': 'استقلال',
-            'sepahan': 'سپاهان',
-            'sepahan sc': 'سپاهان',
-            'tractor': 'تراکتور',
-            'traktor': 'تراکتور',
-            'tractor fc': 'تراکتور',
-            'foolad': 'فولاد',
-            'foolad fc': 'فولاد',
-            'zob ahan': 'ذوب‌آهن',
-            'zobahan': 'ذوب‌آهن',
-            'zobahan fc': 'ذوب‌آهن',
-            'aluminium arak': 'آلومینیوم اراک',
-            'aluminium arak fc': 'آلومینیوم اراک',
-            'malavan': 'ملوان',
-            'malavan fc': 'ملوان',
-            'shahr khodro': 'شهر خودرو',
-            'gol gohar': 'گل‌گهر',
-            'golgohar': 'گل‌گهر',
-            'havadar': 'هوادار',
-            'mes rafsanjan': 'مس رفسنجان',
-            'mes rafsanjan fc': 'مس رفسنجان',
-            'nassaji': 'نساجی',
-            'nassaji mazandaran': 'نساجی مازندران',
-            'saipa': 'سایپا',
-            'paykan': 'پیکان',
-            'sanat naft': 'صنعت نفت آبادان',
-            'sanat naft fc': 'صنعت نفت آبادان',
-            'saipa fc': 'سایپا',
-            'pas': 'پاس',
-            'esteghlal khuzestan': 'استقلال خوزستان',
-            'aluminium arak sc': 'آلومینیوم اراک',
-
-            # تیم‌های غرب آسیا
-            'al hilal': 'الهلال',
-            'al nassr': 'النصر',
-            'al sadd': 'السد',
-            'al ahli': 'الاهلی',
-            'al ahly': 'الاهلی',
-            'al ain': 'العین',
-            'al ain fc': 'العین',
-            'al duhail': 'الدحیل',
-            'al itihad': 'الاتحاد',
-            'al ittihad': 'الاتحاد',
-            'al rayyan': 'الریان',
-            'al sharjah': 'الشارجه',
-            'ahal': 'اخال',
-            'ahal fc': 'اخال',
-
-            # تیم‌های مطرح اروپایی
-            'real madrid': 'رئال مادرید',
-            'barcelona': 'بارسلونا',
-            'atletico madrid': 'اتلتیکو مادرید',
-            'atletico de madrid': 'اتلتیکو مادرید',
-            'manchester city': 'منچسترسیتی',
-            'manchester united': 'منچستریونایتد',
-            'liverpool': 'لیورپول',
-            'chelsea': 'چلسی',
-            'arsenal': 'آرسنال',
-            'tottenham': 'تاتنهام',
-            'newcastle united': 'نیوکاسل',
-            'bayern munich': 'بایرن مونیخ',
-            'borussia dortmund': 'بوروسیا دورتموند',
-            'bayer leverkusen': 'بایرلورکوزن',
-            'rb leipzig': 'لایپزیش',
-            'juventus': 'یوونتوس',
-            'inter': 'اینتر',
-            'inter milan': 'اینتر',
-            'ac milan': 'آث‌میلان',
-            'milan': 'آث‌میلان',
-            'napoli': 'ناپولی',
-            'roma': 'رم',
-            'lazio': 'لاتزیو',
-            'psg': 'پاری‌سن‌ژرمن',
-            'paris saint germain': 'پاری‌سن‌ژرمن',
-            'marseille': 'مارسی',
-            'lyon': 'المپیک لیون',
-            'porto': 'پورتو',
-            'benfica': 'بنفیکا',
-            'sporting cp': 'اسپورتینگ',
-            'ajax': 'آژاکس',
-            'feyenoord': 'فاینورد',
-            'psv': 'آیندهوون',
-            'galatasaray': 'گالاتاسارای',
-            'fenerbahce': 'فنرباغچه',
-            'besiktas': 'بشیکتاش'
-        }
-
         self.timeout = 15
         self.current_season = self._get_current_season()
         self.team_cache: Dict[str, Dict[str, Any]] = {}
@@ -940,8 +846,11 @@ class SportsHandler:
                             'laliga', 'la liga', 'premier league', 'bundesliga',
                             'serie a', 'ligue 1', 'champions league',
                             'afc champions league', 'afc champions league 2',
+                            'afc champions league elite', 'acl elite',
+                            'afc champions league two', 'acl two',
                             'persian gulf', 'iran pro league', 'iran league',
                             'لیگ قهرمانان آسیا', 'لیگ قهرمانان آسیا 2',
+                            'لیگ قهرمانان آسیا الیت', 'لیگ قهرمانان آسیا تو',
                             'لیگ برتر ایران', 'جام قهرمانان آسیا', 'جام باشگاه های آسیا'
                         }
 
@@ -1098,41 +1007,16 @@ class SportsHandler:
         
         message = f"🔴 **بازی‌های زنده** ({len(live_matches)} بازی)\n\n"
         
+        live_portal_link = "https://football360.ir/live/section"
+
         for match in live_matches:
             message += f"🏆 **{match['competition']}**\n"
             message += f"🏟️ {match['home_team']} {match['score']['home']} - {match['score']['away']} {match['away_team']}\n"
             message += f"⏱️ دقیقه: {match['minute']}\n"
-            search_link = self._build_live_stream_search_link(match['home_team'], match['away_team'])
-            if search_link:
-                message += f"🔗 [جستجوی پخش زنده فوتبال۳۶۰]({search_link})\n"
+            message += f"🔗 [پخش زنده فوتبال۳۶۰]({live_portal_link})\n"
             message += "\n"
-        
+
         return message
-
-    @staticmethod
-    def _normalize_team_key(team_name: str) -> str:
-        return team_name.strip().lower()
-
-    def _get_live_stream_team_name(self, team_name: str) -> Optional[str]:
-        if not team_name:
-            return None
-        key = self._normalize_team_key(team_name)
-        return self.live_stream_team_names_fa.get(key)
-
-    def _build_live_stream_search_link(self, home_team: str, away_team: str) -> Optional[str]:
-        """ساخت لینک جستجوی گوگل برای صفحه پخش زنده در سایت فوتبال۳۶۰"""
-        home_fa = self._get_live_stream_team_name(home_team)
-        away_fa = self._get_live_stream_team_name(away_team)
-
-        if not home_fa and not away_fa:
-            return None
-
-        terms = [name for name in (home_fa, away_fa) if name]
-        query_terms = '+'.join(terms) if terms else ''
-        base = "https://www.google.com/search"
-        query = f"site:football360.ir+{query_terms}+پخش+زنده"
-        return f"{base}?q={quote(query)}"
-
     def _serialize_weekly_fixtures_for_cache(self, fixtures: Dict[str, Any]) -> Dict[str, Any]:
         """سریال‌سازی داده‌های فیکسچر برای ذخیره در کش دیتابیس"""
         leagues_serialized: Dict[str, Any] = {}
