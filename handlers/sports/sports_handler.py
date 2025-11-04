@@ -835,21 +835,31 @@ class SportsHandler:
                         live_matches = []
                         
                         # فیلتر برای لیگ‌های مهم بر اساس پیکربندی فعلی
-                        important_leagues = [
+                        important_leagues = {
                             self.league_ids.get(key)
                             for key in self.league_order
                             if key in self.league_ids
-                        ]
+                        }
                         # حذف مقادیر None احتمالی
-                        important_leagues = [lid for lid in important_leagues if lid]
+                        important_leagues = {lid for lid in important_leagues if lid}
+
+                        league_name_fragments = {
+                            'laliga', 'la liga', 'premier league', 'bundesliga',
+                            'serie a', 'ligue 1', 'champions league',
+                            'afc champions league', 'afc champions league 2',
+                            'persian gulf', 'iran pro league', 'iran league'
+                        }
 
                         for match in data.get('response', []):
                             league_id = match['league']['id']
-                            
+                            league_name = (match['league'].get('name') or '').lower()
+
                             # فقط لیگ‌های مهم
-                            if league_id not in important_leagues:
+                            if league_id not in important_leagues and not any(
+                                fragment in league_name for fragment in league_name_fragments
+                            ):
                                 continue
-                            
+
                             fixture = match['fixture']
                             teams = match['teams']
                             goals = match['goals']
@@ -1007,7 +1017,7 @@ class SportsHandler:
     def _build_live_stream_search_link(home_team: str, away_team: str) -> str:
         """ساخت لینک جستجوی گوگل برای صفحه پخش زنده در سایت فوتبالی"""
         base = "https://www.google.com/search"
-        query = f"site:footballi.net+{home_team}+{away_team}+پخش+زنده"
+        query = f"site:football360.ir+{home_team}+{away_team}+پخش+زنده"
         return f"{base}?q={quote(query)}"
 
     def _serialize_weekly_fixtures_for_cache(self, fixtures: Dict[str, Any]) -> Dict[str, Any]:
