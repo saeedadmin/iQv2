@@ -520,125 +520,115 @@ class SportsHandler:
     async def _fetch_all_fixtures_data(self, saturday, friday, headers):
         """دریافت داده‌های فیکسچر با هدر مشخص"""
         try:
-            # لیگ‌های مهم به ترتیب اولویت
             important_leagues = [
                 ('iran', 290, '🇮🇷 لیگ برتر ایران'),
                 ('la_liga', 140, '🇪🇸 لالیگا (اسپانیا)'),
-                ('premier_league', 39, '🏴󠁧󠁢󠁥󠁮󠁧󠁿 لیگ برتر (انگلیس)'),
+                ('premier_league', 39, '🏴 لیگ برتر (انگلیس)'),
                 ('serie_a', 135, '🇮🇹 سری آ (ایتالیا)'),
                 ('bundesliga', 78, '🇩🇪 بوندسلیگا (آلمان)'),
                 ('ligue_1', 61, '🇫🇷 لیگ یک (فرانسه)'),
             ]
-            
-            # دریافت بازی‌ها برای هر روز
-            all_day_matches = {}
-            current_date = saturday
-            
-            while current_date <= friday:
-                date_str = current_date.strftime('%Y-%m-%d')
-                
+
+            date_from = saturday.strftime('%Y-%m-%d')
+            date_to = friday.strftime('%Y-%m-%d')
+
+            leagues_data: Dict[str, Any] = {}
+
+            for league_key, league_id, league_name in important_leagues:
+                params = {
+                    'league': league_id,
+                    'season': self.current_season,
+                    'from': date_from,
+                    'to': date_to
+                }
+
                 try:
                     response = requests.get(
                         f"{self.football_api_base}/fixtures",
                         headers=headers,
-                        params={'date': date_str},
+                        params=params,
                         timeout=self.timeout
                     )
-                    
-                    # بررسی پاسخ و محدودیت
+
                     if not self.handle_api_response(response):
-                        # اگر به محدودیت خورد، این کلید رو غیرفعال کن و None برگردون
                         self.api_limits[self.current_api_index]['exhausted'] = True
                         return None
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        all_day_matches[date_str] = data.get('response', [])
-                    else:
-                        logger.warning(f"خطای API برای {date_str}: {response.status_code}")
-                        all_day_matches[date_str] = []
-                        
-                except Exception as e:
-                    logger.warning(f"خطا در دریافت بازی‌های {date_str}: {e}")
-                    all_day_matches[date_str] = []
-                
-                current_date += timedelta(days=1)
-            
-            # سازماندهی بازی‌ها به تفکیک لیگ
-            leagues_data = {}
-            
-            for league_key, league_id, league_name in important_leagues:
-                league_matches = []
-                
-                for date_str, day_matches in all_day_matches.items():
-                    for match in day_matches:
-                        if match['league']['id'] == league_id:
-                            fixture = match['fixture']
-                            teams = match['teams']
-                            goals = match.get('goals', {})
-                            score_details = match.get('score', {})
 
-                            # تبدیل به datetime برای روز هفته
-                            fixture_date_raw = fixture.get('date')
-                            match_date = None
-                            if fixture_date_raw:
-                                try:
-                                    match_date = datetime.fromisoformat(fixture_date_raw.replace('Z', '+00:00'))
-                                except ValueError:
-                                    match_date = None
+                    if response.status_code != 200:
+                        logger.warning(f"❌ خطا در دریافت فیکسچرهای لیگ {league_id} (کد {response.status_code})")
+                        continue
 
-                            # محاسبه نتیجه نهایی بازی
-                            score_home = goals.get('home') if goals else None
-                            score_away = goals.get('away') if goals else None
+                    data = response.json()
+                    matches_response = data.get('response', [])
 
-                            if score_home is None or score_away is None:
-                                for section in ('fulltime', 'extratime', 'penalty', 'halftime'):
-                                    section_data = score_details.get(section, {}) if isinstance(score_details, dict) else {}
-                                    if score_home is None:
-                                        score_home = section_data.get('home', score_home)
-                                    if score_away is None:
-                                        score_away = section_data.get('away', score_away)
-                                    if score_home is not None and score_away is not None:
-                                        break
+                    league_matches: List[Dict[str, Any]] = []
 
-                            final_score = None
-                            if score_home is not None and score_away is not None:
-                                final_score = {
-                                    'home': score_home,
-                                    'away': score_away
-                                }
+                    for match in matches_response:
+                        fixture = match.get('fixture', {})
+                        teams = match.get('teams', {})
+                        goals = match.get('goals', {})
+                        score_details = match.get('score', {})
 
-                            match_info = {
-                                'fixture_id': fixture.get('id'),
-                                'league_id': match['league'].get('id'),
-                                'league_name': match['league'].get('name'),
-                                'home_team_id': teams['home'].get('id'),
-                                'home_team': teams['home'].get('name'),
-                                'away_team_id': teams['away'].get('id'),
-                                'away_team': teams['away'].get('name'),
-                                'date': fixture_date_raw or (match_date.isoformat() if match_date else None),
-                                'datetime': match_date,
-                                'status': fixture.get('status', {}).get('short') if isinstance(fixture.get('status'), dict) else fixture.get('status'),
-                                'venue': fixture.get('venue', {}).get('name') if isinstance(fixture.get('venue'), dict) else fixture.get('venue', 'نامشخص'),
-                                'score': final_score,
-                                'score_details': score_details
+                        fixture_date_raw = fixture.get('date')
+                        match_date = None
+                        if fixture_date_raw:
+                            try:
+                                match_date = datetime.fromisoformat(fixture_date_raw.replace('Z', '+00:00'))
+                            except ValueError:
+                                match_date = None
+
+                        score_home = goals.get('home') if isinstance(goals, dict) else None
+                        score_away = goals.get('away') if isinstance(goals, dict) else None
+
+                        if score_home is None or score_away is None:
+                            for section in ('fulltime', 'extratime', 'penalty', 'halftime'):
+                                section_data = score_details.get(section, {}) if isinstance(score_details, dict) else {}
+                                if score_home is None:
+                                    score_home = section_data.get('home', score_home)
+                                if score_away is None:
+                                    score_away = section_data.get('away', score_away)
+                                if score_home is not None and score_away is not None:
+                                    break
+
+                        final_score = None
+                        if score_home is not None and score_away is not None:
+                            final_score = {
+                                'home': score_home,
+                                'away': score_away
                             }
-                            league_matches.append(match_info)
-                
-                if league_matches:
-                    # مرتب کردن بر اساس تاریخ
-                    league_matches.sort(key=lambda x: x['datetime'])
-                    leagues_data[league_key] = {
-                        'name': league_name,
-                        'matches': league_matches,
-                        'count': len(league_matches)
-                    }
-            
+
+                        match_info = {
+                            'fixture_id': fixture.get('id'),
+                            'league_id': match.get('league', {}).get('id'),
+                            'league_name': match.get('league', {}).get('name'),
+                            'home_team_id': teams.get('home', {}).get('id') if isinstance(teams, dict) else None,
+                            'home_team': teams.get('home', {}).get('name') if isinstance(teams, dict) else None,
+                            'away_team_id': teams.get('away', {}).get('id') if isinstance(teams, dict) else None,
+                            'away_team': teams.get('away', {}).get('name') if isinstance(teams, dict) else None,
+                            'date': fixture_date_raw or (match_date.isoformat() if match_date else None),
+                            'datetime': match_date,
+                            'status': fixture.get('status', {}).get('short') if isinstance(fixture.get('status'), dict) else fixture.get('status'),
+                            'venue': fixture.get('venue', {}).get('name') if isinstance(fixture.get('venue'), dict) else fixture.get('venue', 'نامشخص'),
+                            'score': final_score,
+                            'score_details': score_details
+                        }
+
+                        league_matches.append(match_info)
+
+                    if league_matches:
+                        league_matches.sort(key=lambda x: x['datetime'] or datetime.max.replace(tzinfo=pytz.UTC))
+                        leagues_data[league_key] = {
+                            'name': league_name,
+                            'matches': league_matches,
+                            'count': len(league_matches)
+                        }
+
+                except Exception as e:
+                    logger.warning(f"⚠️ خطا در دریافت بازی‌های لیگ {league_id}: {e}")
+                    continue
+
             total_matches = sum(data['count'] for data in leagues_data.values())
-            
-            date_from = saturday.strftime('%Y-%m-%d')
-            date_to = friday.strftime('%Y-%m-%d')
-            
+
             logger.info(f"✅ {total_matches} بازی از {len(leagues_data)} لیگ دریافت شد")
             return {
                 'success': True,
@@ -646,7 +636,7 @@ class SportsHandler:
                 'total_matches': total_matches,
                 'period': f'{date_from} تا {date_to}'
             }
-        
+
         except Exception as e:
             logger.error(f"❌ خطا در _fetch_all_fixtures_data: {e}")
             return None
