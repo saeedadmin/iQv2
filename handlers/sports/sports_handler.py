@@ -1005,15 +1005,15 @@ class SportsHandler:
         if not live_matches:
             return "ℹ️ **بازی زنده‌ای در جریان نیست**\n\n🕐 در حال حاضر هیچ بازی در حال انجام نیست.\n💡 بعداً دوباره بررسی کنید."
         
-        message = f"🔴 **بازی‌های زنده** ({len(live_matches)} بازی)\n\n"
-        
         live_portal_link = "https://football360.ir/live/section"
 
+        message = f"🔴 **بازی‌های زنده** ({len(live_matches)} بازی)\n"
+        message += f"🔗 [پخش زنده فوتبال۳۶۰]({live_portal_link})\n\n"
+        
         for match in live_matches:
             message += f"🏆 **{match['competition']}**\n"
             message += f"🏟️ {match['home_team']} {match['score']['home']} - {match['score']['away']} {match['away_team']}\n"
             message += f"⏱️ دقیقه: {match['minute']}\n"
-            message += f"🔗 [پخش زنده فوتبال۳۶۰]({live_portal_link})\n"
             message += "\n"
 
         return message
@@ -1154,13 +1154,43 @@ class SportsHandler:
                     date_str = match.get('date', 'نامشخص')
                     time_str = match.get('time', 'نامشخص')
 
+                status_code = (match.get('status') or '').upper()
+                finished_statuses = {'FT', 'AET', 'PEN'}
+                live_statuses = {'1H', '2H', 'ET', 'BT', 'HT', 'LIVE'}
+                postponed_statuses = {'PST', 'CANC', 'ABD', 'SUSP', 'INT', 'AWD', 'WO'}
+
+            
+                is_finished = status_code in finished_statuses
+                is_live = status_code in live_statuses
+                is_postponed = status_code in postponed_statuses
+
                 score = match.get('score')
-                if score and all(v is not None for v in score.values()):
-                    message += f"🟢 {match['home_team']} {score['home']}-{score['away']} {match['away_team']}\n"
-                    message += f"   📅 {weekday} {date_str} - ✅ تمام شده\n"
+                has_score = score and all(v is not None for v in score.values())
+
+                if is_postponed:
+                    prefix = '⚠️'
+                elif is_finished:
+                    prefix = '🟢'
+                elif is_live:
+                    prefix = '🔴'
                 else:
-                    message += f"⚪ {match['home_team']} vs {match['away_team']}\n"
-                    message += f"   📅 {weekday} {date_str} - ⏰ {time_str}\n"
+                    prefix = '⚪'
+
+                if has_score:
+                    message += f"{prefix} {match['home_team']} {score['home']}-{score['away']} {match['away_team']}\n"
+                else:
+                    message += f"{prefix} {match['home_team']} vs {match['away_team']}\n"
+
+                if is_finished:
+                    status_info = '✅ تمام شده'
+                elif is_live:
+                    status_info = '🔴 در جریان'
+                elif is_postponed:
+                    status_info = '⚠️ لغو/تعویق'
+                else:
+                    status_info = f"⏰ {time_str}"
+
+                message += f"   📅 {weekday} {date_str} - {status_info}\n"
 
                 message += "\n"
 
