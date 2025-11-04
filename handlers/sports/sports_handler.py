@@ -14,6 +14,7 @@ import requests
 import feedparser
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
+from urllib.parse import quote
 import os
 from bs4 import BeautifulSoup
 import pytz
@@ -833,9 +834,15 @@ class SportsHandler:
                         data = response.json()
                         live_matches = []
                         
-                        # فیلتر برای لیگ‌های مهم (ایران و اروپا)
-                        important_leagues = [290, 140, 39, 78, 135, 61, 2]  # Iran, La Liga, PL, Bundesliga, Serie A, Ligue 1, UCL
-                        
+                        # فیلتر برای لیگ‌های مهم بر اساس پیکربندی فعلی
+                        important_leagues = [
+                            self.league_ids.get(key)
+                            for key in self.league_order
+                            if key in self.league_ids
+                        ]
+                        # حذف مقادیر None احتمالی
+                        important_leagues = [lid for lid in important_leagues if lid]
+
                         for match in data.get('response', []):
                             league_id = match['league']['id']
                             
@@ -989,9 +996,19 @@ class SportsHandler:
         for match in live_matches:
             message += f"🏆 **{match['competition']}**\n"
             message += f"🏟️ {match['home_team']} {match['score']['home']} - {match['score']['away']} {match['away_team']}\n"
-            message += f"⏱️ دقیقه: {match['minute']}\n\n"
+            message += f"⏱️ دقیقه: {match['minute']}\n"
+            search_link = self._build_live_stream_search_link(match['home_team'], match['away_team'])
+            message += f"🔗 [جستجوی پخش زنده فوتبالی]({search_link})\n"
+            message += "\n"
         
         return message
+
+    @staticmethod
+    def _build_live_stream_search_link(home_team: str, away_team: str) -> str:
+        """ساخت لینک جستجوی گوگل برای صفحه پخش زنده در سایت فوتبالی"""
+        base = "https://www.google.com/search"
+        query = f"site:footballi.net+{home_team}+{away_team}+پخش+زنده"
+        return f"{base}?q={quote(query)}"
 
     def _serialize_weekly_fixtures_for_cache(self, fixtures: Dict[str, Any]) -> Dict[str, Any]:
         """سریال‌سازی داده‌های فیکسچر برای ذخیره در کش دیتابیس"""
