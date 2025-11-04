@@ -408,23 +408,25 @@ class SportsHandler:
             date_to = friday.strftime('%Y-%m-%d')
 
             if use_cache:
-                try:
-                    if self.db and hasattr(self.db, 'get_weekly_fixtures_cache'):
-                        cached = self.db.get_weekly_fixtures_cache(saturday.date(), friday.date())
-                        if cached and cached.get('payload'):
-                            payload = cached['payload']
-                            leagues = payload.get('leagues', {})
-                            total_matches = payload.get('total_matches', sum(d.get('count', 0) for d in leagues.values()))
-                            period = payload.get('period', f'{date_from} تا {date_to}')
-                            return {
-                                'success': True,
-                                'leagues': leagues,
-                                'total_matches': total_matches,
-                                'period': period,
-                                'source': 'db'
-                            }
-                except Exception as e:
-                    logger.warning(f"⚠️ خطا در خواندن کش دیتابیس: {e}")
+                # 👇 موقتاً خواندن از کش غیرفعال شده تا درخواست‌ها مستقیم به API ارسال شوند
+                # try:
+                #     if self.db and hasattr(self.db, 'get_weekly_fixtures_cache'):
+                #         cached = self.db.get_weekly_fixtures_cache(saturday.date(), friday.date())
+                #         if cached and cached.get('payload'):
+                #             payload = cached['payload']
+                #             leagues = payload.get('leagues', {})
+                #             total_matches = payload.get('total_matches', sum(d.get('count', 0) for d in leagues.values()))
+                #             period = payload.get('period', f'{date_from} تا {date_to}')
+                #             return {
+                #                 'success': True,
+                #                 'leagues': leagues,
+                #                 'total_matches': total_matches,
+                #                 'period': period,
+                #                 'source': 'db'
+                #             }
+                # except Exception as e:
+                #     logger.warning(f"⚠️ خطا در خواندن کش دیتابیس: {e}")
+                pass
 
             result = await self._fetch_complete_weekly_fixtures(base_date)
             if result.get('success') and self.db and hasattr(self.db, 'upsert_weekly_fixtures_cache'):
