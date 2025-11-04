@@ -1548,10 +1548,9 @@ async def _upsert_weekly_fixtures_cache(base_date: Optional[datetime.datetime] =
 
     week_start_dt, week_end_dt = _compute_week_range(tehran_now)
 
-    fixtures_result = await sports_handler._fetch_complete_weekly_fixtures(base_date=tehran_now)
+    fixtures = await sports_handler.get_all_weekly_fixtures(base_date=tehran_now, use_cache=False)
 
-    if fixtures_result and fixtures_result.get('success'):
-        fixtures = fixtures_result['payload']
+    if fixtures.get('success'):
         cache_payload = serialize_weekly_fixtures_for_cache(fixtures)
         db_manager.upsert_weekly_fixtures_cache(week_start_dt, week_end_dt, cache_payload)
         try:
@@ -1560,8 +1559,7 @@ async def _upsert_weekly_fixtures_cache(base_date: Optional[datetime.datetime] =
             logger.warning("⚠️ متد purge_old_weekly_fixtures_cache در db_manager در دسترس نیست")
         return fixtures
 
-    error_msg = fixtures_result.get('error') if fixtures_result else 'Unknown error'
-    logger.warning(f"⚠️ عدم موفقیت در دریافت فیکسچرهای هفتگی: {error_msg}")
+    logger.warning(f"⚠️ عدم موفقیت در دریافت فیکسچرهای هفتگی: {fixtures.get('error')}")
     cached = db_manager.get_weekly_fixtures_cache(week_start_dt, week_end_dt)
     if cached and cached.get('payload'):
         logger.info("♻️ استفاده از کش فیکسچرهای هفتگی قبلی")

@@ -419,25 +419,36 @@ class SportsHandler:
             date_to = friday.strftime('%Y-%m-%d')
 
             if use_cache:
-                # 👇 موقتاً خواندن از کش غیرفعال شده تا تست مستقیم از API انجام شود
-                # try:
-                #     if self.db and hasattr(self.db, 'get_weekly_fixtures_cache'):
-                #         cached = self.db.get_weekly_fixtures_cache(saturday.date(), friday.date())
-                #         if cached and cached.get('payload'):
-                #             payload = cached['payload']
-                #             leagues = payload.get('leagues', {})
-                #             total_matches = payload.get('total_matches', sum(d.get('count', 0) for d in leagues.values()))
-                #             period = payload.get('period', f'{date_from} تا {date_to}')
-                #             return {
-                #                 'success': True,
-                #                 'leagues': leagues,
-                #                 'total_matches': total_matches,
-                #                 'period': period,
-                #                 'source': 'db'
-                #             }
-                # except Exception as e:
-                #     logger.warning(f"⚠️ خطا در خواندن کش دیتابیس: {e}")
-                pass
+                try:
+                    if self.db and hasattr(self.db, 'get_weekly_fixtures_cache'):
+                        cached = self.db.get_weekly_fixtures_cache(saturday.date(), friday.date())
+                        if cached and cached.get('payload'):
+                            payload = cached['payload']
+                            leagues = payload.get('leagues', {})
+                            total_matches = payload.get('total_matches', sum(d.get('count', 0) for d in leagues.values()))
+                            period = payload.get('period', f'{date_from} تا {date_to}')
+                            return {
+                                'success': True,
+                                'leagues': leagues,
+                                'total_matches': total_matches,
+                                'period': period,
+                                'source': 'db'
+                            }
+                except Exception as e:
+                    logger.warning(f"⚠️ خطا در خواندن کش دیتابیس: {e}")
+
+            if not use_cache and self.db and hasattr(self.db, 'upsert_weekly_fixtures_cache'):
+                # اگر درخواست بدون کش باشد، داده تازه شده را پس از دریافت ذخیره می‌کنیم
+                result = await self._fetch_complete_weekly_fixtures(base_date)
+                if result.get('success'):
+                    try:
+                        week_start_dt = result['meta']['week_start']
+                        week_end_dt = result['meta']['week_end']
+                        cache_payload = result['payload']
+                        self.db.upsert_weekly_fixtures_cache(week_start_dt, week_end_dt, cache_payload)
+                    except Exception as ce:
+                        logger.warning(f"⚠️ خطا در ذخیره کش دیتابیس: {ce}")
+                return result['payload'] if result.get('success') else result
 
             result = await self._fetch_complete_weekly_fixtures(base_date)
             if result.get('success') and self.db and hasattr(self.db, 'upsert_weekly_fixtures_cache'):
@@ -533,20 +544,21 @@ class SportsHandler:
     async def _fetch_all_fixtures_data(self, saturday, friday, headers):
         """دریافت داده‌های فیکسچر با هدر مشخص"""
         try:
-            # لیگ‌های مهم به ترتیب اولویت
+            # لیگ‌های مهم بر اساس ترتیب تعریف‌شده در کلاس
             important_leagues = [
-                ('iran', 290, '🇮🇷 لیگ برتر ایران'),
-                ('la_liga', 140, '🇪🇸 لالیگا (اسپانیا)'),
-                ('premier_league', 39, '🏴󠁧󠁢󠁥󠁮󠁧󠁿 لیگ برتر (انگلیس)'),
-                ('serie_a', 135, '🇮🇹 سری آ (ایتالیا)'),
-                ('bundesliga', 78, '🇩🇪 بوندسلیگا (آلمان)'),
-                ('ligue_1', 61, '🇫🇷 لیگ یک (فرانسه)'),
+                (
+                    league_key,
+                    self.league_ids[league_key],
+                    self.league_display_names.get(league_key, league_key)
+                )
+                for league_key in self.league_order
+                if league_key in self.league_ids
             ]
-            
+
             # دریافت بازی‌ها برای هر روز
             all_day_matches = {}
             current_date = saturday
-            
+
             while current_date <= friday:
                 date_str = current_date.strftime('%Y-%m-%d')
                 
