@@ -1567,13 +1567,42 @@ async def _upsert_weekly_fixtures_cache(base_date: Optional[datetime.datetime] =
             db_manager.purge_old_weekly_fixtures_cache(week_start_dt)
         except AttributeError:
             logger.warning("⚠️ متد purge_old_weekly_fixtures_cache در db_manager در دسترس نیست")
+
+        try:
+            message = (
+                "✅ کش برنامه بازی‌های هفتگی با موفقیت بروزرسانی شد.\n"
+                f"📅 بازه: {fixtures.get('period', 'هفته جاری')}\n"
+                f"🏆 تعداد لیگ‌ها: {len(fixtures.get('leagues', {}))}\n"
+                f"⚔️ تعداد بازی‌ها: {fixtures.get('total_matches', 0)}"
+            )
+            await bot.send_message(chat_id=ADMIN_USER_ID, text=message)
+        except Exception as notify_error:
+            logger.error(f"❌ خطا در ارسال پیام موفقیت کش به ادمین: {notify_error}")
+
         return fixtures
 
     logger.warning(f"⚠️ عدم موفقیت در دریافت فیکسچرهای هفتگی: {fixtures.get('error')}")
     cached = db_manager.get_weekly_fixtures_cache(week_start_dt, week_end_dt)
     if cached and cached.get('payload'):
         logger.info("♻️ استفاده از کش فیکسچرهای هفتگی قبلی")
+        try:
+            message = (
+                "⚠️ دریافت جدید برنامه هفتگی ناموفق بود؛ از کش قبلی استفاده شد.\n"
+                f"📅 بازه: {cached.get('payload', {}).get('period', 'نامشخص')}"
+            )
+            await bot.send_message(chat_id=ADMIN_USER_ID, text=message)
+        except Exception as notify_error:
+            logger.error(f"❌ خطا در ارسال پیام استفاده از کش قبلی به ادمین: {notify_error}")
         return cached['payload']
+
+    try:
+        message = (
+            "❌ بروزرسانی کش هفتگی ناموفق بود و هیچ کشی در دسترس نیست.\n"
+            f"جزئیات خطا: {fixtures.get('error', 'نامشخص')}"
+        )
+        await bot.send_message(chat_id=ADMIN_USER_ID, text=message)
+    except Exception as notify_error:
+        logger.error(f"❌ خطا در ارسال پیام خطای کش به ادمین: {notify_error}")
 
     return None
 
