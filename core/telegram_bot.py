@@ -1095,13 +1095,23 @@ def _build_reminder_panel_text(header: Optional[str], favorites: List[Dict[str, 
 
 
 def build_sports_league_keyboard(include_back: bool = True) -> InlineKeyboardMarkup:
-    league_keys = sports_handler.league_order + ['champions_league']
+    seen: set[str] = set()
+    league_keys: List[str] = []
+
+    for key in sports_handler.league_order:
+        if key in sports_handler.league_ids and key not in seen:
+            league_keys.append(key)
+            seen.add(key)
+
+    for key in sports_handler.league_ids.keys():
+        if key not in seen:
+            league_keys.append(key)
+            seen.add(key)
+
     buttons: List[List[InlineKeyboardButton]] = []
     current_row: List[InlineKeyboardButton] = []
 
     for key in league_keys:
-        if key not in sports_handler.league_ids:
-            continue
         label = sports_handler.league_display_names.get(key, key)
         current_row.append(InlineKeyboardButton(label, callback_data=f"sports_reminder_league_{key}"))
         if len(current_row) == 2:

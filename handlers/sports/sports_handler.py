@@ -68,7 +68,7 @@ class SportsHandler:
             'serie_a': '🇮🇹 سری آ (ایتالیا)',
             'bundesliga': '🇩🇪 بوندسلیگا (آلمان)',
             'ligue_1': '🇫🇷 لیگ یک (فرانسه)',
-            'champions_league': '🏆 لیگ قهرمانان اروپا',
+            'champions_league': '🏆 لیگ قهرمانان اروپا (ACL Elite)',
             'afc_champions_league': '🌏 لیگ قهرمانان آسیا (ACL Elite)',
             'afc_champions_league_2': '🌏 لیگ قهرمانان آسیا 2 (ACL Two)'
         }
@@ -1159,7 +1159,6 @@ class SportsHandler:
                 live_statuses = {'1H', '2H', 'ET', 'BT', 'HT', 'LIVE'}
                 postponed_statuses = {'PST', 'CANC', 'ABD', 'SUSP', 'INT', 'AWD', 'WO'}
 
-            
                 is_finished = status_code in finished_statuses
                 is_live = status_code in live_statuses
                 is_postponed = status_code in postponed_statuses
@@ -1170,9 +1169,9 @@ class SportsHandler:
                 if is_postponed:
                     prefix = '⚠️'
                 elif is_finished:
-                    prefix = '🟢'
-                elif is_live:
                     prefix = '🔴'
+                elif is_live:
+                    prefix = '🟢'
                 else:
                     prefix = '⚪'
 
@@ -1182,9 +1181,9 @@ class SportsHandler:
                     message += f"{prefix} {match['home_team']} vs {match['away_team']}\n"
 
                 if is_finished:
-                    status_info = '✅ تمام شده'
+                    status_info = '🔴 تمام شده'
                 elif is_live:
-                    status_info = '🔴 در جریان'
+                    status_info = '🟢 در جریان'
                 elif is_postponed:
                     status_info = '⚠️ لغو/تعویق'
                 else:
