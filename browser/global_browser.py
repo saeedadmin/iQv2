@@ -5,7 +5,12 @@ from typing import Optional
 
 from playwright.async_api import Page, async_playwright
 
-from metrics.metrics import metrics_counter_inc
+try:
+    from metrics.metrics import metrics_counter_inc
+except ModuleNotFoundError:  # pragma: no cover - متریک در محیط prod الزامی نیست
+    def metrics_counter_inc(*args, **kwargs):
+        return None
+
 from neo.utils import logger
 
 _BEDROCK_PROJECT = os.environ.get("BEDROCK_PROJECT", "")
