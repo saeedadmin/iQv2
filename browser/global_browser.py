@@ -11,7 +11,12 @@ except ModuleNotFoundError:  # pragma: no cover - متریک در محیط prod 
     def metrics_counter_inc(*args, **kwargs):
         return None
 
-from neo.utils import logger
+try:
+    from neo.utils import logger
+except ModuleNotFoundError:  # pragma: no cover - در محیط‌های بدون neo از لاگر پیش‌فرض استفاده می‌کنیم
+    import logging
+
+    logger = logging.getLogger(__name__)
 
 _BEDROCK_PROJECT = os.environ.get("BEDROCK_PROJECT", "")
 
