@@ -3229,14 +3229,15 @@ async def main() -> None:
     )
 
     # اضافه کردن job دوره‌ای برای ارسال یادآوری‌های رسیده (هر 5 دقیقه)
-    scheduler.add_job(
-        process_due_sports_reminders,
-        trigger=CronTrigger(minute='*/5', timezone='Asia/Tehran'),
-        args=[application],
-        id='sports_reminder_dispatch',
-        name='ارسال یادآوری‌های ورزشی',
-        replace_existing=True
-    )
+    # موقتاً غیرفعال شد بر اساس درخواست ادمین
+    # scheduler.add_job(
+    #     process_due_sports_reminders,
+    #     trigger=CronTrigger(minute='*/5', timezone='Asia/Tehran'),
+    #     args=[application],
+    #     id='sports_reminder_dispatch',
+    #     name='ارسال یادآوری‌های ورزشی',
+    #     replace_existing=True
+    # )
     
     # شروع scheduler
     scheduler.start()
