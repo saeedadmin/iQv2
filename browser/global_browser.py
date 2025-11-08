@@ -1,6 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
+from typing import Optional
 
 from playwright.async_api import Page, async_playwright
 
@@ -19,6 +20,43 @@ async def handle_new_page(page: Page):
     Handle new page events and execute custom logic
     """
     print(f"New page created: {page.url}")
+
+
+async def visit_url_and_wait(
+    url: str,
+    wait_seconds: float = 4.0,
+    *,
+    headless: bool = True,
+    timeout: Optional[float] = 30.0,
+) -> None:
+    """Open a Chromium page for the given URL and wait for the specified duration.
+
+    Args:
+        url: Target URL to open.
+        wait_seconds: Seconds to keep the tab open after navigation.
+        headless: Whether to run Chromium in headless mode.
+        timeout: Navigation timeout in seconds; ``None`` disables the timeout.
+    """
+
+    playwright = await async_playwright().start()
+    browser = None
+    page = None
+    try:
+        browser = await playwright.chromium.launch(headless=headless)
+        page = await browser.new_page()
+        goto_timeout = None if timeout is None else int(timeout * 1000)
+        await page.goto(url, wait_until="domcontentloaded", timeout=goto_timeout)
+        await page.wait_for_timeout(max(int(wait_seconds * 1000), 0))
+        logger.info("✅ بازدید از لینک با موفقیت انجام شد: %s", url)
+    except Exception as exc:
+        logger.exception("❌ خطا در باز کردن لینک %s: %s", url, exc)
+        raise
+    finally:
+        if page:
+            await page.close()
+        if browser:
+            await browser.close()
+        await playwright.stop()
 
 
 async def launch_chrome_debug(use_chrome_channel: bool = False, headless: bool = False):

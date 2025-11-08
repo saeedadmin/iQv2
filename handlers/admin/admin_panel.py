@@ -31,6 +31,11 @@ class AdminPanel:
         self.logger = DatabaseLogger(db_manager)
         self.bot_start_time = datetime.datetime.now()
         self.refresh_weekly_cache = refresh_weekly_cache
+        self.advert_job_start_callback: Optional[Callable[[], Awaitable[bool]]] = None
+        self.advert_job_stop_callback: Optional[Callable[[], Awaitable[bool]]] = None
+        self.advert_job_status_callback: Optional[Callable[[], bool]] = None
+        self.advert_job_url: Optional[str] = None
+        self.advert_job_interval_minutes: Optional[int] = None
 
     def set_weekly_cache_refresher(
         self,
@@ -38,6 +43,53 @@ class AdminPanel:
     ) -> None:
         """تنظیم تابع بروزرسانی کش برنامه بازی‌های هفتگی"""
         self.refresh_weekly_cache = callback
+
+    def configure_advert_job(
+        self,
+        *,
+        start_callback: Callable[[], Awaitable[bool]],
+        stop_callback: Callable[[], Awaitable[bool]],
+        status_callback: Callable[[], bool],
+        url: str,
+        interval_minutes: int,
+    ) -> None:
+        """پیکربندی کنترل بازدید خودکار لینک تبلیغاتی"""
+        self.advert_job_start_callback = start_callback
+        self.advert_job_stop_callback = stop_callback
+        self.advert_job_status_callback = status_callback
+        self.advert_job_url = url
+        self.advert_job_interval_minutes = interval_minutes
+
+    def _is_advert_job_configured(self) -> bool:
+        return (
+            self.advert_job_start_callback is not None
+            and self.advert_job_stop_callback is not None
+            and self.advert_job_status_callback is not None
+        )
+
+    def _is_advert_job_running(self) -> bool:
+        if not self.advert_job_status_callback:
+            return False
+        try:
+            return bool(self.advert_job_status_callback())
+        except Exception:
+            return False
+
+    def _format_advert_job_details(self) -> str:
+        if not self._is_advert_job_configured():
+            return "🔧 قابلیت بازدید خودکار لینک پیکربندی نشده است."
+
+        running = self._is_advert_job_running()
+        status_icon = "🟢" if running else "🔴"
+        status_text = "فعال" if running else "غیرفعال"
+        url = self.advert_job_url or "نامشخص"
+        interval = self.advert_job_interval_minutes or 1
+
+        return (
+            f"{status_icon} وضعیت فعلی: {status_text}\n"
+            f"🔗 لینک: {url}\n"
+            f"⏱ تناوب اجرا: هر {interval} دقیقه"
+        )
     
     def create_main_menu_keyboard(self) -> InlineKeyboardMarkup:
         """ساخت کیبورد منوی اصلی ادمین - بهینه شده"""
@@ -60,8 +112,7 @@ class AdminPanel:
         bot_status = "🟢" if self.db.is_bot_enabled() else "🔴"
         toggle_text = "خاموش" if self.db.is_bot_enabled() else "روشن"
         toggle_action = "sys_bot_disable" if self.db.is_bot_enabled() else "sys_bot_enable"
-        
-        keyboard = [
+        keyboard: List[List[InlineKeyboardButton]] = [
             [
                 InlineKeyboardButton("💾 منابع", callback_data="sys_resources"),
                 InlineKeyboardButton("📈 وضعیت", callback_data="sys_bot_status")
@@ -69,13 +120,22 @@ class AdminPanel:
             [
                 InlineKeyboardButton("🔄 بروزرسانی کش بازی‌ها", callback_data="sys_refresh_weekly_cache")
             ],
+        ]
+
+        if self._is_advert_job_configured():
+            keyboard.append([
+                InlineKeyboardButton("▶️ شروع بازدید لینک", callback_data="sys_advert_start"),
+                InlineKeyboardButton("⏹ توقف بازدید لینک", callback_data="sys_advert_stop")
+            ])
+
+        keyboard.extend([
             [
                 InlineKeyboardButton(f"{bot_status} {toggle_text} کردن", callback_data=toggle_action),
             ],
             [
                 InlineKeyboardButton("🏠 منوی اصلی", callback_data="admin_main")
             ]
-        ]
+        ])
         return InlineKeyboardMarkup(keyboard)
     
     def create_users_menu_keyboard(self) -> InlineKeyboardMarkup:
@@ -307,6 +367,12 @@ class AdminPanel:
             
             elif data == "admin_users":
                 await self.show_users_menu(query)
+
+            elif data == "sys_advert_start":
+                await self.start_advert_job(query)
+
+            elif data == "sys_advert_stop":
+                await self.stop_advert_job(query)
             
             elif data == "admin_stats":
                 await self.show_general_stats(query)
@@ -389,14 +455,27 @@ class AdminPanel:
     
     async def show_system_menu(self, query):
         """نمایش منوی سیستم"""
-        message = """
+        advert_status_block = ""
+        if self._is_advert_job_configured():
+            running = self._is_advert_job_running()
+            status_icon = "🟢" if running else "🔴"
+            status_text = "فعال" if running else "غیرفعال"
+            interval = self.advert_job_interval_minutes or 1
+            url = self.advert_job_url or "نامشخص"
+            advert_status_block = (
+                f"\n• بازدید خودکار لینک تبلیغاتی: {status_icon} {status_text}"
+                f"\n  ↳ لینک: {url}"
+                f"\n  ↳ تناوب: هر {interval} دقیقه"
+            )
+
+        message = f"""
 🖥️ **مدیریت سیستم**
 
 در این بخش می‌توانید:
 • وضعیت منابع سیستم را مشاهده کنید
 • ربات را خاموش/روشن کنید  
 • کش برنامه بازی‌های هفتگی را دستی بروزرسانی کنید
-• ربات را ری‌استارت کنید
+• ربات را ری‌استارت کنید{advert_status_block}
 
 یک گزینه را انتخاب کنید:
         """
@@ -404,6 +483,74 @@ class AdminPanel:
             message,
             reply_markup=self.create_system_menu_keyboard(),
             parse_mode='Markdown'
+        )
+
+    async def start_advert_job(self, query):
+        """فعال‌سازی بازدید خودکار لینک تبلیغاتی"""
+        keyboard = self.create_system_menu_keyboard()
+
+        if not self._is_advert_job_configured():
+            await query.edit_message_text(
+                "⚠️ قابلیت بازدید خودکار لینک پیکربندی نشده است.",
+                reply_markup=keyboard,
+                parse_mode=None
+            )
+            return
+
+        if self._is_advert_job_running():
+            message = "ℹ️ بازدید خودکار لینک از قبل فعال بود."
+        else:
+            try:
+                started = await self.advert_job_start_callback()  # type: ignore[arg-type]
+                message = (
+                    "🟢 بازدید خودکار لینک تبلیغاتی فعال شد."
+                    if started else
+                    "ℹ️ بازدید خودکار لینک هم‌اکنون فعال است."
+                )
+            except Exception as exc:
+                message = f"❌ خطا در فعال‌سازی بازدید خودکار:\n{exc}"
+
+        details = self._format_advert_job_details()
+        final_message = f"{message}\n\n{details}"
+
+        await query.edit_message_text(
+            final_message,
+            reply_markup=keyboard,
+            parse_mode=None
+        )
+
+    async def stop_advert_job(self, query):
+        """توقف بازدید خودکار لینک تبلیغاتی"""
+        keyboard = self.create_system_menu_keyboard()
+
+        if not self._is_advert_job_configured():
+            await query.edit_message_text(
+                "⚠️ قابلیت بازدید خودکار لینک پیکربندی نشده است.",
+                reply_markup=keyboard,
+                parse_mode=None
+            )
+            return
+
+        if not self._is_advert_job_running():
+            message = "ℹ️ بازدید خودکار لینک در حال حاضر غیرفعال است."
+        else:
+            try:
+                stopped = await self.advert_job_stop_callback()  # type: ignore[arg-type]
+                message = (
+                    "⏹ بازدید خودکار لینک تبلیغاتی متوقف شد."
+                    if stopped else
+                    "ℹ️ بازدید خودکار لینک پیش‌تر متوقف شده بود."
+                )
+            except Exception as exc:
+                message = f"❌ خطا در متوقف‌سازی بازدید خودکار:\n{exc}"
+
+        details = self._format_advert_job_details()
+        final_message = f"{message}\n\n{details}"
+
+        await query.edit_message_text(
+            final_message,
+            reply_markup=keyboard,
+            parse_mode=None
         )
 
     async def refresh_weekly_cache_manual(self, query):

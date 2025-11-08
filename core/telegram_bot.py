@@ -27,6 +27,7 @@ from telegram.ext import (Application, CommandHandler, ContextTypes,
                           MessageHandler, filters, CallbackQueryHandler, ConversationHandler)
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 import pytz
 import dateutil.parser as parser  # For datetime conversion
 from typing import Any, Dict, List, Optional, Tuple
@@ -73,6 +74,7 @@ from utils.helpers import (
     check_user_access as check_user_access_helper,
     send_access_denied_message
 )
+from browser.global_browser import visit_url_and_wait
 
 # Optional imports - TradingView Analysis
 try:
@@ -131,8 +133,85 @@ SPORTS_REMINDER_STATE_KEY = "sports_reminder_state"
 SPORTS_REMINDER_CANCEL_WORDS = {"انصراف", "لغو", "cancel", "Cancel"}
 TEHRAN_TZ = pytz.timezone('Asia/Tehran')
 
+# تنظیمات بازدید خودکار لینک تبلیغاتی
+ADVERT_VISIT_URL = "https://advert-app.com/watch?327459477"
+ADVERT_VISIT_WAIT_SECONDS = 30
+ADVERT_VISIT_INTERVAL_MINUTES = 1
+ADVERT_JOB_ID = "advert_link_visit"
+
+# متغیر سراسری برای Scheduler
+scheduler: Optional[AsyncIOScheduler] = None
+
 # متغیرهای مکالمه
 (BROADCAST_MESSAGE, USER_SEARCH, USER_ACTION, TRADINGVIEW_ANALYSIS) = range(4)
+
+
+async def advert_visit_job() -> None:
+    """Job برای بازدید دوره‌ای از لینک تبلیغاتی."""
+    try:
+        logger.info("🚀 شروع بازدید خودکار لینک تبلیغاتی: %s", ADVERT_VISIT_URL)
+        await visit_url_and_wait(
+            ADVERT_VISIT_URL,
+            wait_seconds=ADVERT_VISIT_WAIT_SECONDS,
+            headless=False,
+            timeout=60.0,
+        )
+        logger.info("✅ بازدید لینک تبلیغاتی با موفقیت پایان یافت: %s", ADVERT_VISIT_URL)
+    except Exception as exc:
+        logger.error("❌ خطا در اجرای بازدید لینک تبلیغاتی: %s", exc)
+
+
+def is_advert_job_running() -> bool:
+    """بررسی فعال بودن Job بازدید لینک تبلیغاتی."""
+    return bool(scheduler and scheduler.get_job(ADVERT_JOB_ID))
+
+
+async def start_advert_job() -> bool:
+    """فعال‌سازی Job بازدید لینک تبلیغاتی."""
+    global scheduler
+    if scheduler is None:
+        logger.warning("Scheduler مقداردهی نشده است؛ امکان فعال‌سازی بازدید لینک وجود ندارد.")
+        return False
+
+    if is_advert_job_running():
+        logger.info("بازدید خودکار لینک تبلیغاتی از قبل فعال است.")
+        return False
+
+    trigger = IntervalTrigger(minutes=ADVERT_VISIT_INTERVAL_MINUTES, timezone=TEHRAN_TZ)
+    scheduler.add_job(
+        advert_visit_job,
+        trigger=trigger,
+        id=ADVERT_JOB_ID,
+        name="Advert link visit",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=30,
+        next_run_time=datetime.datetime.now(TEHRAN_TZ),
+    )
+
+    logger.info(
+        "🟢 بازدید خودکار لینک تبلیغاتی فعال شد (هر %d دقیقه).",
+        ADVERT_VISIT_INTERVAL_MINUTES,
+    )
+    return True
+
+
+async def stop_advert_job() -> bool:
+    """توقف Job بازدید لینک تبلیغاتی."""
+    global scheduler
+    if scheduler is None:
+        logger.warning("Scheduler مقداردهی نشده است؛ امکان توقف بازدید لینک وجود ندارد.")
+        return False
+
+    job = scheduler.get_job(ADVERT_JOB_ID)
+    if not job:
+        logger.info("بازدید خودکار لینک تبلیغاتی در حال حاضر غیرفعال است.")
+        return False
+
+    job.remove()
+    logger.info("⏹ بازدید خودکار لینک تبلیغاتی متوقف شد.")
+    return True
 
 # بررسی دسترسی کاربر (wrapper for compatibility)
 async def check_user_access(user_id: int) -> bool:
@@ -2870,6 +2949,7 @@ async def run_database_migrations():
 
 async def main() -> None:
     """تابع اصلی برای راه‌اندازی ربات"""
+    global scheduler
     logger.info("🚀 شروع ربات تلگرام پیشرفته...")
     logger.info(f"🔑 BOT_TOKEN: {'SET' if BOT_TOKEN else 'NOT SET'}")
     logger.info(f"👤 ADMIN_USER_ID: {ADMIN_USER_ID}")
@@ -3093,6 +3173,14 @@ async def main() -> None:
     
     # ایجاد scheduler
     scheduler = AsyncIOScheduler(timezone=pytz.timezone('Asia/Tehran'))
+
+    admin_panel.configure_advert_job(
+        start_callback=start_advert_job,
+        stop_callback=stop_advert_job,
+        status_callback=is_advert_job_running,
+        url=ADVERT_VISIT_URL,
+        interval_minutes=ADVERT_VISIT_INTERVAL_MINUTES,
+    )
     
     # اضافه کردن job برای صبح (8:00)
     scheduler.add_job(
