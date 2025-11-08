@@ -133,6 +133,13 @@ SPORTS_REMINDER_STATE_KEY = "sports_reminder_state"
 SPORTS_REMINDER_CANCEL_WORDS = {"انصراف", "لغو", "cancel", "Cancel"}
 TEHRAN_TZ = pytz.timezone('Asia/Tehran')
 
+SPORTS_REMINDERS_DISABLED = True
+SPORTS_REMINDER_MAINTENANCE_MESSAGE = (
+    "⏳ این بخش در حال به‌روزرسانی است."
+    "\n\n🤖 ربات در دست توسعه است و به‌زودی با نسخه‌ی جدید یادآوری بازی‌ها برمی‌گردیم."
+    "\n\nاز صبوری شما سپاسگزاریم!"
+)
+
 # تنظیمات بازدید خودکار لینک تبلیغاتی
 ADVERT_VISIT_URL = "https://advert-app.com/watch?327459477"
 ADVERT_VISIT_WAIT_SECONDS = 30
@@ -1337,6 +1344,14 @@ async def send_sports_main_menu(update: Update) -> None:
 
 async def send_sports_reminder_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+
+    if SPORTS_REMINDERS_DISABLED:
+        await update.message.reply_text(
+            SPORTS_REMINDER_MAINTENANCE_MESSAGE,
+            parse_mode='Markdown'
+        )
+        return
+
     message = (
         "⏰ *یادآوری بازی*"
         "\n\nبا این بخش می‌توانید تیم‌های محبوب خود را اضافه کنید تا ربات شروع بازی‌های آن‌ها را به شما یادآوری کند."
@@ -1350,6 +1365,12 @@ async def send_sports_reminder_menu(update: Update, context: ContextTypes.DEFAUL
 
 
 async def handle_sports_reminder_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if SPORTS_REMINDERS_DISABLED:
+        await update.message.reply_text(
+            SPORTS_REMINDER_MAINTENANCE_MESSAGE,
+            parse_mode='Markdown'
+        )
+        return
     context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
     user = update.effective_user
     favorites = db_manager.get_sports_favorite_teams(user.id)
@@ -1362,6 +1383,12 @@ async def handle_sports_reminder_settings(update: Update, context: ContextTypes.
 
 
 async def handle_sports_reminder_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if SPORTS_REMINDERS_DISABLED:
+        await update.message.reply_text(
+            SPORTS_REMINDER_MAINTENANCE_MESSAGE,
+            parse_mode='Markdown'
+        )
+        return
     user = update.effective_user
     reminders = db_manager.get_user_match_reminders(user.id, include_sent=False)
     favorites = db_manager.get_sports_favorite_teams(user.id)
@@ -1374,6 +1401,14 @@ async def handle_sports_league_callback(update: Update, context: ContextTypes.DE
     query = update.callback_query
     user = update.effective_user
     data = query.data
+
+    if SPORTS_REMINDERS_DISABLED:
+        await query.answer(text="⏳ این بخش در حال به‌روزرسانی است.", show_alert=True)
+        await query.message.edit_text(
+            SPORTS_REMINDER_MAINTENANCE_MESSAGE,
+            parse_mode='Markdown'
+        )
+        return
 
     if data == "sports_reminder_back_to_leagues":
         context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
@@ -1509,6 +1544,14 @@ async def handle_sports_league_callback(update: Update, context: ContextTypes.DE
 
 async def process_team_selection(update: Update, context: ContextTypes.DEFAULT_TYPE, state: Dict[str, Any], user_record: Optional[Dict[str, Any]]) -> bool:
     message_text = update.message.text.strip()
+
+    if SPORTS_REMINDERS_DISABLED:
+        context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
+        await update.message.reply_text(
+            SPORTS_REMINDER_MAINTENANCE_MESSAGE,
+            parse_mode='Markdown'
+        )
+        return True
 
     if message_text in SPORTS_REMINDER_CANCEL_WORDS:
         context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
@@ -2244,11 +2287,21 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     elif message_text == "⚙️ تنظیمات یادآوری":
+        if SPORTS_REMINDERS_DISABLED:
+            bot_logger.log_user_action(user.id, "SPORTS_REMINDER_SETTINGS", "نمایش تنظیمات یادآوری (غیرفعال)")
+            await send_sports_reminder_menu(update, context)
+            return
+
         bot_logger.log_user_action(user.id, "SPORTS_REMINDER_SETTINGS", "نمایش تنظیمات یادآوری")
         await handle_sports_reminder_settings(update, context)
         return
 
     elif message_text == "📋 یادآوری‌های من":
+        if SPORTS_REMINDERS_DISABLED:
+            bot_logger.log_user_action(user.id, "SPORTS_REMINDER_LIST", "درخواست لیست یادآوری‌ها (غیرفعال)")
+            await send_sports_reminder_menu(update, context)
+            return
+
         bot_logger.log_user_action(user.id, "SPORTS_REMINDER_LIST", "درخواست لیست یادآوری‌ها")
         await handle_sports_reminder_list(update, context)
         return
@@ -3212,20 +3265,22 @@ async def main() -> None:
         replace_existing=True
     )
 
-    # اضافه کردن job هفتگی برای به‌روزرسانی یادآوری بازی‌ها (جمعه ساعت 02:00 به وقت تهران)
+    # اضافه کردن job روزانه برای به‌روزرسانی کش بازی‌های هفتگی (هر روز ساعت 03:00)
     scheduler.add_job(
         refresh_weekly_sports_reminders,
-        trigger=CronTrigger(day_of_week='fri', hour=2, minute=0, timezone='Asia/Tehran'),
-        args=[application],
-        name="weekly_sports_reminder_refresh"
-    )
-
-    # اضافه کردن job روزانه برای به‌روزرسانی یادآوری تیم‌ها
-    scheduler.add_job(
-        refresh_daily_sports_reminders,
         trigger=CronTrigger(hour=3, minute=0, timezone='Asia/Tehran'),
         args=[application],
-        name="daily_sports_reminder_refresh"
+        name="weekly_sports_reminder_refresh",
+        replace_existing=True
+    )
+
+    # اضافه کردن job روزانه برای به‌روزرسانی یادآوری تیم‌ها (همان زمان)
+    scheduler.add_job(
+        refresh_daily_sports_reminders,
+        trigger=CronTrigger(hour=3, minute=30, timezone='Asia/Tehran'),
+        args=[application],
+        name="daily_sports_reminder_refresh",
+        replace_existing=True
     )
 
     # اضافه کردن job دوره‌ای برای ارسال یادآوری‌های رسیده (هر 5 دقیقه)
