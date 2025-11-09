@@ -605,8 +605,8 @@
 # DEVOPS & CONTAINERS
 # ==============================================================================
 # Docker
-!Dockerfile
-!.dockerignore
+**/Dockerfile*
+**/.dockerignore
 **/docker-compose*.yml
 **/.docker/
 
