@@ -248,47 +248,79 @@ class PublicMenuManager:
         """پارس کردن محتوای RSS و استخراج اخبار"""
         try:
             root = ET.fromstring(xml_content)
-            items = root.findall('.//item')[:limit]
+            items = root.findall('.//item')
+            is_atom = False
+
+            if not items:
+                atom_ns = '{http://www.w3.org/2005/Atom}'
+                items = root.findall(f'.//{atom_ns}entry')
+                is_atom = bool(items)
+
+            items = items[:limit]
             
             news_list = []
             for item in items:
-                title_elem = item.find('title')
-                link_elem = item.find('link')
-                description_elem = item.find('description')
-                pub_date_elem = item.find('pubDate')
-                
-                if title_elem is not None and link_elem is not None:
-                    title = html.unescape(title_elem.text or '').strip()
-                    link = link_elem.text or ''
-                    
-                    # پاک‌سازی توضیحات
-                    description = ''
-                    if description_elem is not None and description_elem.text:
-                        # حذف HTML tags
-                        import re
-                        desc_text = html.unescape(description_elem.text)
-                        desc_text = re.sub(r'<[^>]+>', '', desc_text)
-                        description = desc_text.strip()[:120] + '...' if len(desc_text) > 120 else desc_text.strip()
-                    
-                    # تاریخ انتشار - تبدیل به datetime و ISO
-                    published_text = pub_date_elem.text.strip() if pub_date_elem is not None and pub_date_elem.text else ''
-                    published_dt = None
-                    if published_text:
+                if is_atom:
+                    atom_ns = '{http://www.w3.org/2005/Atom}'
+                    title_elem = item.find(f'{atom_ns}title') or item.find('title')
+                    link_elem = item.find(f'{atom_ns}link') or item.find('link')
+                    summary_elem = item.find(f'{atom_ns}summary') or item.find('summary') or item.find(f'{atom_ns}content')
+                    pub_date_elem = (
+                        item.find(f'{atom_ns}published')
+                        or item.find('published')
+                        or item.find(f'{atom_ns}updated')
+                        or item.find('updated')
+                    )
+                else:
+                    title_elem = item.find('title')
+                    link_elem = item.find('link')
+                    summary_elem = item.find('description')
+                    pub_date_elem = item.find('pubDate')
+
+                if title_elem is None:
+                    continue
+
+                title = html.unescape(title_elem.text or '').strip()
+
+                link = ''
+                if link_elem is not None:
+                    if is_atom:
+                        link = link_elem.get('href') or (link_elem.text or '')
+                    else:
+                        link = link_elem.text or ''
+
+                description = ''
+                if summary_elem is not None and summary_elem.text:
+                    import re
+                    desc_text = html.unescape(summary_elem.text)
+                    desc_text = re.sub(r'<[^>]+>', '', desc_text)
+                    description = desc_text.strip()[:120] + '...' if len(desc_text) > 120 else desc_text.strip()
+
+                published_text = ''
+                if pub_date_elem is not None and pub_date_elem.text:
+                    published_text = pub_date_elem.text.strip()
+
+                published_dt = None
+                if published_text:
+                    try:
+                        published_dt = parsedate_to_datetime(published_text)
+                    except (TypeError, ValueError, IndexError):
                         try:
-                            published_dt = parsedate_to_datetime(published_text)
-                            if published_dt.tzinfo is None:
-                                published_dt = published_dt.replace(tzinfo=timezone.utc)
-                        except (TypeError, ValueError, IndexError):
+                            published_dt = datetime.fromisoformat(published_text.replace('Z', '+00:00'))
+                        except (ValueError, TypeError):
                             published_dt = None
-                    
-                    news_list.append({
-                        'title': title,
-                        'link': link,
-                        'description': description,
-                        'source': source_name,
-                        'published': published_dt.isoformat() if published_dt else published_text,
-                        'published_dt': published_dt
-                    })
+
+                if published_dt and published_dt.tzinfo is None:
+                    published_dt = published_dt.replace(tzinfo=timezone.utc)
+
+                news_list.append({
+                    'title': title,
+                    'link': link,
+                    'description': description,
+                    'source': source_name,
+                    'published': published_dt.isoformat() if published_dt else published_text,
+                    'published_dt': published_dt
+                })
             
             return news_list
             
@@ -399,12 +431,6 @@ class PublicMenuManager:
                 {
                     'name': 'ایران اینترنشنال',
                     'url': 'https://www.iranintl.com/rss',
-                    'limit': 2,
-                    'language': 'fa'
-                },
-                {
-                    'name': 'تسنیم - بین‌الملل',
-                    'url': 'https://www.tasnimnews.com/fa/rss/feed/0/9/0/%D8%A8%DB%8C%D9%86-%D8%A7%D9%84%D9%85%D9%84%D9%84%D9%84',
                     'limit': 2,
                     'language': 'fa'
                 },
