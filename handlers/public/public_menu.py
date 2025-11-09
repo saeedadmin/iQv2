@@ -239,8 +239,7 @@ class PublicMenuManager:
             # مرتب‌سازی بر اساس زمان (جدیدترین اول)
             all_news.sort(key=lambda x: x.get('published', ''), reverse=True)
             
-            # بازگشت حداکثر 8 خبر
-            return all_news[:8]
+            return all_news
             
         except Exception as e:
             return []
@@ -376,19 +375,19 @@ class PublicMenuManager:
                 {
                     'name': 'خبرگزاری مهر',
                     'url': 'https://www.mehrnews.com/rss',
-                    'limit': 3,
+                    'limit': 2,
                     'language': 'fa'
                 },
                 {
                     'name': 'خبرگزاری تسنیم',
                     'url': 'https://www.tasnimnews.com/fa/rss/feed/0/8/0/%D8%A2%D8%AE%D8%B1%DB%8C%D9%86-%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1',
-                    'limit': 3,
+                    'limit': 2,
                     'language': 'fa'
                 },
                 {
                     'name': 'خبرگزاری ایسنا',
                     'url': 'https://www.isna.ir/rss',
-                    'limit': 3,
+                    'limit': 2,
                     'language': 'fa'
                 },
                 {
@@ -400,7 +399,7 @@ class PublicMenuManager:
                 {
                     'name': 'ایران اینترنشنال',
                     'url': 'https://www.iranintl.com/rss',
-                    'limit': 3,
+                    'limit': 2,
                     'language': 'fa'
                 },
                 {
@@ -513,9 +512,9 @@ class PublicMenuManager:
                     else:
                         logger.error(f"❌ خطا در ترجمه اخبار عمومی: {e}")
             
-            # مرتب‌سازی نهایی و بازگشت حداکثر 8 خبر
+            # مرتب‌سازی نهایی بدون محدودیت کلی
             sort_news(all_news)
-            return all_news[:8]
+            return all_news
             
         except Exception as e:
             logger.error(f"❌ خطای کلی در fetch_general_news: {str(e)}", exc_info=True)
