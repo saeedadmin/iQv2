@@ -432,7 +432,11 @@ class PublicMenuManager:
                     'name': 'ایران اینترنشنال',
                     'url': 'https://www.iranintl.com/rss',
                     'limit': 2,
-                    'language': 'fa'
+                    'language': 'fa',
+                    'fallback_urls': [
+                        'https://www.iranintl.com/rss/all',
+                        'https://www.iranintl.com/rss/iran'
+                    ]
                 },
                 {
                     'name': 'BBC Persian',
@@ -467,16 +471,29 @@ class PublicMenuManager:
             async with aiohttp.ClientSession() as session:
                 for source in news_sources:
                     try:
-                        async with session.get(source['url'], timeout=15) as response:
-                            if response.status == 200:
+                        urls_to_try = [source['url']] + source.get('fallback_urls', [])
+
+                        for url_idx, url in enumerate(urls_to_try):
+                            async with session.get(
+                                url,
+                                timeout=15,
+                                headers={'User-Agent': 'Mozilla/5.0 (compatible; BotNewsFetcher/1.0)'}
+                            ) as response:
+                                if response.status != 200:
+                                    continue
+
                                 xml_content = await response.text()
                                 news_items = self.parse_rss_feed(xml_content, source['name'], source['limit'])
-                                
-                                # اگر منبع خارجی باشد، به لیست جداگانه برای ترجمه اضافه می‌کنیم
-                                if source['language'] == 'en':
-                                    foreign_news.extend(news_items)
-                                else:
-                                    all_news.extend(news_items)
+
+                                if news_items:
+                                    if url_idx > 0:
+                                        logger.info(f"ℹ️ استفاده از آدرس جایگزین برای منبع {source['name']}: {url}")
+
+                                    if source['language'] == 'en':
+                                        foreign_news.extend(news_items)
+                                    else:
+                                        all_news.extend(news_items)
+                                    break
                     except Exception as e:
                         logger.warning(f"⚠️ خطا در خواندن RSS منبع {source['name']}: {e}")
                         continue
