@@ -15,6 +15,7 @@ import json
 import os
 import re
 import difflib
+import datetime
 import requests
 import weakref
 import aiohttp
@@ -1694,7 +1695,7 @@ def _hydrate_match_datetime(match: Dict[str, Any]) -> Optional[datetime.datetime
             dt = datetime.datetime.fromisoformat(match_dt)
         except (ValueError, TypeError):
             try:
-                dt = dateutil.parser.parse(match_dt)
+                dt = parser.parse(match_dt)
             except (ValueError, TypeError):
                 logger.warning(f"Invalid datetime format: {match_dt}")
                 return None
