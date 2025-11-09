@@ -191,7 +191,11 @@ class PublicMenuManager:
             async with aiohttp.ClientSession() as session:
                 for source in news_sources:
                     try:
-                        async with session.get(source['url'], timeout=15) as response:
+                        async with session.get(
+                            source['url'],
+                            timeout=15,
+                            headers={'User-Agent': 'Mozilla/5.0 (compatible; BotNewsFetcher/1.0)'}
+                        ) as response:
                             if response.status == 200:
                                 xml_content = await response.text()
                                 news_items = self.parse_rss_feed(xml_content, source['name'], source['limit'])
@@ -370,27 +374,33 @@ class PublicMenuManager:
             news_sources = [
                 # منابع داخلی (فارسی)
                 {
-                    'name': 'خبرگزاری مهر', 
+                    'name': 'خبرگزاری مهر',
                     'url': 'https://www.mehrnews.com/rss',
                     'limit': 3,
                     'language': 'fa'
                 },
                 {
-                    'name': 'تسنیم',
+                    'name': 'خبرگزاری تسنیم',
                     'url': 'https://www.tasnimnews.com/fa/rss/feed/0/8/0/%D8%A2%D8%AE%D8%B1%DB%8C%D9%86-%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1',
                     'limit': 3,
                     'language': 'fa'
                 },
                 {
-                    'name': 'مهر عمومی',  # جایگزین فارس خراب
-                    'url': 'https://www.mehrnews.com/rss/tp/1',
+                    'name': 'خبرگزاری ایسنا',
+                    'url': 'https://www.isna.ir/rss',
                     'limit': 3,
                     'language': 'fa'
                 },
                 {
-                    'name': 'مهر - سیاسی',
-                    'url': 'https://www.mehrnews.com/rss/tp/sch',
+                    'name': 'خبرگزاری ایرنا',
+                    'url': 'https://www.irna.ir/rss',
                     'limit': 2,
+                    'language': 'fa'
+                },
+                {
+                    'name': 'ایران اینترنشنال',
+                    'url': 'https://www.iranintl.com/rss',
+                    'limit': 3,
                     'language': 'fa'
                 },
                 {
@@ -399,7 +409,13 @@ class PublicMenuManager:
                     'limit': 2,
                     'language': 'fa'
                 },
-                # منابع خارجی (انگلیسی - نیاز به ترجمه)
+                {
+                    'name': 'BBC Persian',
+                    'url': 'https://www.bbc.com/persian/index.xml',
+                    'limit': 2,
+                    'language': 'fa'
+                },
+                # منابع خارجی (نیاز به ترجمه)
                 {
                     'name': 'BBC World',
                     'url': 'https://feeds.bbci.co.uk/news/world/rss.xml',
@@ -407,8 +423,14 @@ class PublicMenuManager:
                     'language': 'en'
                 },
                 {
-                    'name': 'CNN World',
-                    'url': 'http://rss.cnn.com/rss/edition.rss',
+                    'name': 'Reuters World News',
+                    'url': 'https://feeds.reuters.com/Reuters/worldNews',
+                    'limit': 2,
+                    'language': 'en'
+                },
+                {
+                    'name': 'Al Jazeera Top Stories',
+                    'url': 'https://www.aljazeera.com/xml/rss/all.xml',
                     'limit': 2,
                     'language': 'en'
                 }
