@@ -137,6 +137,23 @@ SPORTS_REMINDER_MAINTENANCE_MESSAGE = (
     "\n\nاز صبوری شما سپاسگزاریم!"
 )
 
+
+def _should_block_sports_reminders(user_id: int) -> bool:
+    """Determine whether sports reminder features should be blocked for a user."""
+    if not SPORTS_REMINDERS_DISABLED:
+        return False
+
+    if user_id == ADMIN_USER_ID:
+        return False
+
+    try:
+        user_record = db_manager.get_user(user_id)
+    except Exception:
+        user_record = None
+
+    return not (user_record and user_record.get('is_admin'))
+
+
 # متغیر سراسری برای Scheduler
 scheduler: Optional[AsyncIOScheduler] = None
 
@@ -1268,7 +1285,7 @@ async def send_sports_main_menu(update: Update) -> None:
 async def send_sports_reminder_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
 
-    if SPORTS_REMINDERS_DISABLED:
+    if _should_block_sports_reminders(update.effective_user.id):
         await update.message.reply_text(
             SPORTS_REMINDER_MAINTENANCE_MESSAGE,
             parse_mode='Markdown'
@@ -1288,7 +1305,7 @@ async def send_sports_reminder_menu(update: Update, context: ContextTypes.DEFAUL
 
 
 async def handle_sports_reminder_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if SPORTS_REMINDERS_DISABLED:
+    if _should_block_sports_reminders(update.effective_user.id):
         await update.message.reply_text(
             SPORTS_REMINDER_MAINTENANCE_MESSAGE,
             parse_mode='Markdown'
@@ -1306,7 +1323,7 @@ async def handle_sports_reminder_settings(update: Update, context: ContextTypes.
 
 
 async def handle_sports_reminder_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if SPORTS_REMINDERS_DISABLED:
+    if _should_block_sports_reminders(update.effective_user.id):
         await update.message.reply_text(
             SPORTS_REMINDER_MAINTENANCE_MESSAGE,
             parse_mode='Markdown'
@@ -1325,7 +1342,7 @@ async def handle_sports_league_callback(update: Update, context: ContextTypes.DE
     user = update.effective_user
     data = query.data
 
-    if SPORTS_REMINDERS_DISABLED:
+    if _should_block_sports_reminders(user.id):
         await query.answer(text="⏳ این بخش در حال به‌روزرسانی است.", show_alert=True)
         await query.message.edit_text(
             SPORTS_REMINDER_MAINTENANCE_MESSAGE,
@@ -1468,7 +1485,7 @@ async def handle_sports_league_callback(update: Update, context: ContextTypes.DE
 async def process_team_selection(update: Update, context: ContextTypes.DEFAULT_TYPE, state: Dict[str, Any], user_record: Optional[Dict[str, Any]]) -> bool:
     message_text = update.message.text.strip()
 
-    if SPORTS_REMINDERS_DISABLED:
+    if _should_block_sports_reminders(update.effective_user.id):
         context.user_data.pop(SPORTS_REMINDER_STATE_KEY, None)
         await update.message.reply_text(
             SPORTS_REMINDER_MAINTENANCE_MESSAGE,
@@ -1669,22 +1686,28 @@ admin_panel.set_weekly_cache_refresher(_upsert_weekly_fixtures_cache)
 
 def _hydrate_match_datetime(match: Dict[str, Any]) -> Optional[datetime.datetime]:
     match_dt = match.get('datetime')
+    if not match_dt:
+        return None
+
     if isinstance(match_dt, str):
         try:
-            # ISO format with timezone
             dt = datetime.datetime.fromisoformat(match_dt)
         except (ValueError, TypeError):
             try:
-                # Fallback to parser for non-ISO formats
                 dt = dateutil.parser.parse(match_dt)
             except (ValueError, TypeError):
-                # Final fallback to current time
-                dt = datetime.datetime.now()
                 logger.warning(f"Invalid datetime format: {match_dt}")
-    
-    # Convert to Tehran timezone
-    tehran_tz = pytz.timezone('Asia/Tehran')
-    return dt.astimezone(tehran_tz)
+                return None
+    elif isinstance(match_dt, datetime.datetime):
+        dt = match_dt
+    else:
+        logger.warning(f"Unsupported datetime type for match: {type(match_dt)}")
+        return None
+
+    if dt.tzinfo is None:
+        dt = pytz.UTC.localize(dt)
+
+    return dt.astimezone(TEHRAN_TZ)
 
 
 def _generate_user_team_reminders(user_id: int, favorites: List[Dict[str, Any]], leagues_data: Dict[str, Any]) -> int:
@@ -2210,7 +2233,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     elif message_text == "⚙️ تنظیمات یادآوری":
-        if SPORTS_REMINDERS_DISABLED:
+        if _should_block_sports_reminders(user.id):
             bot_logger.log_user_action(user.id, "SPORTS_REMINDER_SETTINGS", "نمایش تنظیمات یادآوری (غیرفعال)")
             await send_sports_reminder_menu(update, context)
             return
@@ -2220,7 +2243,7 @@ async def fallback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     elif message_text == "📋 یادآوری‌های من":
-        if SPORTS_REMINDERS_DISABLED:
+        if _should_block_sports_reminders(user.id):
             bot_logger.log_user_action(user.id, "SPORTS_REMINDER_LIST", "درخواست لیست یادآوری‌ها (غیرفعال)")
             await send_sports_reminder_menu(update, context)
             return
